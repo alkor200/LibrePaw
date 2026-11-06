@@ -4,33 +4,43 @@ import ScentrailKit
 
 struct PetMapView: View {
     let petRepository: PetRepository
+    let locationService: LocationService
     @State private var viewModel: PetMapViewModel
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var selectedPet: Pet?
 
-    init(petRepository: PetRepository) {
+    init(petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
+        self.locationService = locationService
         _viewModel = State(initialValue: PetMapViewModel(petRepository: petRepository))
     }
 
     var body: some View {
         Map(position: $cameraPosition, selection: $selectedPet) {
+            UserAnnotation()
+
             ForEach(viewModel.petsWithPosition) { pet in
                 if let position = pet.lastPosition {
-                    Marker(pet.name, coordinate: position.coordinate.clLocationCoordinate2D)
-                        .tint(pet.status == .online ? .green : .gray)
-                        .tag(pet)
+                    Annotation(pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
+                        PetAnnotationView(pet: pet, petRepository: petRepository)
+                    }
+                    .tag(pet)
                 }
             }
         }
         .mapControls {
             MapCompass()
             MapScaleView()
+            MapUserLocationButton()
         }
         .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: $selectedPet) { pet in
-            PetDetailView(viewModel: PetDetailViewModel(pet: pet, petRepository: petRepository))
+            PetDetailView(
+                viewModel: PetDetailViewModel(pet: pet, petRepository: petRepository),
+                petRepository: petRepository,
+                locationService: locationService
+            )
         }
         .overlay(alignment: .top) {
             if let errorMessage = viewModel.errorMessage {
@@ -51,7 +61,14 @@ struct PetMapView: View {
                 )
             }
         }
-        .task { viewModel.startPolling() }
-        .onDisappear { viewModel.stopPolling() }
+        .task {
+            viewModel.startPolling()
+            locationService.requestAuthorizationIfNeeded()
+            locationService.startUpdating()
+        }
+        .onDisappear {
+            viewModel.stopPolling()
+            locationService.stopUpdating()
+        }
     }
 }

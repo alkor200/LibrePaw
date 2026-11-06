@@ -6,22 +6,24 @@ import ScentrailKit
 struct MainTabView: View {
     let session: StoredSession
     let petRepository: PetRepository
+    let locationService: LocationService
     let onLogOut: () -> Void
 
     var body: some View {
+        // Map is listed first so it's the default tab on launch.
         TabView {
             NavigationStack {
-                PetListView(petRepository: petRepository)
-            }
-            .tabItem {
-                Label("Pets", systemImage: "pawprint.fill")
-            }
-
-            NavigationStack {
-                PetMapView(petRepository: petRepository)
+                PetMapView(petRepository: petRepository, locationService: locationService)
             }
             .tabItem {
                 Label("Map", systemImage: "map.fill")
+            }
+
+            NavigationStack {
+                PetListView(petRepository: petRepository, locationService: locationService)
+            }
+            .tabItem {
+                Label("Pets", systemImage: "pawprint.fill")
             }
 
             NavigationStack {

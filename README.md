@@ -11,9 +11,13 @@ its own backend, and is not affiliated with the Traccar project.
 ## Features
 
 - Sign in to your own Traccar server.
+- A map of every pet's last known position, plus your own location.
 - See all your pets (Traccar "devices") with their live online/offline status.
-- A map of every pet's last known position.
 - Per-pet detail view with today's trail, speed, battery level and address.
+- **Find Pet**: an AirTag-style compass arrow + distance pointing you toward
+  a pet.
+- Pet avatars on the map: a photo if you set one (see
+  [Setting a pet photo](#setting-a-pet-photo)), otherwise a paw icon.
 
 ## Requirements
 
@@ -36,6 +40,13 @@ sign in with your Traccar server's address and your account's email/password.
 
 Whenever you add, remove, or move source files, or change `project.yml`,
 re-run `xcodegen generate` before building.
+
+### Setting a pet photo
+
+Use Traccar's own device image upload: open the device in Traccar's web UI →
+**Edit Device** → upload an image. Scentrail reads it back via Traccar's
+`deviceImage` attribute and `/api/media/...` endpoint — no Scentrail-specific
+setup needed. Devices without a photo show a paw icon instead.
 
 ## Running tests
 
@@ -74,8 +85,11 @@ TraccarKit (local package)     A standalone Traccar REST API client
   `AuthenticationService` protocols, and stores credentials in the Keychain.
 - **`Scentrail`** (the app target) contains only SwiftUI views and view
   models, grouped by feature (`Authentication`, `PetList`, `Map`,
-  `PetDetail`, `Settings`). It depends on `ScentrailKit` only — never
-  directly on `TraccarKit`.
+  `PetDetail`, `Find`, `Settings`). It depends on `ScentrailKit` only — never
+  directly on `TraccarKit`. It's also the only place that touches
+  `CoreLocation` (for the user's own position/heading); the distance and
+  bearing math itself lives in `ScentrailKit` as plain functions on
+  `Coordinate`.
 
 Key decisions, each recorded as an ADR:
 
@@ -88,8 +102,11 @@ Key decisions, each recorded as an ADR:
 | [0005](docs/adr/0005-modular-architecture-with-local-swift-packages.md) | Modular architecture with local Swift packages |
 | [0006](docs/adr/0006-http-basic-auth-and-rest-polling.md) | HTTP Basic Auth and REST polling |
 | [0007](docs/adr/0007-keychain-credential-storage.md) | Store server credentials in the Keychain |
-| [0008](docs/adr/0008-no-device-location-access-in-mvp.md) | No device location access in the MVP |
+| [0008](docs/adr/0008-no-device-location-access-in-mvp.md) | No device location access in the MVP (superseded by 0010) |
 | [0009](docs/adr/0009-manual-dependency-injection.md) | Manual dependency injection |
+| [0010](docs/adr/0010-device-location-for-distance-and-find-pet.md) | Device location for distance display and "Find Pet" |
+| [0011](docs/adr/0011-pet-avatar-from-traccar-photo-attribute.md) | Pet avatar from Traccar's built-in device image |
+| [0012](docs/adr/0012-cookie-session-for-media-requests.md) | Use a cookie session for media requests only |
 
 ## Roadmap
 
@@ -97,8 +114,8 @@ Deliberately out of scope for the current MVP (see the ADRs above for why):
 
 - Live updates via Traccar's WebSocket feed (currently REST polling).
 - Geofences and push notifications.
-- Showing the user's own location / distance to a pet.
-- Multiple pet photos/avatars, breed info, vet records, etc.
+- In-app photo upload (today, a pet photo is a manually-set Traccar attribute).
+- Breed info, vet records, and other pet-care data unrelated to tracking.
 
 Contributions toward any of these are welcome — please open an issue to
 discuss the approach first, especially if it touches an existing ADR.

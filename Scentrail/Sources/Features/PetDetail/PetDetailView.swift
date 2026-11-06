@@ -3,10 +3,14 @@ import MapKit
 import ScentrailKit
 
 struct PetDetailView: View {
+    let petRepository: PetRepository
+    let locationService: LocationService
     @State private var viewModel: PetDetailViewModel
     @State private var cameraPosition: MapCameraPosition
 
-    init(viewModel: PetDetailViewModel) {
+    init(viewModel: PetDetailViewModel, petRepository: PetRepository, locationService: LocationService) {
+        self.petRepository = petRepository
+        self.locationService = locationService
         _viewModel = State(initialValue: viewModel)
         if let coordinate = viewModel.pet.lastPosition?.coordinate {
             _cameraPosition = State(initialValue: .region(
@@ -27,6 +31,16 @@ struct PetDetailView: View {
                 map
                     .frame(height: 260)
                     .listRowInsets(EdgeInsets())
+            }
+
+            if viewModel.pet.lastPosition != nil {
+                Section {
+                    NavigationLink {
+                        FindPetView(viewModel: FindPetViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
+                    } label: {
+                        Label("Find \(viewModel.pet.name)", systemImage: "location.north.circle.fill")
+                    }
+                }
             }
 
             Section("Status") {
@@ -71,7 +85,9 @@ struct PetDetailView: View {
     private var map: some View {
         Map(position: $cameraPosition) {
             if let position = viewModel.pet.lastPosition {
-                Marker(viewModel.pet.name, coordinate: position.coordinate.clLocationCoordinate2D)
+                Annotation(viewModel.pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
+                    PetAnnotationView(pet: viewModel.pet, petRepository: petRepository)
+                }
             }
             if viewModel.trail.count > 1 {
                 MapPolyline(coordinates: viewModel.trail.map(\.coordinate.clLocationCoordinate2D))
@@ -91,6 +107,10 @@ struct PetDetailView: View {
 
 #Preview {
     NavigationStack {
-        PetDetailView(viewModel: PetDetailViewModel(pet: .previewOnline, petRepository: PreviewPetRepository()))
+        PetDetailView(
+            viewModel: PetDetailViewModel(pet: .previewOnline, petRepository: PreviewPetRepository()),
+            petRepository: PreviewPetRepository(),
+            locationService: LocationService()
+        )
     }
 }

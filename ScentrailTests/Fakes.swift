@@ -35,4 +35,5 @@ final class FakeAuthenticationService: AuthenticationService, @unchecked Sendabl
 struct FakePetRepository: PetRepository {
     func fetchPets() async throws -> [Pet] { [] }
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] { [] }
+    func fetchPhoto(for pet: Pet) async throws -> Data? { nil }
 }

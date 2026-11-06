@@ -3,10 +3,12 @@ import ScentrailKit
 
 struct PetListView: View {
     let petRepository: PetRepository
+    let locationService: LocationService
     @State private var viewModel: PetListViewModel
 
-    init(petRepository: PetRepository) {
+    init(petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
+        self.locationService = locationService
         _viewModel = State(initialValue: PetListViewModel(petRepository: petRepository))
     }
 
@@ -14,7 +16,11 @@ struct PetListView: View {
         content
             .navigationTitle("Pets")
             .navigationDestination(for: Pet.self) { pet in
-                PetDetailView(viewModel: PetDetailViewModel(pet: pet, petRepository: petRepository))
+                PetDetailView(
+                    viewModel: PetDetailViewModel(pet: pet, petRepository: petRepository),
+                    petRepository: petRepository,
+                    locationService: locationService
+                )
             }
             .task { viewModel.startPolling() }
             .onDisappear { viewModel.stopPolling() }
@@ -57,6 +63,6 @@ struct PetListView: View {
 
 #Preview {
     NavigationStack {
-        PetListView(petRepository: PreviewPetRepository())
+        PetListView(petRepository: PreviewPetRepository(), locationService: LocationService())
     }
 }

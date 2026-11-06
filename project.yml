@@ -31,6 +31,11 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
+        # Personal, per-developer — never hardcode a real team ID here since
+        # project.yml is shared/committed. Set the env var before running
+        # `xcodegen generate`, or just pick a Team once in Xcode's Signing &
+        # Capabilities tab (lost on the next `xcodegen generate` though).
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
     dependencies:
       - package: ScentrailKit
     info:
@@ -38,6 +43,7 @@ targets:
       properties:
         CFBundleDisplayName: Scentrail
         ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: "Scentrail uses your location to show how far away your pet is and to point you in their direction in the Find Pet screen."
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0010](0010-device-location-for-distance-and-find-pet.md)
 
 ## Context
 

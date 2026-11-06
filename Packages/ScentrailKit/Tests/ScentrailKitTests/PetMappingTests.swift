@@ -5,6 +5,8 @@ import TraccarKit
 
 @Suite("PetMapping")
 struct PetMappingTests {
+    private let serverURL = URL(string: "https://traccar.example.com")!
+
     @Test("Maps a Traccar device and its latest position into a Pet")
     func mapsDeviceWithPosition() {
         let lastUpdate = Date(timeIntervalSince1970: 1_700_000_000)
@@ -33,7 +35,7 @@ struct PetMappingTests {
             attributes: ["batteryLevel": .double(76)]
         )
 
-        let pet = PetMapping.pet(from: device, latestPosition: position)
+        let pet = PetMapping.pet(from: device, latestPosition: position, serverURL: serverURL)
 
         #expect(pet.id == 7)
         #expect(pet.name == "Buddy")
@@ -60,11 +62,49 @@ struct PetMappingTests {
             attributes: [:]
         )
 
-        let pet = PetMapping.pet(from: device, latestPosition: nil)
+        let pet = PetMapping.pet(from: device, latestPosition: nil, serverURL: serverURL)
 
         #expect(pet.lastPosition == nil)
         #expect(pet.species == nil)
         #expect(pet.status == .unknown)
+    }
+
+    @Test("A deviceImage attribute maps to a photo URL under /api/media/<uniqueId>/<filename>")
+    func mapsDeviceImageAttributeToPhotoURL() {
+        let device = TraccarDevice(
+            id: 7,
+            name: "Buddy",
+            uniqueId: "collar-007",
+            status: .online,
+            disabled: false,
+            lastUpdate: nil,
+            positionId: nil,
+            category: "dog",
+            attributes: ["deviceImage": .string("buddy.jpg")]
+        )
+
+        let pet = PetMapping.pet(from: device, latestPosition: nil, serverURL: serverURL)
+
+        #expect(pet.photoURL?.absoluteString == "https://traccar.example.com/api/media/collar-007/buddy.jpg")
+    }
+
+    @Test("No deviceImage attribute maps to a nil photo URL")
+    func noDeviceImageAttributeMapsToNilPhotoURL() {
+        let device = TraccarDevice(
+            id: 7,
+            name: "Buddy",
+            uniqueId: "collar-007",
+            status: .online,
+            disabled: false,
+            lastUpdate: nil,
+            positionId: nil,
+            category: "dog",
+            attributes: [:]
+        )
+
+        let pet = PetMapping.pet(from: device, latestPosition: nil, serverURL: serverURL)
+
+        #expect(pet.photoURL == nil)
     }
 }
 

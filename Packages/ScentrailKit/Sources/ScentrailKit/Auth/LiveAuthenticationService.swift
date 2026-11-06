@@ -19,7 +19,12 @@ public struct LiveAuthenticationService: AuthenticationService {
         let client = TraccarClient(credentials: credentials)
 
         do {
-            _ = try await client.fetchCurrentUser()
+            // Traccar's `GET /api/session` only checks for a cookie-based session
+            // and ignores Basic Auth entirely (always 404 without a cookie), so it
+            // cannot be used to validate credentials here. `/api/devices` is the
+            // first endpoint we need anyway and correctly returns 401 for bad
+            // credentials, so we use it to validate login (see ADR-0006).
+            _ = try await client.fetchDevices()
         } catch let error as TraccarError {
             throw error.asScentrailError
         }

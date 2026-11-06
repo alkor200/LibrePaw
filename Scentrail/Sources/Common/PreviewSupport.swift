@@ -45,6 +45,10 @@ struct PreviewPetRepository: PetRepository {
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] {
         [.previewNearBerlin]
     }
+
+    func fetchPhoto(for pet: Pet) async throws -> Data? {
+        nil
+    }
 }
 
 struct PreviewAuthenticationService: AuthenticationService {

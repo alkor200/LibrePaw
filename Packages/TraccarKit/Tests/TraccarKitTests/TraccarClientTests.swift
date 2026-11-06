@@ -2,6 +2,47 @@ import Foundation
 import Testing
 @testable import TraccarKit
 
+/// A tiny lock-protected array so `MockURLProtocol`'s `@Sendable` handler
+/// closures can record call order across (potentially concurrent) requests.
+final class LockedArray<Element>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [Element] = []
+
+    func append(_ element: Element) {
+        lock.withLock { storage.append(element) }
+    }
+
+    var values: [Element] {
+        lock.withLock { storage }
+    }
+}
+
+private extension URLRequest {
+    /// `URLProtocol` subclasses often see `httpBody` as `nil` even when the
+    /// original request set it — `URLSession` moves it into a stream before
+    /// handing the request off. This reads it back from whichever is present.
+    var bodyData: Data {
+        if let httpBody {
+            return httpBody
+        }
+        guard let stream = httpBodyStream else { return Data() }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        let bufferSize = 4096
+        var buffer = [UInt8](repeating: 0, count: bufferSize)
+        while stream.hasBytesAvailable {
+            let read = stream.read(&buffer, maxLength: bufferSize)
+            if read > 0 {
+                data.append(buffer, count: read)
+            } else {
+                break
+            }
+        }
+        return data
+    }
+}
+
 // Serialized because all tests share `MockURLProtocol.requestHandler`, a single
 // static slot — running them concurrently would race on which handler is active.
 @Suite("TraccarClient", .serialized)
@@ -69,6 +110,44 @@ struct TraccarClientTests {
 
         await #expect(throws: TraccarError.server(statusCode: 500)) {
             try await self.makeClient().fetchDevices()
+        }
+    }
+
+    @Test("fetchData establishes a cookie session via POST /api/session before fetching media")
+    func fetchDataEstablishesCookieSessionFirst() async throws {
+        let imageData = Data([0xFF, 0xD8, 0xFF])
+        let mediaURL = URL(string: "https://traccar.example.com/api/media/collar-001/device.jpg")!
+        let requestedPaths = LockedArray<String>()
+
+        MockURLProtocol.requestHandler = { request in
+            requestedPaths.append(request.url?.path ?? "")
+
+            if request.url?.path == "/api/session" {
+                #expect(request.httpMethod == "POST")
+                let body = String(data: request.bodyData, encoding: .utf8) ?? ""
+                #expect(body.contains("email=owner@example.com"))
+                #expect(body.contains("password=secret"))
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, Data())
+            } else {
+                #expect(request.url == mediaURL)
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, imageData)
+            }
+        }
+
+        let data = try await makeClient().fetchData(from: mediaURL)
+
+        #expect(data == imageData)
+        #expect(requestedPaths.values == ["/api/session", "/api/media/collar-001/device.jpg"])
+    }
+
+    @Test("fetchData rejects URLs on a different host than the server")
+    func fetchDataRejectsForeignHosts() async throws {
+        let foreignURL = URL(string: "https://evil.example.com/steal-credentials")!
+
+        await #expect(throws: TraccarError.invalidServerURL) {
+            try await self.makeClient().fetchData(from: foreignURL)
         }
     }
 

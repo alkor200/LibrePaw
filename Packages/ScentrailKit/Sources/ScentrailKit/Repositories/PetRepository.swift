@@ -9,4 +9,9 @@ public protocol PetRepository: Sendable {
     /// The position history for one pet within a time range, oldest first —
     /// used to draw a recent trail on the map.
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition]
+
+    /// The pet's photo bytes, fetched with the same credentials as every
+    /// other request (Traccar's device media endpoint requires auth). `nil`
+    /// when the pet has no photo set.
+    func fetchPhoto(for pet: Pet) async throws -> Data?
 }

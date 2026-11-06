@@ -27,9 +27,14 @@ device/position updates, as an alternative to polling `GET /api/positions`.
   and `PetMapViewModel` refresh devices/positions on a timer (default 20s)
   while their view is visible, and pause when it is not (`.task`/`.onDisappear`).
 
-We do still call `GET /api/session` once after login purely to *validate*
-the credentials and fetch the current user's profile — not to establish a
-cookie session.
+To validate credentials at login time, we call `GET /api/devices` rather than
+`GET /api/session`. Traccar's `/api/session` `GET` endpoint only checks for an
+existing *cookie-based* session and returns 404 unconditionally when there is
+none — it ignores any `Authorization` header entirely, so it cannot be used
+to validate Basic Auth credentials (confirmed against a live Traccar server;
+`GET /api/devices` correctly returns 401 for bad credentials and 200 for
+good ones). `/api/devices` is also the first call the app needs after login
+regardless, so no extra round-trip is added.
 
 ## Consequences
 
@@ -48,3 +53,7 @@ cookie session.
   explicit MVP trade-off; a future ADR can introduce the WebSocket feed
   (e.g. via `URLSessionWebSocketTask` in `TraccarKit`) behind the same
   repository protocol in `ScentrailKit`, without changing any view model.
+- **Update:** [ADR-0012](0012-cookie-session-for-media-requests.md) adds one
+  narrow exception to "Basic Auth only" — Traccar's device media endpoint
+  ignores Basic Auth and requires a cookie session instead. Every other
+  endpoint is unaffected.
