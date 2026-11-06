@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  packages:
+    name: Test Swift packages
+    runs-on: macos-15
+    strategy:
+      matrix:
+        package: [TraccarKit, ScentrailKit]
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test (${{ matrix.package }})
+        working-directory: Packages/${{ matrix.package }}
+        run: swift test
+
+  app:
+    name: Build and test iOS app
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Install xcpretty
+        run: gem install xcpretty
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Scentrail.xcodeproj \
+            -scheme Scentrail \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            | xcpretty
