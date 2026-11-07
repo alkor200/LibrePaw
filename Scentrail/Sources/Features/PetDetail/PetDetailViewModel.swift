@@ -29,4 +29,13 @@ final class PetDetailViewModel {
             trailErrorMessage = error.localizedDescription
         }
     }
+
+    /// Total distance covered along today's trail, summing consecutive fixes
+    /// with the same spherical-geometry math used by the Find Pet screen.
+    /// `nil` until there are at least two points to measure between.
+    var totalTrailDistanceMeters: Double? {
+        guard trail.count > 1 else { return nil }
+        return zip(trail, trail.dropFirst())
+            .reduce(0) { $0 + $1.0.coordinate.distanceMeters(to: $1.1.coordinate) }
+    }
 }
