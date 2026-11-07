@@ -8,6 +8,7 @@ struct PetMapView: View {
     @State private var viewModel: PetMapViewModel
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var selectedPet: Pet?
+    @State private var mapLayer: MapLayer = .standard
 
     init(petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
@@ -28,10 +29,15 @@ struct PetMapView: View {
                 }
             }
         }
+        .mapStyle(mapLayer.mapStyle)
         .mapControls {
             MapCompass()
             MapScaleView()
             MapUserLocationButton()
+        }
+        .overlay(alignment: .bottomLeading) {
+            MapLayerPicker(selection: $mapLayer)
+                .padding()
         }
         .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
