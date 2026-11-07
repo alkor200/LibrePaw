@@ -64,7 +64,9 @@ struct FindPetView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 if let recordedAt = viewModel.pet.lastPosition?.recordedAt {
-                    Text("as of \(recordedAt.formatted(.relative(presentation: .named)))")
+                    // `Text(_:style:)` ticks on its own every second — unlike a
+                    // formatted string, it doesn't need the view to re-render.
+                    (Text("as of ") + Text(recordedAt, style: .relative))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
