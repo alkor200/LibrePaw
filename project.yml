@@ -42,6 +42,11 @@ targets:
       path: Scentrail/Resources/Info.plist
       properties:
         CFBundleDisplayName: Scentrail
+        # Substituted from the MARKETING_VERSION/CURRENT_PROJECT_VERSION build
+        # settings above at build time — XcodeGen's own Info.plist defaults
+        # otherwise hardcode "1.0"/"1" regardless of those settings.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         NSLocationWhenInUseUsageDescription: "Scentrail uses your location to show how far away your pet is and to point you in their direction in the Find Pet screen."
         UILaunchScreen: {}
