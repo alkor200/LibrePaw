@@ -4,7 +4,7 @@ import Foundation
 public struct TraccarGeofence: Decodable, Sendable, Identifiable, Equatable {
     public let id: Int
     public let name: String
-    /// The geofence shape encoded as WKT (e.g. `CIRCLE (lon lat, radiusMeters)`
+    /// The geofence shape encoded as WKT (e.g. `CIRCLE (lat lon, radiusMeters)`
     /// for a circle — see ``TraccarGeofenceArea``).
     public let area: String
     public let attributes: [String: JSONValue]
@@ -38,13 +38,22 @@ struct GeofenceDevicePermission: Encodable, Sendable {
     let geofenceId: Int
 }
 
-/// Builds and parses the WKT `CIRCLE (longitude latitude, radiusMeters)`
-/// format Traccar uses for circular geofences — verified against a live
-/// server (see ADR-0014): coordinates are longitude first, then latitude,
-/// matching WKT's conventional (X, Y) axis order.
+/// Builds and parses the WKT `CIRCLE (lat lon, radiusMeters)` format Traccar
+/// uses for circular geofences.
+///
+/// This is **latitude first**, unlike standard WKT's (X, Y) =
+/// (longitude, latitude) axis order — confirmed by reading Traccar's own
+/// `GeofenceCircle.fromWkt`/`toWkt` source directly (`centerLatitude` is
+/// parsed from the first token, `centerLongitude` from the second) after an
+/// earlier version of this code got the order backwards. That bug shipped
+/// silently: writing and reading it back with the same (wrong) convention
+/// round-trips perfectly in isolation, so the mistake only surfaced when a
+/// geofence built this way was tested against Traccar's actual geofence
+/// evaluation and never matched any position near the intended location.
+/// See ADR-0014.
 public enum TraccarGeofenceArea {
     public static func circleWKT(centerLatitude: Double, centerLongitude: Double, radiusMeters: Double) -> String {
-        "CIRCLE (\(centerLongitude) \(centerLatitude), \(radiusMeters))"
+        "CIRCLE (\(centerLatitude) \(centerLongitude), \(radiusMeters))"
     }
 
     public static func parseCircle(_ wkt: String) -> (latitude: Double, longitude: Double, radiusMeters: Double)? {
@@ -61,8 +70,8 @@ public enum TraccarGeofenceArea {
 
         let coordinateParts = parts[0].trimmingCharacters(in: .whitespaces).split(separator: " ")
         guard coordinateParts.count == 2,
-              let longitude = Double(coordinateParts[0]),
-              let latitude = Double(coordinateParts[1]),
+              let latitude = Double(coordinateParts[0]),
+              let longitude = Double(coordinateParts[1]),
               let radius = Double(parts[1].trimmingCharacters(in: .whitespaces)) else {
             return nil
         }

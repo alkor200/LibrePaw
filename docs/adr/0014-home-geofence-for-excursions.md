@@ -28,10 +28,18 @@ Verified instead: Traccar's **geofence** feature, combined with
 `GET /api/reports/events`, gives exactly the "home to home" semantics
 wanted, using only existing Traccar primitives:
 
-- `POST /api/geofences` creates a geofence; its `area` field is a WKT
-  string. Traccar's circle syntax, confirmed by creating one on a live
-  server and reading it back: `CIRCLE (longitude latitude, radiusMeters)`
-  — longitude first, matching WKT's conventional (X, Y) order.
+- `POST /api/geofences` creates a geofence; its `area` field is a WKT-like
+  string. Traccar's circle syntax is `CIRCLE (lat lon, radiusMeters)` —
+  **latitude first**, confirmed by reading `GeofenceCircle.java`'s own
+  `toWkt`/`fromWkt` directly, *not* standard WKT's (X, Y) =
+  (longitude, latitude) order. An earlier version of this ADR (and the code)
+  got this backwards, "confirmed" only by writing and reading back a
+  geofence with our own (consistently wrong) convention — a round-trip that
+  passes even when the order is wrong, since both ends agree with each
+  other, just not with Traccar's actual geofence evaluation. The bug only
+  surfaced once a geofence built this way was tested against real geofence
+  membership (a simulated device's positions never registered as "inside,"
+  since the geofence had silently landed on the opposite hemisphere).
 - `POST /api/permissions` with `{deviceId, geofenceId}` links a geofence to
   a device.
 - Crossing a linked geofence generates `geofenceEnter`/`geofenceExit`
