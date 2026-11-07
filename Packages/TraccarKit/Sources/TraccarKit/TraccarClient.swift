@@ -114,7 +114,7 @@ public actor TraccarClient {
     /// live server — see ADR-0012). This method establishes one lazily, on
     /// first use, and transparently re-establishes it once if it has expired.
     public func fetchData(from url: URL) async throws -> Data {
-        guard url.host == credentials.serverURL.host else {
+        guard url.host == credentials.serverURL.host, url.scheme == credentials.serverURL.scheme else {
             throw TraccarError.invalidServerURL
         }
 

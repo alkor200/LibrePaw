@@ -151,6 +151,15 @@ struct TraccarClientTests {
         }
     }
 
+    @Test("fetchData rejects a same-host URL that downgrades the scheme")
+    func fetchDataRejectsSchemeDowngrade() async throws {
+        let downgradedURL = URL(string: "http://traccar.example.com/steal-credentials")!
+
+        await #expect(throws: TraccarError.invalidServerURL) {
+            try await self.makeClient().fetchData(from: downgradedURL)
+        }
+    }
+
     @Test("decodeSocketMessage parses a positions-only update (verified wire format)")
     func decodeSocketMessageParsesPositionsUpdate() async throws {
         let json = """
