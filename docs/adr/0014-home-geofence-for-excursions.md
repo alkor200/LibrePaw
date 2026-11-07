@@ -52,9 +52,13 @@ wanted, using only existing Traccar primitives:
 
 **Setting home** (`PetRepository.setHomeGeofence(forPetID:center:radiusMeters:)`):
 creates (or moves, if one already exists) a circular geofence, linked to the
-pet's device. Per the explicit request, there is no draggable map pin —
-`SetHomeView` just uses the owner's current location (`LocationService`)
-and a radius slider, so the whole setup is "stand at home, tap Save."
+pet's device. `SetHomeView` ("`<Pet>`'s Home" on screen) shows a full-screen
+map with a pin fixed at the center and a radius slider (20–100m — a "home"
+geofence realistically never needs to be larger); the owner drags the map
+underneath the pin to place or move it, the same interaction Apple Maps uses
+for dropping a pin, rather than being limited to wherever they're currently
+standing. The pin defaults to the owner's current location only when no home
+is set yet.
 
 The geofence is identified by a custom boolean attribute,
 `attributes.scentrailHome = true`, rather than by name — robust against the
@@ -82,9 +86,34 @@ for that time window.
   rather than failing silently.
 - `fetchExcursions` makes one additional `fetchPositionHistory` call per
   excursion (to compute its distance/trail bounds) on top of the two event
-  queries — acceptable since excursions are a bounded, low-frequency list
-  (at most a handful per day for a pet), not something fetched at polling
-  frequency.
+  queries, run concurrently via a `TaskGroup` rather than one at a time. The
+  original "acceptable since it's a bounded, low-frequency list" reasoning
+  only held for `ExcursionsView`'s 7-day window — `lifetimeExcursionStats`
+  (below) can request a pet's *entire* history, where this N+1 pattern would
+  otherwise mean one network round trip per excursion ever recorded; running
+  them concurrently keeps that from being a serial, one-at-a-time wait, and
+  the caching strategy below keeps it from recurring on every load.
+- **Lifetime stats** (`PetRepository.lifetimeExcursionStats(forPetID:)`):
+  total distance/time away across every excursion a pet has ever taken, for
+  the pet detail page's "Total Distance"/"Total Time Away" tiles. Computing
+  this from scratch on every load would mean re-fetching and re-summing a
+  pet's entire excursion history each time, so completed excursions'
+  contributions are folded into a small cache
+  (`UserDefaultsLifetimeStatsStore`, keyed by server host *and* device id —
+  device ids are only unique within one Traccar server) alongside a
+  watermark: the end time of the most recently counted excursion. Each
+  subsequent call only re-fetches excursions that ended after that watermark.
+  An important subtlety: `fetchExcursions` returns results newest-first, so
+  the merge must compare each excursion's end time against the *original*
+  watermark captured before the loop starts, never one updated mid-loop —
+  comparing against a running watermark let a newer excursion's end time
+  make an older excursion later in the same batch look "already counted"
+  even on the very first run, silently dropping it (caught and fixed after
+  it produced a visibly wrong total against live data; see
+  `TraccarPetRepository.mergeLifetimeStats`, which is unit tested directly
+  against hand-built excursion lists for exactly this ordering). An ongoing
+  excursion's distance/duration is added to the displayed total but never
+  persisted into the cache, since it's still growing.
 - Moving home (calling `setHomeGeofence` again) updates the existing
   geofence **in place** (same id) rather than deleting and recreating it —
   deliberate, so the device-geofence permission link set up the first time

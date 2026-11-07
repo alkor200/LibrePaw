@@ -147,7 +147,11 @@ struct TraccarPetRepository: PetRepository {
                 .filter { $0.geofenceId == home.id }
                 .sorted { $0.eventTime < $1.eventTime }
 
-            var excursions: [Excursion] = []
+            // Pairing exits with enters is inherently sequential (each step
+            // consumes the enters list in order), but nothing about that
+            // requires the *positions* fetch inside makeExcursion to also
+            // run one at a time — so pair up front, then fetch concurrently.
+            var pairs: [(exit: TraccarEvent, enter: TraccarEvent?)] = []
             var enterIndex = 0
             for exit in exits {
                 while enterIndex < enters.count, enters[enterIndex].eventTime <= exit.eventTime {
@@ -155,8 +159,18 @@ struct TraccarPetRepository: PetRepository {
                 }
                 let matchingEnter = enterIndex < enters.count ? enters[enterIndex] : nil
                 if matchingEnter != nil { enterIndex += 1 }
+                pairs.append((exit, matchingEnter))
+            }
 
-                excursions.append(try await makeExcursion(petID: petID, exit: exit, enter: matchingEnter))
+            let excursions = try await withThrowingTaskGroup(of: Excursion.self) { group in
+                for pair in pairs {
+                    group.addTask { try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter) }
+                }
+                var results: [Excursion] = []
+                for try await excursion in group {
+                    results.append(excursion)
+                }
+                return results
             }
             return excursions.sorted { $0.startTime > $1.startTime }
         } catch let error as TraccarError {
@@ -170,26 +184,50 @@ struct TraccarPetRepository: PetRepository {
     /// added fresh on top of the cache for display, without being persisted,
     /// since its distance is still growing.
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
-        let cached = lifetimeStatsStore.load(forPetID: petID)
-        let watermark = cached?.cachedThroughEndTime
+        let serverHost = client.serverURL.host ?? ""
+        let cached = lifetimeStatsStore.load(forPetID: petID, serverHost: serverHost)
 
-        let recentExcursions = try await fetchExcursions(forPetID: petID, from: watermark ?? .distantPast, to: .now)
+        let recentExcursions = try await fetchExcursions(forPetID: petID, from: cached?.cachedThroughEndTime ?? .distantPast, to: .now)
 
+        let (stats, newCache) = Self.mergeLifetimeStats(cached: cached, recentExcursions: recentExcursions)
+        lifetimeStatsStore.save(newCache, forPetID: petID, serverHost: serverHost)
+        return stats
+    }
+
+    /// Pure accumulation logic, pulled out of `lifetimeExcursionStats` so it
+    /// can be unit tested directly with hand-built excursions instead of a
+    /// live/mocked server.
+    ///
+    /// `recentExcursions` is whatever `fetchExcursions` returns — most
+    /// recent first (see its `sorted` above) — which matters here: this
+    /// walks the list newest-to-oldest but always compares each excursion's
+    /// end time against the *original* `cached` watermark, not one updated
+    /// mid-loop, so an older excursion later in the same batch is never
+    /// mistaken for "already counted" just because a newer one just raised
+    /// the watermark past it.
+    static func mergeLifetimeStats(
+        cached: CachedLifetimeStats?,
+        recentExcursions: [Excursion]
+    ) -> (stats: LifetimeStats, newCache: CachedLifetimeStats) {
+        let originalWatermark = cached?.cachedThroughEndTime
         var totalDistance = cached?.totalDistanceMeters ?? 0
         var totalDuration = cached?.totalDurationSeconds ?? 0
-        var newWatermark = watermark
+        var newWatermark = originalWatermark
 
         for excursion in recentExcursions {
             guard let endTime = excursion.endTime else { continue }
-            if let newWatermark, endTime <= newWatermark { continue }
+            if let originalWatermark, endTime <= originalWatermark { continue }
             totalDistance += excursion.distanceMeters ?? 0
             totalDuration += excursion.duration ?? 0
-            newWatermark = endTime
+            if newWatermark == nil || endTime > newWatermark! {
+                newWatermark = endTime
+            }
         }
 
-        lifetimeStatsStore.save(
-            CachedLifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration, cachedThroughEndTime: newWatermark),
-            forPetID: petID
+        let newCache = CachedLifetimeStats(
+            totalDistanceMeters: totalDistance,
+            totalDurationSeconds: totalDuration,
+            cachedThroughEndTime: newWatermark
         )
 
         if let ongoing = recentExcursions.first(where: { $0.isOngoing }) {
@@ -197,7 +235,7 @@ struct TraccarPetRepository: PetRepository {
             totalDuration += Date.now.timeIntervalSince(ongoing.startTime)
         }
 
-        return LifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration)
+        return (LifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration), newCache)
     }
 
     private func makeExcursion(petID: Int, exit: TraccarEvent, enter: TraccarEvent?) async throws -> Excursion {

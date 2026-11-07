@@ -15,7 +15,7 @@ struct LifetimeStatsStoreTests {
     @Test("load returns nil when nothing was saved for that pet")
     func loadReturnsNilWhenEmpty() {
         let store = makeStore()
-        #expect(store.load(forPetID: 1) == nil)
+        #expect(store.load(forPetID: 1, serverHost: "traccar.example.com") == nil)
     }
 
     @Test("Round-trips cached stats through save and load")
@@ -23,8 +23,8 @@ struct LifetimeStatsStoreTests {
         let store = makeStore()
         let stats = CachedLifetimeStats(totalDistanceMeters: 1234, totalDurationSeconds: 5678, cachedThroughEndTime: .now)
 
-        store.save(stats, forPetID: 1)
-        let loaded = store.load(forPetID: 1)
+        store.save(stats, forPetID: 1, serverHost: "traccar.example.com")
+        let loaded = store.load(forPetID: 1, serverHost: "traccar.example.com")
 
         #expect(loaded?.totalDistanceMeters == stats.totalDistanceMeters)
         #expect(loaded?.totalDurationSeconds == stats.totalDurationSeconds)
@@ -34,10 +34,20 @@ struct LifetimeStatsStoreTests {
     @Test("Stats for different pets don't collide")
     func statsAreKeyedPerPet() {
         let store = makeStore()
-        store.save(CachedLifetimeStats(totalDistanceMeters: 100, totalDurationSeconds: 60, cachedThroughEndTime: nil), forPetID: 1)
-        store.save(CachedLifetimeStats(totalDistanceMeters: 200, totalDurationSeconds: 120, cachedThroughEndTime: nil), forPetID: 2)
+        store.save(CachedLifetimeStats(totalDistanceMeters: 100, totalDurationSeconds: 60, cachedThroughEndTime: nil), forPetID: 1, serverHost: "traccar.example.com")
+        store.save(CachedLifetimeStats(totalDistanceMeters: 200, totalDurationSeconds: 120, cachedThroughEndTime: nil), forPetID: 2, serverHost: "traccar.example.com")
 
-        #expect(store.load(forPetID: 1)?.totalDistanceMeters == 100)
-        #expect(store.load(forPetID: 2)?.totalDistanceMeters == 200)
+        #expect(store.load(forPetID: 1, serverHost: "traccar.example.com")?.totalDistanceMeters == 100)
+        #expect(store.load(forPetID: 2, serverHost: "traccar.example.com")?.totalDistanceMeters == 200)
+    }
+
+    @Test("Stats for the same pet id on different servers don't collide")
+    func statsAreKeyedPerServer() {
+        let store = makeStore()
+        store.save(CachedLifetimeStats(totalDistanceMeters: 100, totalDurationSeconds: 60, cachedThroughEndTime: nil), forPetID: 1, serverHost: "traccar.example.com")
+        store.save(CachedLifetimeStats(totalDistanceMeters: 999, totalDurationSeconds: 999, cachedThroughEndTime: nil), forPetID: 1, serverHost: "other.example.com")
+
+        #expect(store.load(forPetID: 1, serverHost: "traccar.example.com")?.totalDistanceMeters == 100)
+        #expect(store.load(forPetID: 1, serverHost: "other.example.com")?.totalDistanceMeters == 999)
     }
 }
