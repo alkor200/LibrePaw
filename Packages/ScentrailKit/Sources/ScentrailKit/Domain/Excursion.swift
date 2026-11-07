@@ -37,4 +37,23 @@ public struct Excursion: Identifiable, Sendable, Hashable {
         guard let endTime else { return nil }
         return endTime.timeIntervalSince(startTime)
     }
+
+    public var averageSpeedKilometersPerHour: Double? {
+        guard let distanceMeters, let duration, duration > 0 else { return nil }
+        return (distanceMeters / duration) * 3.6
+    }
+
+    /// A pet walking — even sprinting after a ball, with sniff-stops
+    /// averaged in — essentially never sustains more than this across an
+    /// entire excursion. Above it, "home to home" almost certainly means a
+    /// car or train ride, not a walk, which would otherwise badly skew
+    /// distance/time-away stats. Purely a heuristic on data already fetched
+    /// for every excursion (no extra requests, no server configuration).
+    private static let vehicleSpeedThresholdKilometersPerHour = 15.0
+
+    /// `false` while ongoing — there's no average speed to judge yet.
+    public var isLikelyVehicleTrip: Bool {
+        guard let averageSpeedKilometersPerHour else { return false }
+        return averageSpeedKilometersPerHour > Self.vehicleSpeedThresholdKilometersPerHour
+    }
 }

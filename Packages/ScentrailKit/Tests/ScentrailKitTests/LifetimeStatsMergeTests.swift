@@ -54,6 +54,22 @@ struct LifetimeStatsMergeTests {
         #expect(newCache.cachedThroughEndTime == excursions[0].endTime)
     }
 
+    @Test("A likely car/train ride is excluded from totals but still advances the watermark")
+    func vehicleTripIsExcludedButStillAdvancesWatermark() {
+        let now = Date.now
+        let excursions = [
+            // 10km in 12 minutes ≈ 50 km/h — unmistakably a car, not a walk.
+            excursion(id: 1, startTime: now.addingTimeInterval(-1_200), endTime: now, distanceMeters: 10_000),
+            // A genuine walk right before it.
+            excursion(id: 2, startTime: now.addingTimeInterval(-10_000), endTime: now.addingTimeInterval(-9_000), distanceMeters: 629)
+        ]
+
+        let (stats, newCache) = TraccarPetRepository.mergeLifetimeStats(cached: nil, recentExcursions: excursions)
+
+        #expect(stats.totalDistanceMeters == 629) // the 10km drive is not folded in
+        #expect(newCache.cachedThroughEndTime == excursions[0].endTime) // but it's still marked as "seen"
+    }
+
     @Test("An ongoing excursion contributes to the displayed total but is never cached")
     func ongoingExcursionIsDisplayedButNotCached() {
         let now = Date.now

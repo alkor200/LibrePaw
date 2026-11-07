@@ -68,6 +68,10 @@ private struct ExcursionRow: View {
                     Label("Away now", systemImage: "figure.walk.motion")
                         .font(.caption.bold())
                         .foregroundStyle(.orange)
+                } else if excursion.isLikelyVehicleTrip {
+                    Label("Car ride?", systemImage: "car.fill")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
                 }
             }
 

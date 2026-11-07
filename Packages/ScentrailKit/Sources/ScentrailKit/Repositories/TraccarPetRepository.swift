@@ -215,8 +215,13 @@ struct TraccarPetRepository: PetRepository {
         for excursion in recentExcursions {
             guard let endTime = excursion.endTime else { continue }
             if let originalWatermark, endTime <= originalWatermark { continue }
-            totalDistance += excursion.distanceMeters ?? 0
-            totalDuration += excursion.duration ?? 0
+            // Still advances the watermark below — it's genuinely been
+            // looked at and shouldn't be re-fetched next time — just not
+            // folded into the walking totals.
+            if !excursion.isLikelyVehicleTrip {
+                totalDistance += excursion.distanceMeters ?? 0
+                totalDuration += excursion.duration ?? 0
+            }
             if newWatermark == nil || endTime > newWatermark! {
                 newWatermark = endTime
             }

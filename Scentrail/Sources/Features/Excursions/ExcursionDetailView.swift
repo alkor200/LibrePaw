@@ -12,6 +12,9 @@ struct ExcursionDetailView: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            if viewModel.excursion.isLikelyVehicleTrip {
+                vehicleTripBanner
+            }
             header
             mapCard
         }
@@ -43,19 +46,19 @@ struct ExcursionDetailView: View {
                 statTile(systemImage: "clock", title: "Duration", value: durationText(duration))
             }
 
-            if let averageSpeedKmh {
+            if let averageSpeedKmh = viewModel.excursion.averageSpeedKilometersPerHour {
                 statTile(systemImage: "gauge.with.dots.needle.67percent", title: "Avg. Speed", value: speedText(averageSpeedKmh))
             }
         }
     }
 
-    /// `nil` while the excursion is still ongoing — its duration isn't fixed
-    /// yet, so an average over it wouldn't mean much.
-    private var averageSpeedKmh: Double? {
-        guard let distance = viewModel.excursion.distanceMeters,
-              let duration = viewModel.excursion.duration,
-              duration > 0 else { return nil }
-        return (distance / duration) * 3.6
+    private var vehicleTripBanner: some View {
+        Label("This looks like a car or train ride, not a walk — it isn't counted in your totals.", systemImage: "car.fill")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func statTile(systemImage: String, title: String, value: String) -> some View {
