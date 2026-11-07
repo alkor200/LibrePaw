@@ -66,9 +66,9 @@ struct FindPetView: View {
                 if let recordedAt = viewModel.pet.lastPosition?.recordedAt {
                     // `Text(_:style:)` ticks on its own every second — unlike a
                     // formatted string, it doesn't need the view to re-render.
-                    (Text("as of ") + Text(recordedAt, style: .relative))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                    (Text("Last position ") + Text(recordedAt, style: .relative))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
 
