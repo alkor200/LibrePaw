@@ -73,6 +73,7 @@ struct PetDetailView: View {
             PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96)
             Text(viewModel.pet.name)
                 .font(.title2.bold())
+                .multilineTextAlignment(.center)
             Text(statusCaption)
                 .font(.subheadline)
                 .foregroundStyle(viewModel.pet.status.tintColor)
@@ -127,7 +128,7 @@ struct PetDetailView: View {
             Divider().padding(.leading, 44)
 
             NavigationLink(value: PetDetailRoute.setHome) {
-                actionRow(systemImage: "house.fill", title: "Home Setting")
+                actionRow(systemImage: "house.fill", title: "\(viewModel.pet.name)'s Home")
             }
         }
         .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

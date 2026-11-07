@@ -20,7 +20,7 @@ struct SetHomeView: View {
 
     var body: some View {
         content
-            .navigationTitle("Home Setting")
+            .navigationTitle("\(viewModel.pet.name)'s Home")
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 viewModel.locationService.requestAuthorizationIfNeeded()
