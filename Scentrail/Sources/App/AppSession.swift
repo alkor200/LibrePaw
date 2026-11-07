@@ -31,7 +31,14 @@ final class AppSession {
     }
 
     func logOut() {
-        try? authenticationService.logOut()
+        // Clearing the Keychain item can fail transiently; retry once so a
+        // momentary failure doesn't leave the credential behind even though
+        // the UI (which can't stay around to report it — logging out
+        // immediately switches back to the login screen) shows the user as
+        // logged out either way.
+        if (try? authenticationService.logOut()) == nil {
+            try? authenticationService.logOut()
+        }
         session = nil
         petRepository = nil
     }
