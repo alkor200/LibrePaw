@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import ScentrailKit
 
 /// Destinations reachable from `PetDetailView`, pushed via `NavigationLink(value:)`.
@@ -21,6 +22,11 @@ struct PetDetailView: View {
     let petRepository: PetRepository
     let locationService: LocationService
     @State private var viewModel: PetDetailViewModel
+    @State private var isShowingPhotoEditor = false
+    /// Shown in place of whatever `PetAnnotationView` would otherwise fetch,
+    /// right after a successful edit — see its doc comment for why the fetch
+    /// alone can't be relied on to notice the change.
+    @State private var justSavedPhoto: UIImage?
 
     init(viewModel: PetDetailViewModel, petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
@@ -67,13 +73,33 @@ struct PetDetailView: View {
         .task {
             await viewModel.loadLifetimeStats()
         }
+        .sheet(isPresented: $isShowingPhotoEditor) {
+            PhotoEditorView(petName: viewModel.pet.name) { jpegData in
+                try await viewModel.setPhoto(jpegData: jpegData)
+                justSavedPhoto = UIImage(data: jpegData)
+            }
+        }
     }
 
     // MARK: - Header
 
     private var header: some View {
         VStack(spacing: 8) {
-            PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96)
+            Button {
+                isShowingPhotoEditor = true
+            } label: {
+                ZStack(alignment: .bottomTrailing) {
+                    PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 26))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .tint)
+                        .background(Circle().fill(.background))
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Change \(viewModel.pet.name)'s photo")
+
             Text(viewModel.pet.name)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
@@ -257,16 +283,6 @@ struct PetDetailView: View {
 
     private func formattedCoordinate(_ coordinate: Coordinate) -> String {
         String(format: "%.5f, %.5f", coordinate.latitude, coordinate.longitude)
-    }
-
-    private func batteryIcon(for percent: Double) -> String {
-        switch percent {
-        case ..<13: "battery.0"
-        case ..<38: "battery.25"
-        case ..<63: "battery.50"
-        case ..<88: "battery.75"
-        default: "battery.100"
-        }
     }
 }
 

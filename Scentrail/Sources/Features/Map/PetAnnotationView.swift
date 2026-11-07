@@ -14,7 +14,15 @@ struct PetAnnotationView: View {
     let pet: Pet
     let petRepository: PetRepository
     var size: CGFloat = 44
-    @State private var photo: UIImage?
+    /// Shows this instead of fetching, when set. Traccar always names an
+    /// uploaded photo "device.jpg", so `pet.photoURL` stays byte-identical
+    /// across photo changes — the screen that just saved a new one can't
+    /// rely on the URL-keyed fetch below to notice anything changed, so it
+    /// passes the freshly-saved image straight through here instead.
+    var overrideImage: UIImage?
+    @State private var fetchedPhoto: UIImage?
+
+    private var photo: UIImage? { overrideImage ?? fetchedPhoto }
 
     var body: some View {
         ZStack {
@@ -34,9 +42,9 @@ struct PetAnnotationView: View {
         .frame(width: size, height: size)
         .overlay(Circle().strokeBorder(pet.status.tintColor, lineWidth: max(2, size * 0.07)))
         .task(id: pet.photoURL) {
-            photo = nil
+            fetchedPhoto = nil
             guard let data = try? await petRepository.fetchPhoto(for: pet) else { return }
-            photo = UIImage(data: data)
+            fetchedPhoto = UIImage(data: data)
         }
     }
 

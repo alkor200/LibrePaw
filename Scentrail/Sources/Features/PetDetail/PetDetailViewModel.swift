@@ -38,6 +38,10 @@ final class PetDetailViewModel {
         lifetimeStats = try? await petRepository.lifetimeExcursionStats(forPetID: pet.id)
     }
 
+    func setPhoto(jpegData: Data) async throws {
+        try await petRepository.setPhoto(forPetID: pet.id, jpegData: jpegData)
+    }
+
     /// Total distance covered along today's trail, summing consecutive fixes
     /// with the same spherical-geometry math used by the Find Pet screen.
     /// `nil` until there are at least two points to measure between.
