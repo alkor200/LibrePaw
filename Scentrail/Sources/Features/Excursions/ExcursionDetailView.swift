@@ -28,16 +28,36 @@ struct ExcursionDetailView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            statTile(systemImage: "flag.fill", title: "Started", value: timeText(viewModel.excursion.startTime))
+
             if viewModel.excursion.isOngoing {
                 statTile(systemImage: "figure.walk.motion", title: "Status", value: "Away now")
-            } else if let duration = viewModel.excursion.duration {
-                statTile(systemImage: "clock", title: "Duration", value: durationText(duration))
+            } else if let endTime = viewModel.excursion.endTime {
+                statTile(systemImage: "flag.checkered", title: "Ended", value: timeText(endTime))
             }
+
             if let distance = viewModel.excursion.distanceMeters {
                 statTile(systemImage: "shoeprints.fill", title: "Distance", value: distanceText(distance))
             }
+
+            if let duration = viewModel.excursion.duration {
+                statTile(systemImage: "clock", title: "Duration", value: durationText(duration))
+            }
+
+            if let averageSpeedKmh {
+                statTile(systemImage: "gauge.with.dots.needle.67percent", title: "Avg. Speed", value: speedText(averageSpeedKmh))
+            }
         }
+    }
+
+    /// `nil` while the excursion is still ongoing — its duration isn't fixed
+    /// yet, so an average over it wouldn't mean much.
+    private var averageSpeedKmh: Double? {
+        guard let distance = viewModel.excursion.distanceMeters,
+              let duration = viewModel.excursion.duration,
+              duration > 0 else { return nil }
+        return (distance / duration) * 3.6
     }
 
     private func statTile(systemImage: String, title: String, value: String) -> some View {
@@ -64,14 +84,6 @@ struct ExcursionDetailView: View {
                 .foregroundStyle(.secondary)
 
             Map(position: $cameraPosition) {
-                if let start = viewModel.trail.first {
-                    Marker("Left home", coordinate: start.coordinate.clLocationCoordinate2D)
-                        .tint(.green)
-                }
-                if !viewModel.excursion.isOngoing, let end = viewModel.trail.last {
-                    Marker("Back home", coordinate: end.coordinate.clLocationCoordinate2D)
-                        .tint(.gray)
-                }
                 if viewModel.trail.count > 1 {
                     MapPolyline(coordinates: viewModel.trail.map(\.coordinate.clLocationCoordinate2D))
                         .stroke(.tint, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
@@ -106,6 +118,14 @@ struct ExcursionDetailView: View {
         withAnimation {
             cameraPosition = .region(region)
         }
+    }
+
+    private func timeText(_ date: Date) -> String {
+        date.formatted(date: .omitted, time: .shortened)
+    }
+
+    private func speedText(_ kilometersPerHour: Double) -> String {
+        kilometersPerHour.formatted(.number.precision(.fractionLength(1))) + " km/h"
     }
 
     private func durationText(_ seconds: TimeInterval) -> String {
