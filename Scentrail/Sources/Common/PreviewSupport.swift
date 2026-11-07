@@ -83,6 +83,10 @@ struct PreviewPetRepository: PetRepository {
             )
         ]
     }
+
+    func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
+        LifetimeStats(totalDistanceMeters: 42_300, totalDurationSeconds: 3600 * 11)
+    }
 }
 
 struct PreviewAuthenticationService: AuthenticationService {

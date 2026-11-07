@@ -64,6 +64,9 @@ struct PetDetailView: View {
         .task {
             await viewModel.loadTodaysTrail()
         }
+        .task {
+            await viewModel.loadLifetimeStats()
+        }
     }
 
     // MARK: - Header
@@ -163,6 +166,12 @@ struct PetDetailView: View {
             if let totalDistance = viewModel.totalTrailDistanceMeters {
                 StatTile(systemImage: "shoeprints.fill", title: "Distance Today", value: formattedDistance(totalDistance))
             }
+            if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDistanceMeters > 0 {
+                StatTile(systemImage: "map.fill", title: "Total Distance", value: formattedDistance(lifetimeStats.totalDistanceMeters))
+            }
+            if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDurationSeconds > 0 {
+                StatTile(systemImage: "figure.walk", title: "Total Time Away", value: formattedLifetimeDuration(lifetimeStats.totalDurationSeconds))
+            }
             if let lastSeenAt = viewModel.pet.lastSeenAt {
                 StatTile(systemImage: "clock", title: "Last Update", value: lastSeenAt.formatted(.relative(presentation: .named)))
             }
@@ -229,6 +238,20 @@ struct PetDetailView: View {
             meters.formatted(.number.precision(.fractionLength(0))) + " m"
         } else {
             (meters / 1000).formatted(.number.precision(.fractionLength(1))) + " km"
+        }
+    }
+
+    private func formattedLifetimeDuration(_ seconds: TimeInterval) -> String {
+        let totalMinutes = Int(seconds / 60)
+        let days = totalMinutes / (60 * 24)
+        let hours = (totalMinutes / 60) % 24
+        let minutes = totalMinutes % 60
+        if days > 0 {
+            return "\(days)d \(hours)h"
+        } else if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
         }
     }
 

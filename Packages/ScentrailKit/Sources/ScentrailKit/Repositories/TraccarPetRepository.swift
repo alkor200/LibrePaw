@@ -4,6 +4,7 @@ import TraccarKit
 /// `PetRepository` backed by a live Traccar server.
 struct TraccarPetRepository: PetRepository {
     let client: TraccarClient
+    var lifetimeStatsStore: LifetimeStatsStore = UserDefaultsLifetimeStatsStore()
 
     func fetchPets() async throws -> [Pet] {
         do {
@@ -161,6 +162,42 @@ struct TraccarPetRepository: PetRepository {
         } catch let error as TraccarError {
             throw error.asScentrailError
         }
+    }
+
+    /// Only re-fetches excursions that ended after the last cached run —
+    /// completed excursions' distance/duration get folded into the persisted
+    /// totals once and never recomputed; an ongoing excursion (if any) is
+    /// added fresh on top of the cache for display, without being persisted,
+    /// since its distance is still growing.
+    func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
+        let cached = lifetimeStatsStore.load(forPetID: petID)
+        let watermark = cached?.cachedThroughEndTime
+
+        let recentExcursions = try await fetchExcursions(forPetID: petID, from: watermark ?? .distantPast, to: .now)
+
+        var totalDistance = cached?.totalDistanceMeters ?? 0
+        var totalDuration = cached?.totalDurationSeconds ?? 0
+        var newWatermark = watermark
+
+        for excursion in recentExcursions {
+            guard let endTime = excursion.endTime else { continue }
+            if let newWatermark, endTime <= newWatermark { continue }
+            totalDistance += excursion.distanceMeters ?? 0
+            totalDuration += excursion.duration ?? 0
+            newWatermark = endTime
+        }
+
+        lifetimeStatsStore.save(
+            CachedLifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration, cachedThroughEndTime: newWatermark),
+            forPetID: petID
+        )
+
+        if let ongoing = recentExcursions.first(where: { $0.isOngoing }) {
+            totalDistance += ongoing.distanceMeters ?? 0
+            totalDuration += Date.now.timeIntervalSince(ongoing.startTime)
+        }
+
+        return LifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration)
     }
 
     private func makeExcursion(petID: Int, exit: TraccarEvent, enter: TraccarEvent?) async throws -> Excursion {

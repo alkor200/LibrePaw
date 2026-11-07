@@ -33,4 +33,10 @@ public protocol PetRepository: Sendable {
     /// most recent first. Requires a home geofence to already be set;
     /// returns an empty array otherwise.
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion]
+
+    /// Total distance and time away across every excursion the pet has ever
+    /// taken. Implementations are expected to cache completed excursions'
+    /// contributions so this doesn't re-walk the pet's whole history on
+    /// every call — only an ongoing excursion (if any) is recomputed fresh.
+    func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats
 }
