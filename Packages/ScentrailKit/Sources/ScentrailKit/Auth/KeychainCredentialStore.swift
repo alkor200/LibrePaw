@@ -22,7 +22,9 @@ public struct KeychainCredentialStore: CredentialStore {
 
         var attributes = query()
         attributes[kSecValueData as String] = data
-        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        // ThisDeviceOnly keeps the stored password out of encrypted backups —
+        // it should never be restorable onto a different device.
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else {
