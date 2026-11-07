@@ -1,5 +1,4 @@
 import SwiftUI
-import MapKit
 import ScentrailKit
 
 /// Destinations reachable from `PetDetailView`, pushed via `NavigationLink(value:)`.
@@ -13,6 +12,7 @@ import ScentrailKit
 private enum PetDetailRoute: Hashable {
     case findPet
     case map
+    case trail
     case excursions
     case setHome
 }
@@ -21,23 +21,11 @@ struct PetDetailView: View {
     let petRepository: PetRepository
     let locationService: LocationService
     @State private var viewModel: PetDetailViewModel
-    @State private var cameraPosition: MapCameraPosition
 
     init(viewModel: PetDetailViewModel, petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
         self.locationService = locationService
         _viewModel = State(initialValue: viewModel)
-        if let coordinate = viewModel.pet.lastPosition?.coordinate {
-            _cameraPosition = State(initialValue: .region(
-                MKCoordinateRegion(
-                    center: coordinate.clLocationCoordinate2D,
-                    latitudinalMeters: 500,
-                    longitudinalMeters: 500
-                )
-            ))
-        } else {
-            _cameraPosition = State(initialValue: .automatic)
-        }
     }
 
     var body: some View {
@@ -47,7 +35,6 @@ struct PetDetailView: View {
                 if viewModel.pet.lastPosition != nil {
                     findButton
                 }
-                trailMapCard
                 actionsCard
                 statGrid
                 locationRow
@@ -63,6 +50,8 @@ struct PetDetailView: View {
                 FindPetView(viewModel: FindPetViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
             case .map:
                 PetMapView(petRepository: petRepository, locationService: locationService, initialFocus: viewModel.pet)
+            case .trail:
+                TodaysTrailView(viewModel: viewModel, petRepository: petRepository)
             case .excursions:
                 ExcursionsView(
                     viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository),
@@ -74,7 +63,6 @@ struct PetDetailView: View {
         }
         .task {
             await viewModel.loadTodaysTrail()
-            fitCameraToTrail()
         }
     }
 
@@ -105,59 +93,6 @@ struct PetDetailView: View {
         }
     }
 
-    // MARK: - Trail map
-
-    private var trailMapCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Today's Trail", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-
-            Map(position: $cameraPosition) {
-                if let position = viewModel.pet.lastPosition {
-                    Annotation(viewModel.pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
-                        PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 32)
-                    }
-                }
-                if viewModel.trail.count > 1 {
-                    MapPolyline(coordinates: viewModel.trail.map(\.coordinate.clLocationCoordinate2D))
-                        .stroke(.tint, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                }
-            }
-            .frame(height: 220)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            if viewModel.isLoadingTrail {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-            } else if let trailErrorMessage = viewModel.trailErrorMessage {
-                Label(trailErrorMessage, systemImage: "exclamationmark.triangle")
-                    .font(.footnote)
-                    .foregroundStyle(.orange)
-            } else if viewModel.trail.count <= 1 {
-                Text("No movement recorded yet today.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding()
-        .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    private func fitCameraToTrail() {
-        var coordinates = viewModel.trail.map(\.coordinate.clLocationCoordinate2D)
-        if let last = viewModel.pet.lastPosition?.coordinate.clLocationCoordinate2D {
-            coordinates.append(last)
-        }
-        guard let region = MKCoordinateRegion.fitting(coordinates) else { return }
-        withAnimation {
-            cameraPosition = .region(region)
-        }
-    }
-
     // MARK: - Find button
 
     private var findButton: some View {
@@ -175,6 +110,12 @@ struct PetDetailView: View {
         VStack(spacing: 0) {
             NavigationLink(value: PetDetailRoute.map) {
                 actionRow(systemImage: "map.fill", title: "View on Map")
+            }
+
+            Divider().padding(.leading, 44)
+
+            NavigationLink(value: PetDetailRoute.trail) {
+                actionRow(systemImage: "point.topleft.down.curvedto.point.bottomright.up", title: "Today's Trail")
             }
 
             Divider().padding(.leading, 44)
