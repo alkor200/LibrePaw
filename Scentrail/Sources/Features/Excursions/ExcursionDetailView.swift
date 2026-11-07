@@ -26,7 +26,7 @@ struct ExcursionDetailView: View {
     }
 
     private var header: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
             statTile(systemImage: "flag.fill", title: "Started", value: timeText(viewModel.excursion.startTime))
 
             if viewModel.excursion.isOngoing {
