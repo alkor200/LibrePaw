@@ -7,7 +7,6 @@ struct PetMapView: View {
     let locationService: LocationService
     @State private var viewModel: PetMapViewModel
     @State private var cameraPosition: MapCameraPosition
-    @State private var selectedPet: Pet?
     @State private var mapLayer: MapLayer = .standard
 
     /// - Parameter initialFocus: when provided (e.g. opened from a pet's
@@ -27,15 +26,28 @@ struct PetMapView: View {
     }
 
     var body: some View {
-        Map(position: $cameraPosition, selection: $selectedPet) {
+        Map(position: $cameraPosition) {
             UserAnnotation()
 
             ForEach(viewModel.petsWithPosition) { pet in
                 if let position = pet.lastPosition {
                     Annotation(pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
-                        PetAnnotationView(pet: pet, petRepository: petRepository)
+                        // A plain NavigationLink, same as every list row in
+                        // this app, rather than Map's own `selection`
+                        // binding driving `.navigationDestination(item:)`.
+                        // That combination was fragile: the live position
+                        // feed keeps reassigning `selection` to fresh `Pet`
+                        // values as pets move, and tying navigation to that
+                        // same binding let an unrelated re-render of this
+                        // view re-resolve the destination while pet detail
+                        // was already pushed — racing with navigation
+                        // happening deeper in the stack and leaving pet
+                        // detail's buttons unresponsive (and, eventually,
+                        // this map unable to render at all).
+                        NavigationLink(value: pet) {
+                            PetAnnotationView(pet: pet, petRepository: petRepository)
+                        }
                     }
-                    .tag(pet)
                 }
             }
         }
@@ -51,7 +63,7 @@ struct PetMapView: View {
         }
         .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(item: $selectedPet) { pet in
+        .navigationDestination(for: Pet.self) { pet in
             PetDetailView(
                 viewModel: PetDetailViewModel(pet: pet, petRepository: petRepository),
                 petRepository: petRepository,
