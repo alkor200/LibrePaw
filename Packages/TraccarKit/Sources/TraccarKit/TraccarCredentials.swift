@@ -22,3 +22,12 @@ public struct TraccarCredentials: Sendable, Equatable {
         return "Basic \(encoded)"
     }
 }
+
+extension TraccarCredentials: CustomStringConvertible, CustomDebugStringConvertible {
+    // Redacted so an accidental `print(credentials)` never leaks the password.
+    public var description: String {
+        "TraccarCredentials(serverURL: \(serverURL), email: \(email), password: <redacted>)"
+    }
+
+    public var debugDescription: String { description }
+}

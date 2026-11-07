@@ -13,3 +13,13 @@ public struct StoredSession: Codable, Sendable, Equatable {
         self.password = password
     }
 }
+
+extension StoredSession: CustomStringConvertible, CustomDebugStringConvertible {
+    // Redacted so an accidental `print(session)` (or a crash reporter
+    // serializing this type) never leaks the password.
+    public var description: String {
+        "StoredSession(serverURL: \(serverURL), email: \(email), password: <redacted>)"
+    }
+
+    public var debugDescription: String { description }
+}
