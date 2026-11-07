@@ -76,7 +76,7 @@ struct SetHomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(spacing: 4) {
-                Slider(value: $viewModel.radiusMeters, in: 20...500, step: 10)
+                Slider(value: $viewModel.radiusMeters, in: 20...100, step: 5)
                 Text("\(Int(viewModel.radiusMeters)) meters radius")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

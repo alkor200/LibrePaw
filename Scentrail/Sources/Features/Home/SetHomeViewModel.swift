@@ -11,7 +11,7 @@ final class SetHomeViewModel {
     /// it. Starts at the existing home if one is set, otherwise at the
     /// owner's current location once that becomes available.
     var homeCoordinate: Coordinate?
-    var radiusMeters: Double = 100
+    var radiusMeters: Double = 50
     private(set) var existingHome: HomeGeofence?
     private(set) var isSaving = false
     private(set) var errorMessage: String?
