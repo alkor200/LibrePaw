@@ -162,15 +162,13 @@ struct TraccarPetRepository: PetRepository {
                 pairs.append((exit, matchingEnter))
             }
 
-            let excursions = try await withThrowingTaskGroup(of: Excursion.self) { group in
-                for pair in pairs {
-                    group.addTask { try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter) }
-                }
-                var results: [Excursion] = []
-                for try await excursion in group {
-                    results.append(excursion)
-                }
-                return results
+            // Bounded rather than fully unbounded: a pet with years of
+            // history backfilling lifetime stats for the first time could
+            // otherwise fire a network request per excursion all at once —
+            // fine for a handful, not for a thousand-plus against a small
+            // self-hosted server.
+            let excursions = try await Self.concurrentMap(pairs, maxConcurrent: 20) { pair in
+                try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter)
             }
             return excursions.sorted { $0.startTime > $1.startTime }
         } catch let error as TraccarError {
@@ -269,5 +267,39 @@ struct TraccarPetRepository: PetRepository {
             center: Coordinate(latitude: parsed.latitude, longitude: parsed.longitude),
             radiusMeters: parsed.radiusMeters
         )
+    }
+
+    /// Like `elements.map(transform)`, but running at most `maxConcurrent`
+    /// transforms at once instead of either one at a time or all of them at
+    /// once. Order of `results` matches `elements`.
+    static func concurrentMap<Element: Sendable, Result: Sendable>(
+        _ elements: [Element],
+        maxConcurrent: Int,
+        transform: @escaping @Sendable (Element) async throws -> Result
+    ) async throws -> [Result] {
+        guard !elements.isEmpty else { return [] }
+
+        var results = [Result?](repeating: nil, count: elements.count)
+        var nextIndex = 0
+
+        try await withThrowingTaskGroup(of: (Int, Result).self) { group in
+            func scheduleNext() {
+                guard nextIndex < elements.count else { return }
+                let index = nextIndex
+                let element = elements[index]
+                nextIndex += 1
+                group.addTask { (index, try await transform(element)) }
+            }
+
+            for _ in 0..<min(maxConcurrent, elements.count) {
+                scheduleNext()
+            }
+            while let (index, result) = try await group.next() {
+                results[index] = result
+                scheduleNext()
+            }
+        }
+
+        return results.map { $0! }
     }
 }
