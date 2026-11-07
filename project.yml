@@ -74,6 +74,7 @@ targets:
     settings:
       base:
         SWIFT_VERSION: 6.0
+        GENERATE_INFOPLIST_FILE: YES
 
   ScentrailUITests:
     type: bundle.ui-testing
@@ -86,6 +87,7 @@ targets:
     settings:
       base:
         SWIFT_VERSION: 6.0
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   Scentrail:
