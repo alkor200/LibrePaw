@@ -151,6 +151,39 @@ struct TraccarClientTests {
         }
     }
 
+    @Test("decodeSocketMessage parses a positions-only update (verified wire format)")
+    func decodeSocketMessageParsesPositionsUpdate() async throws {
+        let json = """
+        {"positions":[{"id":433,"deviceId":1,"fixTime":"2026-11-07T08:10:14.000+00:00",\
+        "latitude":51.36412,"longitude":12.39587,"speed":1.6,"course":263.5,"address":null,"attributes":{}}]}
+        """
+        let update = try await makeClient().decodeSocketMessage(.string(json))
+
+        #expect(update.devices == nil)
+        #expect(update.positions?.count == 1)
+        #expect(update.positions?.first?.deviceId == 1)
+    }
+
+    @Test("decodeSocketMessage parses an empty keep-alive message")
+    func decodeSocketMessageParsesKeepAlive() async throws {
+        let update = try await makeClient().decodeSocketMessage(.string("{}"))
+
+        #expect(update.devices == nil)
+        #expect(update.positions == nil)
+    }
+
+    @Test("decodeSocketMessage parses a devices-only update")
+    func decodeSocketMessageParsesDevicesUpdate() async throws {
+        let json = """
+        {"devices":[{"id":1,"name":"Phoebe","uniqueId":"862407068395486","status":"online",\
+        "disabled":false,"lastUpdate":null,"positionId":null,"category":"animal","attributes":{}}]}
+        """
+        let update = try await makeClient().decodeSocketMessage(.string(json))
+
+        #expect(update.positions == nil)
+        #expect(update.devices?.first?.name == "Phoebe")
+    }
+
     @Test("fetchLatestPositions attaches one deviceId query item per id")
     func fetchLatestPositionsBuildsQueryItems() async throws {
         let json = "[]".data(using: .utf8)!

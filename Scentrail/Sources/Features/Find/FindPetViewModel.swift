@@ -8,7 +8,7 @@ final class FindPetViewModel {
     let locationService: LocationService
 
     private let petRepository: PetRepository
-    private var pollingTask: Task<Void, Never>?
+    private var liveUpdatesTask: Task<Void, Never>?
 
     init(pet: Pet, petRepository: PetRepository, locationService: LocationService) {
         self.pet = pet
@@ -38,30 +38,33 @@ final class FindPetViewModel {
     func start() {
         locationService.requestAuthorizationIfNeeded()
         locationService.startUpdating()
-        startPolling()
+        startLiveUpdates()
     }
 
     func stop() {
         locationService.stopUpdating()
-        pollingTask?.cancel()
-        pollingTask = nil
+        liveUpdatesTask?.cancel()
+        liveUpdatesTask = nil
     }
 
-    private func startPolling(interval: Duration = .seconds(10)) {
-        guard pollingTask == nil else { return }
-        pollingTask = Task { [weak self] in
+    /// Subscribes to Traccar's live feed (see ADR-0013) so the pet's position
+    /// — and therefore the arrow and distance — update in near real time.
+    private func startLiveUpdates() {
+        guard liveUpdatesTask == nil else { return }
+        liveUpdatesTask = Task { [weak self] in
             guard let self else { return }
-            while !Task.isCancelled {
-                await self.refreshPet()
-                try? await Task.sleep(for: interval)
+            do {
+                for try await pets in self.petRepository.livePetUpdates() {
+                    guard !Task.isCancelled else { break }
+                    if let updated = pets.first(where: { $0.id == self.pet.id }) {
+                        self.pet = updated
+                    }
+                }
+            } catch {
+                // Best-effort: keep showing the last known position rather
+                // than surfacing a transient feed error on this screen.
             }
         }
-    }
-
-    private func refreshPet() async {
-        guard let pets = try? await petRepository.fetchPets(),
-              let updated = pets.first(where: { $0.id == pet.id }) else { return }
-        pet = updated
     }
 }
 

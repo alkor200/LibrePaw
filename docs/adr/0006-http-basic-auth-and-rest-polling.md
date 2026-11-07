@@ -23,9 +23,13 @@ device/position updates, as an alternative to polling `GET /api/positions`.
 - **Authentication: HTTP Basic Auth**, sent on every request. The client is
   fully stateless between requests — there is no session to expire, refresh,
   or invalidate on the client side beyond discarding the stored credential.
-- **Live updates: REST polling**, not the WebSocket feed. `PetListViewModel`
+- ~~**Live updates: REST polling**, not the WebSocket feed. `PetListViewModel`
   and `PetMapViewModel` refresh devices/positions on a timer (default 20s)
-  while their view is visible, and pause when it is not (`.task`/`.onDisappear`).
+  while their view is visible, and pause when it is not
+  (`.task`/`.onDisappear`).~~ **Superseded by
+  [ADR-0013](0013-websocket-live-updates.md)**, which switches to the
+  WebSocket feed now that it's known to need the same cookie session as
+  media requests (ADR-0012). Kept here for history.
 
 To validate credentials at login time, we call `GET /api/devices` rather than
 `GET /api/session`. Traccar's `/api/session` `GET` endpoint only checks for an

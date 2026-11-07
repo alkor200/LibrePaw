@@ -42,4 +42,57 @@ struct TraccarPetRepository: PetRepository {
             throw error.asScentrailError
         }
     }
+
+    func livePetUpdates() -> AsyncThrowingStream<[Pet], Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let serverURL = client.serverURL
+                    var devicesByID: [Int: TraccarDevice] = [:]
+                    var positionsByDeviceID: [Int: TraccarPosition] = [:]
+
+                    async let initialDevices = client.fetchDevices()
+                    async let initialPositions = client.fetchLatestPositions()
+                    devicesByID = Dictionary(uniqueKeysWithValues: try await initialDevices.map { ($0.id, $0) })
+                    positionsByDeviceID = Dictionary(uniqueKeysWithValues: try await initialPositions.map { ($0.deviceId, $0) })
+
+                    continuation.yield(Self.pets(devicesByID: devicesByID, positionsByDeviceID: positionsByDeviceID, serverURL: serverURL))
+
+                    for try await update in client.liveUpdates() {
+                        guard !Task.isCancelled else { break }
+
+                        var changed = false
+                        if let devices = update.devices {
+                            for device in devices { devicesByID[device.id] = device }
+                            changed = true
+                        }
+                        if let positions = update.positions {
+                            for position in positions { positionsByDeviceID[position.deviceId] = position }
+                            changed = true
+                        }
+
+                        if changed {
+                            continuation.yield(Self.pets(devicesByID: devicesByID, positionsByDeviceID: positionsByDeviceID, serverURL: serverURL))
+                        }
+                    }
+                    continuation.finish()
+                } catch let error as TraccarError {
+                    continuation.finish(throwing: error.asScentrailError)
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private static func pets(
+        devicesByID: [Int: TraccarDevice],
+        positionsByDeviceID: [Int: TraccarPosition],
+        serverURL: URL
+    ) -> [Pet] {
+        devicesByID.values.map { device in
+            PetMapping.pet(from: device, latestPosition: positionsByDeviceID[device.id], serverURL: serverURL)
+        }
+    }
 }

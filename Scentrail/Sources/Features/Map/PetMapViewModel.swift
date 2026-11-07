@@ -7,7 +7,7 @@ final class PetMapViewModel {
     private(set) var pets: [Pet] = []
     private(set) var errorMessage: String?
     private let petRepository: PetRepository
-    private var pollingTask: Task<Void, Never>?
+    private var liveUpdatesTask: Task<Void, Never>?
 
     init(petRepository: PetRepository) {
         self.petRepository = petRepository
@@ -17,28 +17,28 @@ final class PetMapViewModel {
         pets.filter { $0.lastPosition != nil }
     }
 
-    func startPolling(interval: Duration = .seconds(20)) {
-        guard pollingTask == nil else { return }
-        pollingTask = Task { [weak self] in
+    /// Subscribes to Traccar's live feed (see ADR-0013) until
+    /// ``stopLiveUpdates()`` is called. The stream itself handles
+    /// reconnection on transient drops.
+    func startLiveUpdates() {
+        guard liveUpdatesTask == nil else { return }
+        liveUpdatesTask = Task { [weak self] in
             guard let self else { return }
-            while !Task.isCancelled {
-                await self.refresh()
-                try? await Task.sleep(for: interval)
+            do {
+                for try await updatedPets in self.petRepository.livePetUpdates() {
+                    self.pets = updatedPets
+                    self.errorMessage = nil
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.errorMessage = error.localizedDescription
+                }
             }
         }
     }
 
-    func stopPolling() {
-        pollingTask?.cancel()
-        pollingTask = nil
-    }
-
-    func refresh() async {
-        do {
-            pets = try await petRepository.fetchPets()
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+    func stopLiveUpdates() {
+        liveUpdatesTask?.cancel()
+        liveUpdatesTask = nil
     }
 }

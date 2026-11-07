@@ -14,4 +14,10 @@ public protocol PetRepository: Sendable {
     /// other request (Traccar's device media endpoint requires auth). `nil`
     /// when the pet has no photo set.
     func fetchPhoto(for pet: Pet) async throws -> Data?
+
+    /// A continuous stream of the full, current pet list: one initial
+    /// snapshot, then a fresh snapshot each time Traccar's live feed reports
+    /// a changed device or position (see ADR-0013). Finishes only on an
+    /// unrecoverable error or when the caller stops consuming it.
+    func livePetUpdates() -> AsyncThrowingStream<[Pet], Error>
 }

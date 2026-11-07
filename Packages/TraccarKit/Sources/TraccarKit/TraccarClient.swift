@@ -14,8 +14,9 @@ public actor TraccarClient {
     private let urlSession: URLSession
     private let decoder: JSONDecoder
 
-    /// Whether a `JSESSIONID` cookie has been established for media requests
-    /// (see ADR-0012). Established lazily, on first ``fetchData(from:)`` call.
+    /// Whether a `JSESSIONID` cookie has been established for media and
+    /// WebSocket requests (see ADR-0012 and ADR-0013). Established lazily, on
+    /// first ``fetchData(from:)`` or ``liveUpdates(reconnectDelay:)`` call.
     private var hasCookieSession = false
 
     public init(credentials: TraccarCredentials, urlSession: URLSession = .shared) {
@@ -82,7 +83,77 @@ public actor TraccarClient {
         return try validated(data, response)
     }
 
-    // MARK: - Cookie session (media only — see ADR-0012)
+    /// A continuous stream of live device/position updates from Traccar's
+    /// WebSocket feed (`/api/socket`). Like media requests, this endpoint
+    /// ignores Basic Auth and needs a cookie session (verified against a live
+    /// server — see ADR-0012 and ADR-0013).
+    ///
+    /// Transient connection drops are retried automatically after
+    /// `reconnectDelay`, so this stream only finishes (with an error) when
+    /// the initial cookie session itself cannot be established, or when the
+    /// caller cancels consumption of the stream.
+    public nonisolated func liveUpdates(reconnectDelay: Duration = .seconds(5)) -> AsyncThrowingStream<TraccarSocketUpdate, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                while !Task.isCancelled {
+                    do {
+                        try await self.ensureCookieSession()
+                        let webSocketTask = try await self.makeWebSocketTask()
+                        webSocketTask.resume()
+                        defer { webSocketTask.cancel(with: .goingAway, reason: nil) }
+
+                        while !Task.isCancelled {
+                            let message = try await webSocketTask.receive()
+                            if let update = try? await self.decodeSocketMessage(message) {
+                                continuation.yield(update)
+                            }
+                        }
+                    } catch {
+                        if Task.isCancelled { break }
+                        await self.invalidateCookieSession()
+                        try? await Task.sleep(for: reconnectDelay)
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private func invalidateCookieSession() {
+        hasCookieSession = false
+    }
+
+    private func makeWebSocketTask() throws -> URLSessionWebSocketTask {
+        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
+            throw TraccarError.invalidServerURL
+        }
+        components.scheme = components.scheme == "http" ? "ws" : "wss"
+        components.path = (components.path as NSString).appendingPathComponent("/api/socket")
+        guard let url = components.url else {
+            throw TraccarError.invalidServerURL
+        }
+        return urlSession.webSocketTask(with: url)
+    }
+
+    /// Internal (not `private`) so it can be unit tested directly — a real
+    /// `URLSessionWebSocketTask` can't be driven through `MockURLProtocol`,
+    /// so this is the one piece of ``liveUpdates(reconnectDelay:)`` that gets
+    /// dedicated test coverage; the rest was verified against a live server.
+    func decodeSocketMessage(_ message: URLSessionWebSocketTask.Message) throws -> TraccarSocketUpdate {
+        let data: Data
+        switch message {
+        case .data(let messageData):
+            data = messageData
+        case .string(let text):
+            data = Data(text.utf8)
+        @unknown default:
+            data = Data()
+        }
+        return try decoder.decode(TraccarSocketUpdate.self, from: data)
+    }
+
+    // MARK: - Cookie session (media and WebSocket — see ADR-0012)
 
     private func ensureCookieSession() async throws {
         guard !hasCookieSession else { return }

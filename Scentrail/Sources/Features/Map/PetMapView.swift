@@ -62,12 +62,12 @@ struct PetMapView: View {
             }
         }
         .task {
-            viewModel.startPolling()
+            viewModel.startLiveUpdates()
             locationService.requestAuthorizationIfNeeded()
             locationService.startUpdating()
         }
         .onDisappear {
-            viewModel.stopPolling()
+            viewModel.stopLiveUpdates()
             locationService.stopUpdating()
         }
     }

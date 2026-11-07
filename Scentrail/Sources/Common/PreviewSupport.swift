@@ -49,6 +49,13 @@ struct PreviewPetRepository: PetRepository {
     func fetchPhoto(for pet: Pet) async throws -> Data? {
         nil
     }
+
+    func livePetUpdates() -> AsyncThrowingStream<[Pet], Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield([.previewOnline, .previewOffline])
+            continuation.finish()
+        }
+    }
 }
 
 struct PreviewAuthenticationService: AuthenticationService {

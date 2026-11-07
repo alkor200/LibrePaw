@@ -12,38 +12,47 @@ final class PetListViewModel {
 
     private(set) var state: LoadState = .loading
     private let petRepository: PetRepository
-    private var pollingTask: Task<Void, Never>?
+    private var liveUpdatesTask: Task<Void, Never>?
 
     init(petRepository: PetRepository) {
         self.petRepository = petRepository
     }
 
-    /// Refreshes immediately, then keeps refreshing on `interval` until
-    /// ``stopPolling()`` is called (see ADR-0006 for why we poll rather than
-    /// use a WebSocket feed).
-    func startPolling(interval: Duration = .seconds(20)) {
-        guard pollingTask == nil else { return }
-        pollingTask = Task { [weak self] in
+    /// Subscribes to Traccar's live feed (see ADR-0013) until
+    /// ``stopLiveUpdates()`` is called. The stream itself handles
+    /// reconnection on transient drops.
+    func startLiveUpdates() {
+        guard liveUpdatesTask == nil else { return }
+        liveUpdatesTask = Task { [weak self] in
             guard let self else { return }
-            while !Task.isCancelled {
-                await self.refresh()
-                try? await Task.sleep(for: interval)
+            do {
+                for try await pets in self.petRepository.livePetUpdates() {
+                    self.state = .loaded(self.sorted(pets))
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.state = .failed(error.localizedDescription)
+                }
             }
         }
     }
 
-    func stopPolling() {
-        pollingTask?.cancel()
-        pollingTask = nil
+    func stopLiveUpdates() {
+        liveUpdatesTask?.cancel()
+        liveUpdatesTask = nil
     }
 
+    /// A manual pull-to-refresh: fetches once over REST, independent of the
+    /// live stream (which keeps running in the background regardless).
     func refresh() async {
         do {
-            let pets = try await petRepository.fetchPets()
-                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-            state = .loaded(pets)
+            state = .loaded(sorted(try await petRepository.fetchPets()))
         } catch {
             state = .failed(error.localizedDescription)
         }
+    }
+
+    private func sorted(_ pets: [Pet]) -> [Pet] {
+        pets.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 }

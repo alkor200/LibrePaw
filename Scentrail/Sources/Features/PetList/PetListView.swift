@@ -22,8 +22,8 @@ struct PetListView: View {
                     locationService: locationService
                 )
             }
-            .task { viewModel.startPolling() }
-            .onDisappear { viewModel.stopPolling() }
+            .task { viewModel.startLiveUpdates() }
+            .onDisappear { viewModel.stopLiveUpdates() }
     }
 
     @ViewBuilder
