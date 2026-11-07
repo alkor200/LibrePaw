@@ -2,6 +2,21 @@ import SwiftUI
 import MapKit
 import ScentrailKit
 
+/// Destinations reachable from `PetDetailView`, pushed via `NavigationLink(value:)`.
+///
+/// Deliberately value-based rather than the eager `NavigationLink { Destination() }`
+/// closure form: `PetDetailView.body` re-evaluates frequently (live WebSocket
+/// position updates), and an eager destination closure gets re-invoked on every
+/// such re-render, which tears down and rebuilds anything already pushed on top
+/// of it — the push visually "snaps back" to this screen. Routing through a
+/// `Hashable` value keeps the pushed destination stable across those re-renders.
+private enum PetDetailRoute: Hashable {
+    case findPet
+    case map
+    case excursions
+    case setHome
+}
+
 struct PetDetailView: View {
     let petRepository: PetRepository
     let locationService: LocationService
@@ -42,6 +57,21 @@ struct PetDetailView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(viewModel.pet.name)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: PetDetailRoute.self) { route in
+            switch route {
+            case .findPet:
+                FindPetView(viewModel: FindPetViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
+            case .map:
+                PetMapView(petRepository: petRepository, locationService: locationService, initialFocus: viewModel.pet)
+            case .excursions:
+                ExcursionsView(
+                    viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository),
+                    petRepository: petRepository
+                )
+            case .setHome:
+                SetHomeView(viewModel: SetHomeViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
+            }
+        }
         .task {
             await viewModel.loadTodaysTrail()
             fitCameraToTrail()
@@ -131,9 +161,7 @@ struct PetDetailView: View {
     // MARK: - Find button
 
     private var findButton: some View {
-        NavigationLink {
-            FindPetView(viewModel: FindPetViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
-        } label: {
+        NavigationLink(value: PetDetailRoute.findPet) {
             Label("Find \(viewModel.pet.name)", systemImage: "location.north.circle.fill")
                 .frame(maxWidth: .infinity)
         }
@@ -145,28 +173,19 @@ struct PetDetailView: View {
 
     private var actionsCard: some View {
         VStack(spacing: 0) {
-            NavigationLink {
-                PetMapView(petRepository: petRepository, locationService: locationService, initialFocus: viewModel.pet)
-            } label: {
+            NavigationLink(value: PetDetailRoute.map) {
                 actionRow(systemImage: "map.fill", title: "View on Map")
             }
 
             Divider().padding(.leading, 44)
 
-            NavigationLink {
-                ExcursionsView(
-                    viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository),
-                    petRepository: petRepository
-                )
-            } label: {
+            NavigationLink(value: PetDetailRoute.excursions) {
                 actionRow(systemImage: "figure.walk", title: "Excursions")
             }
 
             Divider().padding(.leading, 44)
 
-            NavigationLink {
-                SetHomeView(viewModel: SetHomeViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
-            } label: {
+            NavigationLink(value: PetDetailRoute.setHome) {
                 actionRow(systemImage: "house.fill", title: "Set Home")
             }
         }
