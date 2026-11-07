@@ -26,13 +26,22 @@ final class SetHomeViewModel {
     }
 
     func loadExistingHome() async {
-        guard let home = try? await petRepository.homeGeofence(forPetID: pet.id) else {
-            useCurrentLocationIfUnset()
-            return
+        do {
+            guard let home = try await petRepository.homeGeofence(forPetID: pet.id) else {
+                useCurrentLocationIfUnset()
+                return
+            }
+            existingHome = home
+            homeCoordinate = home.center
+            radiusMeters = home.radiusMeters
+        } catch {
+            // Deliberately distinct from "no home set yet": if we can't tell
+            // whether a home already exists, defaulting to "none" and
+            // letting the owner save would silently move their real home to
+            // wherever they happen to be standing. Surface the failure
+            // instead so they know to retry before saving.
+            errorMessage = "Couldn't check for an existing home (\(error.localizedDescription)). Try again before saving, so you don't accidentally move it."
         }
-        existingHome = home
-        homeCoordinate = home.center
-        radiusMeters = home.radiusMeters
     }
 
     /// Defaults the pin to the owner's current location, but only before
