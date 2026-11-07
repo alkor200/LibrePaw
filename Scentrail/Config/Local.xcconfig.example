@@ -1,0 +1,12 @@
+// Copy this file to "Local.xcconfig" (gitignored, next to this one) and
+// fill in your own Apple Development Team id. This keeps your personal
+// team out of project.yml, which is shared/committed — and unlike an
+// environment variable, Xcode reads this file directly at build time, so
+// `xcodegen generate` never resets it.
+//
+// Find your team id with:
+//   security find-identity -v -p codesigning
+// (the parenthesized id after "Apple Development: you@example.com") or in
+// Xcode → Settings → Accounts → your account → your team.
+
+DEVELOPMENT_TEAM = YOUR_TEAM_ID

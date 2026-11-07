@@ -36,9 +36,17 @@ its own backend, and is not affiliated with the Traccar project.
 ```sh
 git clone https://github.com/<your-fork>/Scentrail.git
 cd Scentrail
+cp Scentrail/Config/Local.xcconfig.example Scentrail/Config/Local.xcconfig
+# edit Local.xcconfig and fill in your own DEVELOPMENT_TEAM (see ADR-0015)
 xcodegen generate
 open Scentrail.xcodeproj
 ```
+
+To run on a real device (not just the simulator), you'll need to fill in
+`DEVELOPMENT_TEAM` in `Local.xcconfig` with your own Apple Development team
+id — `security find-identity -v -p codesigning` prints it, or find it under
+Xcode → Settings → Accounts. This file is gitignored and, unlike an
+environment variable, survives every `xcodegen generate` (see ADR-0015).
 
 Build and run the `Scentrail` scheme on an iOS 17+ simulator or device, then
 sign in with your Traccar server's address and your account's email/password.
@@ -123,6 +131,7 @@ Key decisions, each recorded as an ADR:
 | [0012](docs/adr/0012-cookie-session-for-media-requests.md) | Use a cookie session for media requests only |
 | [0013](docs/adr/0013-websocket-live-updates.md) | Live updates via Traccar's WebSocket feed |
 | [0014](docs/adr/0014-home-geofence-for-excursions.md) | Derive excursions from a home geofence |
+| [0015](docs/adr/0015-per-developer-signing-config.md) | Per-developer signing config via a gitignored xcconfig file |
 
 ## Roadmap
 

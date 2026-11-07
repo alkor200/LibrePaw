@@ -31,11 +31,14 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
-        # Personal, per-developer — never hardcode a real team ID here since
-        # project.yml is shared/committed. Set the env var before running
-        # `xcodegen generate`, or just pick a Team once in Xcode's Signing &
-        # Capabilities tab (lost on the next `xcodegen generate` though).
-        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+    # DEVELOPMENT_TEAM is intentionally not set here — project.yml is shared/
+    # committed, and this value is personal per developer. It comes from
+    # Config/Local.xcconfig instead (gitignored; see Config/Local.xcconfig.example),
+    # which `xcodegen generate` only *references* rather than writes, so it
+    # survives every regeneration.
+    configFiles:
+      Debug: Scentrail/Config/Local.xcconfig
+      Release: Scentrail/Config/Local.xcconfig
     dependencies:
       - package: ScentrailKit
     info:

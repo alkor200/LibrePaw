@@ -2,6 +2,9 @@
 *.xcodeproj
 *.xcworkspace
 
+# Personal signing config — see Scentrail/Config/Local.xcconfig.example
+Scentrail/Config/Local.xcconfig
+
 # Xcode
 DerivedData/
 *.xcuserstate
