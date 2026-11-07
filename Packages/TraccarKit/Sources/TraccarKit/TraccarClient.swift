@@ -13,6 +13,7 @@ public actor TraccarClient {
     private let credentials: TraccarCredentials
     private let urlSession: URLSession
     private let decoder: JSONDecoder
+    private let encoder: JSONEncoder
 
     /// Whether a `JSESSIONID` cookie has been established for media and
     /// WebSocket requests (see ADR-0012 and ADR-0013). Established lazily, on
@@ -24,6 +25,7 @@ public actor TraccarClient {
         self.urlSession = urlSession
         self.decoder = JSONDecoder()
         self.decoder.dateDecodingStrategy = TraccarDateFormatting.decodingStrategy
+        self.encoder = JSONEncoder()
     }
 
     /// The server this client talks to. `credentials` is otherwise private —
@@ -56,6 +58,51 @@ public actor TraccarClient {
             URLQueryItem(name: "to", value: TraccarDateFormatting.string(from: to))
         ]
         return try await getJSON("/api/positions", queryItems: queryItems)
+    }
+
+    /// Geofences visible to the user, optionally filtered to those linked to
+    /// one device.
+    public func fetchGeofences(deviceId: Int? = nil) async throws -> [TraccarGeofence] {
+        var queryItems: [URLQueryItem] = []
+        if let deviceId {
+            queryItems = [URLQueryItem(name: "deviceId", value: String(deviceId))]
+        }
+        return try await getJSON("/api/geofences", queryItems: queryItems)
+    }
+
+    /// Creates a new geofence. Does not link it to any device — follow up
+    /// with ``linkGeofence(geofenceId:toDeviceId:)``.
+    public func createGeofence(name: String, area: String, attributes: [String: Bool]) async throws -> TraccarGeofence {
+        try await sendJSON(method: "POST", "/api/geofences", body: NewTraccarGeofence(name: name, area: area, attributes: attributes))
+    }
+
+    /// Updates an existing geofence in place (e.g. moving "home" to a new
+    /// location keeps the same geofence id, so device links are unaffected).
+    public func updateGeofence(id: Int, name: String, area: String, attributes: [String: Bool]) async throws {
+        let _: TraccarGeofence = try await sendJSON(
+            method: "PUT",
+            "/api/geofences/\(id)",
+            body: UpdatedTraccarGeofence(id: id, name: name, area: area, attributes: attributes)
+        )
+    }
+
+    /// Links a geofence to a device, so the device's crossings of it
+    /// generate `geofenceEnter`/`geofenceExit` events.
+    public func linkGeofence(geofenceId: Int, toDeviceId deviceId: Int) async throws {
+        try await sendJSONNoContent(method: "POST", "/api/permissions", body: GeofenceDevicePermission(deviceId: deviceId, geofenceId: geofenceId))
+    }
+
+    /// Historical events for one device in a time range, filtered to a
+    /// single event type (Traccar's `type` query parameter accepts multiple
+    /// values, but callers here only ever need one at a time).
+    public func fetchEvents(deviceId: Int, from: Date, to: Date, type: String) async throws -> [TraccarEvent] {
+        let queryItems = [
+            URLQueryItem(name: "deviceId", value: String(deviceId)),
+            URLQueryItem(name: "from", value: TraccarDateFormatting.string(from: from)),
+            URLQueryItem(name: "to", value: TraccarDateFormatting.string(from: to)),
+            URLQueryItem(name: "type", value: type)
+        ]
+        return try await getJSON("/api/reports/events", queryItems: queryItems)
     }
 
     /// Fetches raw bytes (e.g. a device image under `/api/media/...`) from
@@ -208,6 +255,39 @@ public actor TraccarClient {
         } catch {
             throw TraccarError.decoding(String(describing: error))
         }
+    }
+
+    private func sendJSON<Body: Encodable, T: Decodable>(method: String, _ path: String, body: Body) async throws -> T {
+        let data = try await send(method: method, path, body: body)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw TraccarError.decoding(String(describing: error))
+        }
+    }
+
+    private func sendJSONNoContent<Body: Encodable>(method: String, _ path: String, body: Body) async throws {
+        _ = try await send(method: method, path, body: body)
+    }
+
+    private func send<Body: Encodable>(method: String, _ path: String, body: Body) async throws -> Data {
+        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
+            throw TraccarError.invalidServerURL
+        }
+        components.path = (components.path as NSString).appendingPathComponent(path)
+        guard let url = components.url else {
+            throw TraccarError.invalidServerURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(credentials.basicAuthHeaderValue, forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await perform(request)
+        return try validated(data, response)
     }
 
     private func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {

@@ -18,6 +18,11 @@ its own backend, and is not affiliated with the Traccar project.
   a pet.
 - Pet avatars on the map: a photo if you set one (see
   [Setting a pet photo](#setting-a-pet-photo)), otherwise a paw icon.
+- **Excursions**: set a pet's home location (current location + a radius,
+  right from the app) and see a list of trips away from home and back, with
+  distance and duration.
+- Live position updates over Traccar's WebSocket feed, and a switchable
+  standard/satellite/hybrid map layer.
 
 ## Requirements
 
@@ -47,6 +52,13 @@ Use Traccar's own device image upload: open the device in Traccar's web UI →
 **Edit Device** → upload an image. Scentrail reads it back via Traccar's
 `deviceImage` attribute and `/api/media/...` endpoint — no Scentrail-specific
 setup needed. Devices without a photo show a paw icon instead.
+
+### Setting a pet's home location
+
+Open a pet's detail screen → **Set Home**, stand where you want "home" to
+be, pick a radius, and save — Scentrail creates a Traccar geofence (a
+`Home (Scentrail)` circle, visible in Traccar's own web UI too) linked to
+that pet's device. Excursions only start appearing once this is set.
 
 ## Running tests
 
@@ -86,7 +98,8 @@ TraccarKit (local package)     A standalone Traccar REST + WebSocket client
   `AuthenticationService` protocols, and stores credentials in the Keychain.
 - **`Scentrail`** (the app target) contains only SwiftUI views and view
   models, grouped by feature (`Authentication`, `PetList`, `Map`,
-  `PetDetail`, `Find`, `Settings`). It depends on `ScentrailKit` only — never
+  `PetDetail`, `Find`, `Home`, `Excursions`, `Settings`). It depends on
+  `ScentrailKit` only — never
   directly on `TraccarKit`. It's also the only place that touches
   `CoreLocation` (for the user's own position/heading); the distance and
   bearing math itself lives in `ScentrailKit` as plain functions on
@@ -109,6 +122,7 @@ Key decisions, each recorded as an ADR:
 | [0011](docs/adr/0011-pet-avatar-from-traccar-photo-attribute.md) | Pet avatar from Traccar's built-in device image |
 | [0012](docs/adr/0012-cookie-session-for-media-requests.md) | Use a cookie session for media requests only |
 | [0013](docs/adr/0013-websocket-live-updates.md) | Live updates via Traccar's WebSocket feed |
+| [0014](docs/adr/0014-home-geofence-for-excursions.md) | Derive excursions from a home geofence |
 
 ## Roadmap
 

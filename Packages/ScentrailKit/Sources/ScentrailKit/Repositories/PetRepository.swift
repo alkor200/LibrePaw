@@ -20,4 +20,17 @@ public protocol PetRepository: Sendable {
     /// a changed device or position (see ADR-0013). Finishes only on an
     /// unrecoverable error or when the caller stops consuming it.
     func livePetUpdates() -> AsyncThrowingStream<[Pet], Error>
+
+    /// The pet's configured home area, if any (see ADR-0014). `nil` when no
+    /// home has been set yet.
+    func homeGeofence(forPetID petID: Int) async throws -> HomeGeofence?
+
+    /// Sets (or moves) the pet's home area. Creates it on first use, or
+    /// updates the existing one in place.
+    func setHomeGeofence(forPetID petID: Int, center: Coordinate, radiusMeters: Double) async throws
+
+    /// Excursions — trips away from home and back — within a time range,
+    /// most recent first. Requires a home geofence to already be set;
+    /// returns an empty array otherwise.
+    func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion]
 }

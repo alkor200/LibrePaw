@@ -56,6 +56,33 @@ struct PreviewPetRepository: PetRepository {
             continuation.finish()
         }
     }
+
+    func homeGeofence(forPetID petID: Int) async throws -> HomeGeofence? {
+        HomeGeofence(center: Coordinate(latitude: 52.5200, longitude: 13.4050), radiusMeters: 100)
+    }
+
+    func setHomeGeofence(forPetID petID: Int, center: Coordinate, radiusMeters: Double) async throws {}
+
+    func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] {
+        [
+            Excursion(
+                id: 1,
+                startTime: .now.addingTimeInterval(-3600 * 3),
+                endTime: .now.addingTimeInterval(-3600 * 2),
+                startCoordinate: Coordinate(latitude: 52.5200, longitude: 13.4050),
+                endCoordinate: Coordinate(latitude: 52.5200, longitude: 13.4050),
+                distanceMeters: 1240
+            ),
+            Excursion(
+                id: 2,
+                startTime: .now.addingTimeInterval(-1800),
+                endTime: nil,
+                startCoordinate: Coordinate(latitude: 52.5200, longitude: 13.4050),
+                endCoordinate: nil,
+                distanceMeters: 420
+            )
+        ]
+    }
 }
 
 struct PreviewAuthenticationService: AuthenticationService {

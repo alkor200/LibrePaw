@@ -42,4 +42,8 @@ struct FakePetRepository: PetRepository {
             continuation.finish()
         }
     }
+
+    func homeGeofence(forPetID petID: Int) async throws -> HomeGeofence? { nil }
+    func setHomeGeofence(forPetID petID: Int, center: Coordinate, radiusMeters: Double) async throws {}
+    func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
 }

@@ -95,4 +95,104 @@ struct TraccarPetRepository: PetRepository {
             PetMapping.pet(from: device, latestPosition: positionsByDeviceID[device.id], serverURL: serverURL)
         }
     }
+
+    // MARK: - Home geofence and excursions (see ADR-0014)
+
+    /// Marks a geofence as the one Scentrail manages as "home", so it can be
+    /// found again regardless of whether the owner renames it in Traccar.
+    private static let homeAttributeKey = "scentrailHome"
+    private static let homeGeofenceName = "Home (Scentrail)"
+
+    func homeGeofence(forPetID petID: Int) async throws -> HomeGeofence? {
+        do {
+            guard let home = try await homeTraccarGeofence(forPetID: petID) else { return nil }
+            return Self.homeGeofence(from: home)
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
+    func setHomeGeofence(forPetID petID: Int, center: Coordinate, radiusMeters: Double) async throws {
+        do {
+            let area = TraccarGeofenceArea.circleWKT(
+                centerLatitude: center.latitude,
+                centerLongitude: center.longitude,
+                radiusMeters: radiusMeters
+            )
+            let attributes = [Self.homeAttributeKey: true]
+
+            if let existing = try await homeTraccarGeofence(forPetID: petID) {
+                try await client.updateGeofence(id: existing.id, name: Self.homeGeofenceName, area: area, attributes: attributes)
+            } else {
+                let created = try await client.createGeofence(name: Self.homeGeofenceName, area: area, attributes: attributes)
+                try await client.linkGeofence(geofenceId: created.id, toDeviceId: petID)
+            }
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
+    func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] {
+        do {
+            guard let home = try await homeTraccarGeofence(forPetID: petID) else { return [] }
+
+            async let exitEvents = client.fetchEvents(deviceId: petID, from: from, to: to, type: TraccarEvent.EventType.geofenceExit)
+            async let enterEvents = client.fetchEvents(deviceId: petID, from: from, to: to, type: TraccarEvent.EventType.geofenceEnter)
+
+            let exits = try await exitEvents
+                .filter { $0.geofenceId == home.id }
+                .sorted { $0.eventTime < $1.eventTime }
+            let enters = try await enterEvents
+                .filter { $0.geofenceId == home.id }
+                .sorted { $0.eventTime < $1.eventTime }
+
+            var excursions: [Excursion] = []
+            var enterIndex = 0
+            for exit in exits {
+                while enterIndex < enters.count, enters[enterIndex].eventTime <= exit.eventTime {
+                    enterIndex += 1
+                }
+                let matchingEnter = enterIndex < enters.count ? enters[enterIndex] : nil
+                if matchingEnter != nil { enterIndex += 1 }
+
+                excursions.append(try await makeExcursion(petID: petID, exit: exit, enter: matchingEnter))
+            }
+            return excursions.sorted { $0.startTime > $1.startTime }
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
+    private func makeExcursion(petID: Int, exit: TraccarEvent, enter: TraccarEvent?) async throws -> Excursion {
+        let endTime = enter?.eventTime
+        let trail = (try? await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: endTime ?? Date())) ?? []
+        let coordinates = trail.map { Coordinate(latitude: $0.latitude, longitude: $0.longitude) }
+
+        var distance: Double?
+        if coordinates.count > 1 {
+            distance = zip(coordinates, coordinates.dropFirst()).reduce(0) { $0 + $1.0.distanceMeters(to: $1.1) }
+        }
+
+        return Excursion(
+            id: exit.id,
+            startTime: exit.eventTime,
+            endTime: endTime,
+            startCoordinate: coordinates.first,
+            endCoordinate: coordinates.last,
+            distanceMeters: distance
+        )
+    }
+
+    private func homeTraccarGeofence(forPetID petID: Int) async throws -> TraccarGeofence? {
+        let geofences = try await client.fetchGeofences(deviceId: petID)
+        return geofences.first { $0.attributes[Self.homeAttributeKey]?.boolValue == true }
+    }
+
+    private static func homeGeofence(from geofence: TraccarGeofence) -> HomeGeofence? {
+        guard let parsed = TraccarGeofenceArea.parseCircle(geofence.area) else { return nil }
+        return HomeGeofence(
+            center: Coordinate(latitude: parsed.latitude, longitude: parsed.longitude),
+            radiusMeters: parsed.radiusMeters
+        )
+    }
 }

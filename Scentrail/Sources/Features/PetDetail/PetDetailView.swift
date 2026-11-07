@@ -33,6 +33,7 @@ struct PetDetailView: View {
                 if viewModel.pet.lastPosition != nil {
                     findButton
                 }
+                actionsCard
                 statGrid
                 locationRow
             }
@@ -151,6 +152,43 @@ struct PetDetailView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
+    }
+
+    // MARK: - Actions
+
+    private var actionsCard: some View {
+        VStack(spacing: 0) {
+            NavigationLink {
+                ExcursionsView(viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository))
+            } label: {
+                actionRow(systemImage: "figure.walk", title: "Excursions")
+            }
+
+            Divider().padding(.leading, 44)
+
+            NavigationLink {
+                SetHomeView(viewModel: SetHomeViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
+            } label: {
+                actionRow(systemImage: "house.fill", title: "Set Home")
+            }
+        }
+        .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func actionRow(systemImage: String, title: String) -> some View {
+        HStack {
+            Image(systemName: systemImage)
+                .foregroundStyle(.tint)
+                .frame(width: 28)
+            Text(title)
+                .foregroundStyle(.primary)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .contentShape(Rectangle())
     }
 
     // MARK: - Stats
