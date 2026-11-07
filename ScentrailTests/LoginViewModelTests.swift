@@ -19,6 +19,16 @@ struct LoginViewModelTests {
         #expect(viewModel.canSubmit == true)
     }
 
+    @Test("canSubmit is false for an http address even with all fields filled in")
+    func canSubmitRejectsInsecureConnection() {
+        let viewModel = makeViewModel()
+        viewModel.serverURLString = "http://traccar.example.com"
+        viewModel.email = "owner@example.com"
+        viewModel.password = "secret"
+
+        #expect(viewModel.canSubmit == false)
+    }
+
     @Test("usesInsecureConnection flags http addresses but not https")
     func flagsInsecureConnections() {
         let viewModel = makeViewModel()

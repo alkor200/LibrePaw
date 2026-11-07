@@ -20,7 +20,7 @@ final class LoginViewModel {
     }
 
     var canSubmit: Bool {
-        !serverURLString.trimmed.isEmpty && !email.trimmed.isEmpty && !password.isEmpty && !isLoggingIn
+        !serverURLString.trimmed.isEmpty && !email.trimmed.isEmpty && !password.isEmpty && !isLoggingIn && !usesInsecureConnection
     }
 
     func logIn() async {

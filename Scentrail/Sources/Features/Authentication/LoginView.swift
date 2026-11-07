@@ -43,8 +43,12 @@ struct LoginView: View {
                         .onSubmit { focusedField = .email }
 
                     if viewModel.usesInsecureConnection {
+                        // iOS blocks plain-http connections outright (App
+                        // Transport Security) — there's no insecure-but-
+                        // working path, so say so plainly rather than
+                        // implying the login will proceed unprotected.
                         Label(
-                            "This address is not encrypted (http). Your password would be sent unprotected.",
+                            "http addresses aren't supported — iOS blocks unencrypted connections. Use https instead.",
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .font(.footnote)
