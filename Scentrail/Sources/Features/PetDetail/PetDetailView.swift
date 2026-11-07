@@ -122,22 +122,9 @@ struct PetDetailView: View {
         if let last = viewModel.pet.lastPosition?.coordinate.clLocationCoordinate2D {
             coordinates.append(last)
         }
-        guard !coordinates.isEmpty else { return }
-
-        let latitudes = coordinates.map(\.latitude)
-        let longitudes = coordinates.map(\.longitude)
-        let center = CLLocationCoordinate2D(
-            latitude: (latitudes.min()! + latitudes.max()!) / 2,
-            longitude: (longitudes.min()! + longitudes.max()!) / 2
-        )
-        // Pad the bounding box and enforce a minimum span so a stationary pet
-        // still shows its neighborhood rather than an uselessly tight zoom.
-        let span = MKCoordinateSpan(
-            latitudeDelta: max((latitudes.max()! - latitudes.min()!) * 1.6, 0.01),
-            longitudeDelta: max((longitudes.max()! - longitudes.min()!) * 1.6, 0.01)
-        )
+        guard let region = MKCoordinateRegion.fitting(coordinates) else { return }
         withAnimation {
-            cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
+            cameraPosition = .region(region)
         }
     }
 
@@ -159,7 +146,18 @@ struct PetDetailView: View {
     private var actionsCard: some View {
         VStack(spacing: 0) {
             NavigationLink {
-                ExcursionsView(viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository))
+                PetMapView(petRepository: petRepository, locationService: locationService, initialFocus: viewModel.pet)
+            } label: {
+                actionRow(systemImage: "map.fill", title: "View on Map")
+            }
+
+            Divider().padding(.leading, 44)
+
+            NavigationLink {
+                ExcursionsView(
+                    viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository),
+                    petRepository: petRepository
+                )
             } label: {
                 actionRow(systemImage: "figure.walk", title: "Excursions")
             }

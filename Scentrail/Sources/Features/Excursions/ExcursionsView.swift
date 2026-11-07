@@ -2,16 +2,25 @@ import SwiftUI
 import ScentrailKit
 
 struct ExcursionsView: View {
+    let petRepository: PetRepository
     @State private var viewModel: ExcursionsViewModel
 
-    init(viewModel: ExcursionsViewModel) {
+    init(viewModel: ExcursionsViewModel, petRepository: PetRepository) {
         _viewModel = State(initialValue: viewModel)
+        self.petRepository = petRepository
     }
 
     var body: some View {
         content
             .navigationTitle("Excursions")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: Excursion.self) { excursion in
+                ExcursionDetailView(viewModel: ExcursionDetailViewModel(
+                    excursion: excursion,
+                    petID: viewModel.pet.id,
+                    petRepository: petRepository
+                ))
+            }
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
     }
@@ -37,7 +46,9 @@ struct ExcursionsView: View {
             }
         } else {
             List(viewModel.excursions) { excursion in
-                ExcursionRow(excursion: excursion)
+                NavigationLink(value: excursion) {
+                    ExcursionRow(excursion: excursion)
+                }
             }
             .listStyle(.plain)
         }
@@ -87,6 +98,9 @@ private struct ExcursionRow: View {
 
 #Preview {
     NavigationStack {
-        ExcursionsView(viewModel: ExcursionsViewModel(pet: .previewOnline, petRepository: PreviewPetRepository()))
+        ExcursionsView(
+            viewModel: ExcursionsViewModel(pet: .previewOnline, petRepository: PreviewPetRepository()),
+            petRepository: PreviewPetRepository()
+        )
     }
 }

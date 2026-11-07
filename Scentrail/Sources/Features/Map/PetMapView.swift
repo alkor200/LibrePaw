@@ -6,14 +6,24 @@ struct PetMapView: View {
     let petRepository: PetRepository
     let locationService: LocationService
     @State private var viewModel: PetMapViewModel
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var cameraPosition: MapCameraPosition
     @State private var selectedPet: Pet?
     @State private var mapLayer: MapLayer = .standard
 
-    init(petRepository: PetRepository, locationService: LocationService) {
+    /// - Parameter initialFocus: when provided (e.g. opened from a pet's
+    ///   detail screen via "View on Map"), the camera starts centered on
+    ///   that pet's last known position instead of fitting all pets.
+    init(petRepository: PetRepository, locationService: LocationService, initialFocus: Pet? = nil) {
         self.petRepository = petRepository
         self.locationService = locationService
         _viewModel = State(initialValue: PetMapViewModel(petRepository: petRepository))
+        if let coordinate = initialFocus?.lastPosition?.coordinate.clLocationCoordinate2D {
+            _cameraPosition = State(initialValue: .region(
+                MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
+            ))
+        } else {
+            _cameraPosition = State(initialValue: .automatic)
+        }
     }
 
     var body: some View {
