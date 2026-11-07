@@ -11,13 +11,11 @@ struct ExcursionDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                header
-                mapCard
-            }
-            .padding()
+        VStack(spacing: 12) {
+            header
+            mapCard
         }
+        .padding()
         .background(Color(.systemGroupedBackground))
         .navigationTitle(viewModel.excursion.startTime.formatted(date: .abbreviated, time: .omitted))
         .navigationBarTitleDisplayMode(.inline)
@@ -28,7 +26,7 @@ struct ExcursionDetailView: View {
     }
 
     private var header: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
             statTile(systemImage: "flag.fill", title: "Started", value: timeText(viewModel.excursion.startTime))
 
             if viewModel.excursion.isOngoing {
@@ -61,24 +59,27 @@ struct ExcursionDetailView: View {
     }
 
     private func statTile(systemImage: String, title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
             Image(systemName: systemImage)
+                .font(.footnote)
                 .foregroundStyle(.tint)
             Text(value)
-                .font(.headline)
+                .font(.subheadline.bold())
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(title)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(10)
+        .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
+    /// Takes whatever vertical space the stat tiles above leave over, so the
+    /// whole screen — stats and route — fits without scrolling.
     private var mapCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Label("Route", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
                 .font(.subheadline.bold())
                 .foregroundStyle(.secondary)
@@ -89,7 +90,7 @@ struct ExcursionDetailView: View {
                         .stroke(.tint, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                 }
             }
-            .frame(height: 320)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             if viewModel.isLoading {
@@ -109,6 +110,7 @@ struct ExcursionDetailView: View {
             }
         }
         .padding()
+        .frame(maxHeight: .infinity)
         .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
