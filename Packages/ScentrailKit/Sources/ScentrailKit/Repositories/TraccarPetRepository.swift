@@ -44,6 +44,14 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
+    func setPhoto(forPetID petID: Int, jpegData: Data) async throws {
+        do {
+            try await client.updateDeviceImage(deviceId: petID, imageData: jpegData, contentType: "image/jpeg")
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
     func livePetUpdates() -> AsyncThrowingStream<[Pet], Error> {
         AsyncThrowingStream { continuation in
             let task = Task {

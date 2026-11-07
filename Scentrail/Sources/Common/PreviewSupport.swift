@@ -50,6 +50,8 @@ struct PreviewPetRepository: PetRepository {
         nil
     }
 
+    func setPhoto(forPetID petID: Int, jpegData: Data) async throws {}
+
     func livePetUpdates() -> AsyncThrowingStream<[Pet], Error> {
         AsyncThrowingStream { continuation in
             continuation.yield([.previewOnline, .previewOffline])

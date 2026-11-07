@@ -105,6 +105,82 @@ public actor TraccarClient {
         return try await getJSON("/api/reports/events", queryItems: queryItems)
     }
 
+    /// Sets a device's photo: uploads the image bytes, then points its
+    /// `deviceImage` attribute at the result.
+    ///
+    /// Traccar's upload endpoint (`POST /api/devices/{id}/image`) only
+    /// stores the file and hands back its filename — nothing links it to the
+    /// device until a follow-up write (confirmed against Traccar's own
+    /// `DeviceResource` and the official web client's `DevicePage`, which
+    /// does exactly this two-step dance — see ADR-0011).
+    ///
+    /// That follow-up merges into the device's *raw* JSON rather than going
+    /// through ``TraccarDevice`` (which only models the fields Scentrail
+    /// otherwise needs): `PUT /api/devices/{id}` replaces every column on
+    /// the server (confirmed against Traccar's `BaseObjectResource`, which
+    /// deserializes the body and writes it with `Columns.Exclude("id")`), so
+    /// omitting a field Traccar stores — `phone`, `model`, `contact`,
+    /// `groupId`, `calendarId`, `expirationTime` — would silently blank it
+    /// out. Round-tripping the untouched raw object avoids that regardless
+    /// of which fields exist on a given server version.
+    public func updateDeviceImage(deviceId: Int, imageData: Data, contentType: String) async throws {
+        let filename = try await uploadDeviceImage(deviceId: deviceId, imageData: imageData, contentType: contentType)
+        try await mergeDeviceAttribute(deviceId: deviceId, key: "deviceImage", stringValue: filename)
+    }
+
+    private func uploadDeviceImage(deviceId: Int, imageData: Data, contentType: String) async throws -> String {
+        var request = URLRequest(url: try makeURL("/api/devices/\(deviceId)/image"))
+        request.httpMethod = "POST"
+        request.setValue(credentials.basicAuthHeaderValue, forHTTPHeaderField: "Authorization")
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = imageData
+
+        let (data, response) = try await perform(request)
+        let validData = try validated(data, response)
+        guard let filename = String(data: validData, encoding: .utf8), !filename.isEmpty else {
+            throw TraccarError.decoding("Image upload response was not the expected filename string.")
+        }
+        return filename
+    }
+
+    private func mergeDeviceAttribute(deviceId: Int, key: String, stringValue: String) async throws {
+        let url = try makeURL("/api/devices/\(deviceId)")
+
+        var getRequest = URLRequest(url: url)
+        getRequest.setValue(credentials.basicAuthHeaderValue, forHTTPHeaderField: "Authorization")
+        getRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (deviceData, deviceResponse) = try await perform(getRequest)
+        let validDeviceData = try validated(deviceData, deviceResponse)
+
+        guard var deviceObject = try JSONSerialization.jsonObject(with: validDeviceData) as? [String: Any] else {
+            throw TraccarError.decoding("Device JSON was not an object.")
+        }
+        var attributes = deviceObject["attributes"] as? [String: Any] ?? [:]
+        attributes[key] = stringValue
+        deviceObject["attributes"] = attributes
+
+        var putRequest = URLRequest(url: url)
+        putRequest.httpMethod = "PUT"
+        putRequest.setValue(credentials.basicAuthHeaderValue, forHTTPHeaderField: "Authorization")
+        putRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        putRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        putRequest.httpBody = try JSONSerialization.data(withJSONObject: deviceObject)
+
+        let (putData, putResponse) = try await perform(putRequest)
+        _ = try validated(putData, putResponse)
+    }
+
+    private func makeURL(_ path: String) throws -> URL {
+        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
+            throw TraccarError.invalidServerURL
+        }
+        components.path = (components.path as NSString).appendingPathComponent(path)
+        guard let url = components.url else {
+            throw TraccarError.invalidServerURL
+        }
+        return url
+    }
+
     /// Fetches raw bytes (e.g. a device image under `/api/media/...`) from
     /// this server. `url` must be on the same host as this client's
     /// `serverURL` — credentials are never sent elsewhere.
@@ -120,11 +196,18 @@ public actor TraccarClient {
 
         try await ensureCookieSession()
 
-        let (data, response) = try await perform(URLRequest(url: url))
+        // Traccar reuses the same filename ("device.jpg") on every photo
+        // upload, so the URL never changes when a photo is replaced — a
+        // cached response here would keep serving the old image bytes
+        // indefinitely.
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        let (data, response) = try await perform(request)
         if response.statusCode == 401 {
             hasCookieSession = false
             try await ensureCookieSession()
-            let (retryData, retryResponse) = try await perform(URLRequest(url: url))
+            let (retryData, retryResponse) = try await perform(request)
             return try validated(retryData, retryResponse)
         }
         return try validated(data, response)

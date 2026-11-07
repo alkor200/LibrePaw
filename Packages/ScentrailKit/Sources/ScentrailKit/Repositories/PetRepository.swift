@@ -15,6 +15,10 @@ public protocol PetRepository: Sendable {
     /// when the pet has no photo set.
     func fetchPhoto(for pet: Pet) async throws -> Data?
 
+    /// Sets (or replaces) the pet's photo. `jpegData` must already be
+    /// JPEG-encoded and under Traccar's upload size limit (500KB).
+    func setPhoto(forPetID petID: Int, jpegData: Data) async throws
+
     /// A continuous stream of the full, current pet list: one initial
     /// snapshot, then a fresh snapshot each time Traccar's live feed reports
     /// a changed device or position (see ADR-0013). Finishes only on an
