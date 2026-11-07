@@ -50,12 +50,17 @@ struct PetListView: View {
             }
 
         case .loaded(let pets):
-            List(pets) { pet in
-                NavigationLink(value: pet) {
-                    PetRowView(pet: pet)
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 20)], spacing: 24) {
+                    ForEach(pets) { pet in
+                        NavigationLink(value: pet) {
+                            PetGridCell(pet: pet, petRepository: petRepository)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
+                .padding()
             }
-            .listStyle(.plain)
             .refreshable { await viewModel.refresh() }
         }
     }
