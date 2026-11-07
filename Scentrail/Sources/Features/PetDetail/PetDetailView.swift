@@ -44,10 +44,10 @@ struct PetDetailView: View {
         ScrollView {
             VStack(spacing: 20) {
                 header
-                trailMapCard
                 if viewModel.pet.lastPosition != nil {
                     findButton
                 }
+                trailMapCard
                 actionsCard
                 statGrid
                 locationRow

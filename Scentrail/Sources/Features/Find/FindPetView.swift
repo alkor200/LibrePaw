@@ -63,6 +63,11 @@ struct FindPetView: View {
                 Text("away")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if let recordedAt = viewModel.pet.lastPosition?.recordedAt {
+                    Text("as of \(recordedAt.formatted(.relative(presentation: .named)))")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             if !viewModel.locationService.isHeadingAvailable {
