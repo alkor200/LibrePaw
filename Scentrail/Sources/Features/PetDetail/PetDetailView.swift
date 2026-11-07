@@ -127,7 +127,7 @@ struct PetDetailView: View {
             Divider().padding(.leading, 44)
 
             NavigationLink(value: PetDetailRoute.setHome) {
-                actionRow(systemImage: "house.fill", title: "Set Home")
+                actionRow(systemImage: "house.fill", title: "Home Setting")
             }
         }
         .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
