@@ -9,6 +9,7 @@ final class PetDetailViewModel {
     private(set) var isLoadingTrail = false
     private(set) var trailErrorMessage: String?
     private(set) var lifetimeStats: LifetimeStats?
+    private(set) var todaysExcursions: [Excursion] = []
     /// Gates the "Share `<Pet>`" action, the avatar's edit-photo affordance,
     /// and the Trail/Excursions rows, each straight off what Traccar's own
     /// permission flags allow the signed-in account to do (see ADR-0018,
@@ -44,6 +45,16 @@ final class PetDetailViewModel {
         lifetimeStats = try? await petRepository.lifetimeExcursionStats(forPetID: pet.id)
     }
 
+    /// Today's excursions, for ``totalTimeAwayTodaySeconds``. Best-effort,
+    /// same reasoning as ``loadLifetimeStats()``, and naturally empty (not
+    /// an error) when the account has reports disabled, same as everything
+    /// else built on ``PetRepository/fetchExcursions(forPetID:from:to:)``
+    /// (see ADR-0023).
+    func loadTodaysExcursions() async {
+        let startOfDay = Calendar.current.startOfDay(for: .now)
+        todaysExcursions = (try? await petRepository.fetchExcursions(forPetID: pet.id, from: startOfDay, to: .now)) ?? []
+    }
+
     /// Best-effort, same reasoning as ``loadLifetimeStats()``: this just
     /// gates UI affordances, not something worth surfacing an error for.
     func loadPermissions() async {
@@ -61,5 +72,19 @@ final class PetDetailViewModel {
         guard trail.count > 1 else { return nil }
         return zip(trail, trail.dropFirst())
             .reduce(0) { $0 + $1.0.coordinate.distanceMeters(to: $1.1.coordinate) }
+    }
+
+    /// Total time spent away from home today, summing every excursion that
+    /// started today (an ongoing one contributes its elapsed-so-far
+    /// duration, same convention as `mergeLifetimeStats`). Likely-vehicle
+    /// trips are excluded, same reasoning as the lifetime total: this is
+    /// meant to read as time out and about, not time spent being driven
+    /// somewhere. `nil` until there's at least one excursion to show.
+    var totalTimeAwayTodaySeconds: TimeInterval? {
+        let walked = todaysExcursions.filter { !$0.isLikelyVehicleTrip }
+        guard !walked.isEmpty else { return nil }
+        return walked.reduce(0) { total, excursion in
+            total + (excursion.duration ?? Date.now.timeIntervalSince(excursion.startTime))
+        }
     }
 }

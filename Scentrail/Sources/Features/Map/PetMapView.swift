@@ -28,6 +28,7 @@ struct PetMapView: View {
     var body: some View {
         Map(position: $cameraPosition) {
             UserAnnotation()
+                .tint(.appPrimaryDark)
 
             ForEach(viewModel.petsWithPosition) { pet in
                 if let position = pet.lastPosition {

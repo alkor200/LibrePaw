@@ -81,6 +81,9 @@ struct PetDetailView: View {
             await viewModel.loadLifetimeStats()
         }
         .task {
+            await viewModel.loadTodaysExcursions()
+        }
+        .task {
             await viewModel.loadPermissions()
         }
         .sheet(isPresented: $isShowingPhotoEditor) {
@@ -235,11 +238,14 @@ struct PetDetailView: View {
             if let totalDistance = viewModel.totalTrailDistanceMeters {
                 StatTile(systemImage: "shoeprints.fill", title: "Distance Today", value: formattedDistance(totalDistance))
             }
+            if let timeAwayToday = viewModel.totalTimeAwayTodaySeconds {
+                StatTile(systemImage: "figure.walk", title: "Time Away Today", value: formattedDuration(timeAwayToday))
+            }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDistanceMeters > 0 {
                 StatTile(systemImage: "map.fill", title: "Total Distance", value: formattedDistance(lifetimeStats.totalDistanceMeters))
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDurationSeconds > 0 {
-                StatTile(systemImage: "figure.walk", title: "Total Time Away", value: formattedLifetimeDuration(lifetimeStats.totalDurationSeconds))
+                StatTile(systemImage: "figure.walk.motion", title: "Total Time Away", value: formattedDuration(lifetimeStats.totalDurationSeconds))
             }
             if let lastSeenAt = viewModel.pet.lastSeenAt {
                 StatTile(systemImage: "clock", title: "Last Update", value: lastSeenAt.formatted(.relative(presentation: .named)))
@@ -310,7 +316,7 @@ struct PetDetailView: View {
         }
     }
 
-    private func formattedLifetimeDuration(_ seconds: TimeInterval) -> String {
+    private func formattedDuration(_ seconds: TimeInterval) -> String {
         let totalMinutes = Int(seconds / 60)
         let days = totalMinutes / (60 * 24)
         let hours = (totalMinutes / 60) % 24
