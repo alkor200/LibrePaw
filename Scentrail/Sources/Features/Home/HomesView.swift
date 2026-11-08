@@ -52,7 +52,7 @@ struct HomesView: View {
             // `HomeGeofence`'s navigationDestination above.
             .onAppear { Task { await viewModel.load() } }
             .refreshable { await viewModel.load() }
-            .task { await viewModel.loadAdministratorStatus() }
+            .task { await viewModel.loadPermissionContext() }
     }
 
     @ViewBuilder
@@ -81,8 +81,9 @@ struct HomesView: View {
             List {
                 ForEach(viewModel.homes) { home in
                     NavigationLink(value: home) {
-                        HomeRow(home: home)
+                        HomeRow(home: home, isManageable: viewModel.canManage(home))
                     }
+                    .deleteDisabled(!viewModel.canManage(home))
                 }
                 .onDelete { offsets in
                     let homesToDelete = offsets.map { viewModel.homes[$0] }
@@ -112,7 +113,7 @@ struct HomesView: View {
             Label {
                 Text(isAdministrator
                     ? "As an admin, homes you add here are visible to everyone with access to \(viewModel.pet.name)."
-                    : "Homes you add here, and the excursions they create, are only visible to you. Ask an admin to add a home if it should apply to everyone.")
+                    : "Homes you add here, and the excursions they create, are only visible to you. Ask an admin to add a home if it should apply to everyone. A lock icon means a home someone else set up, you can view it but not edit or delete it.")
             } icon: {
                 Image(systemName: isAdministrator ? "person.3.fill" : "eye.slash.fill")
             }
@@ -129,6 +130,12 @@ struct HomesView: View {
 
 private struct HomeRow: View {
     let home: HomeGeofence
+    /// Whether the signed-in account can edit/delete this specific home
+    /// (see `HomesViewModel.canManage(_:)` and ADR-0021), shown here so a
+    /// non-admin can tell at a glance which of their visible homes they
+    /// don't have the swipe-to-delete affordance for, rather than
+    /// discovering it only by trying.
+    let isManageable: Bool
 
     var body: some View {
         HStack {
@@ -140,6 +147,12 @@ private struct HomeRow: View {
                     .font(.headline)
                 Text("\(Int(home.radiusMeters)) m radius")
                     .font(.subheadline)
+                    .foregroundStyle(.appSecondaryText)
+            }
+            if !isManageable {
+                Spacer()
+                Image(systemName: "lock.fill")
+                    .font(.footnote)
                     .foregroundStyle(.appSecondaryText)
             }
         }

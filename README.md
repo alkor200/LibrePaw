@@ -91,6 +91,11 @@ Scentrail shows which case applies right on the Homes screen:
   have the admin account add it instead
   (see [ADR-0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md)).
 
+As a non-admin, you can also view homes someone else (an admin) shared
+with you, but not edit or delete them, those show a lock icon in the list.
+Only the account that created a home, or an admin, can change it
+(see [ADR-0021](docs/adr/0021-client-side-home-ownership-for-non-admin-edit-delete.md)).
+
 ### Sharing a pet and multiple household accounts
 
 If more than one person in your household uses Scentrail against the same
@@ -191,6 +196,7 @@ Key decisions, each recorded as an ADR:
 | [0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md) | Restrict adding homes and sharing a pet to administrator accounts (homes part superseded by 0019; pet sharing still admin-only) |
 | [0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md) | Re-enable home management for non-admin accounts, with an in-app visibility notice |
 | [0020](docs/adr/0020-trail-aggregates-excursions-over-an-adjustable-window.md) | "Trail" aggregates excursions over an adjustable window, replacing "Today's Trail" |
+| [0021](docs/adr/0021-client-side-home-ownership-for-non-admin-edit-delete.md) | Track home ownership client-side, restrict non-admin edit/delete to the creator |
 
 ## Roadmap
 

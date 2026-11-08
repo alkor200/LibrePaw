@@ -44,7 +44,7 @@ struct SetHomeView: View {
             .navigationTitle(viewModel.isEditingExistingHome ? "Edit Home" : "Add Home")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if viewModel.isEditingExistingHome {
+                if viewModel.isEditingExistingHome, viewModel.canManage == true {
                     ToolbarItem(placement: .destructiveAction) {
                         Button(role: .destructive) {
                             viewModel.requestDelete()
@@ -76,7 +76,7 @@ struct SetHomeView: View {
                 viewModel.useCurrentLocationIfUnset()
                 centerCameraIfNeeded()
             }
-            .task { await viewModel.loadAdministratorStatus() }
+            .task { await viewModel.loadPermissionContext() }
             .onChange(of: viewModel.locationService.coordinate) {
                 viewModel.useCurrentLocationIfUnset()
                 centerCameraIfNeeded()
@@ -98,6 +98,7 @@ struct SetHomeView: View {
                         .stroke(.tint, lineWidth: 2)
                 }
                 .onMapCameraChange(frequency: .continuous) { context in
+                    guard viewModel.canManage != false else { return }
                     viewModel.homeCoordinate = Coordinate(context.region.center)
                 }
 
@@ -121,6 +122,7 @@ struct SetHomeView: View {
         VStack(spacing: 16) {
             TextField("Name", text: $viewModel.name)
                 .textFieldStyle(.roundedBorder)
+                .disabled(viewModel.canManage == false)
 
             Text("Drag the map to place \(viewModel.name.trimmed.isEmpty ? "it" : viewModel.name).")
                 .font(.footnote)
@@ -129,6 +131,7 @@ struct SetHomeView: View {
 
             VStack(spacing: 4) {
                 Slider(value: $viewModel.radiusMeters, in: 20...100, step: 5)
+                    .disabled(viewModel.canManage == false)
                 Text("\(Int(viewModel.radiusMeters)) meters radius")
                     .font(.subheadline)
                     .foregroundStyle(.appSecondaryText)
@@ -143,46 +146,64 @@ struct SetHomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Button {
-                Task {
-                    await viewModel.save()
-                    if viewModel.didSave { dismiss() }
-                }
-            } label: {
-                HStack {
-                    Spacer()
-                    if viewModel.isSaving {
-                        ProgressView()
-                    } else {
-                        Text(viewModel.isEditingExistingHome ? "Save" : "Add Home")
+            // Hidden rather than shown-disabled when `canManage == false`:
+            // there's nothing the signed-in account can do here at all, see
+            // ADR-0021's "hide rather than offer a broken affordance"
+            // reasoning (same one ADR-0018 already established for
+            // Share `<Pet>`).
+            if viewModel.canManage != false {
+                Button {
+                    Task {
+                        await viewModel.save()
+                        if viewModel.didSave { dismiss() }
                     }
-                    Spacer()
+                } label: {
+                    HStack {
+                        Spacer()
+                        if viewModel.isSaving {
+                            ProgressView()
+                        } else {
+                            Text(viewModel.isEditingExistingHome ? "Save" : "Add Home")
+                        }
+                        Spacer()
+                    }
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(viewModel.isSaving || viewModel.canManage != true)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(viewModel.isSaving)
         }
         .padding()
         .background(.regularMaterial)
     }
 
     /// Same visibility explanation as `HomesView`'s, inline here too since
-    /// this is the actual point of action, see ADR-0019.
+    /// this is the actual point of action, see ADR-0019. A third state,
+    /// not present in the list's own notice: viewing a home someone else
+    /// created (and that you aren't an admin), where editing is disabled
+    /// entirely rather than just a visibility caveat (see ADR-0021).
     @ViewBuilder
     private var visibilityNotice: some View {
         if let isAdministrator = viewModel.isAdministrator {
-            Label {
-                Text(isAdministrator
-                    ? "Visible to everyone with access to \(viewModel.pet.name)."
-                    : "Only visible to you. Ask an admin to add this if it should apply to everyone.")
-            } icon: {
-                Image(systemName: isAdministrator ? "person.3.fill" : "eye.slash.fill")
+            if isAdministrator {
+                noticeLabel("Visible to everyone with access to \(viewModel.pet.name).", systemImage: "person.3.fill")
+            } else if viewModel.canManage == false {
+                noticeLabel("Shared by an admin. You can view it, but only an admin can edit or delete it.", systemImage: "lock.fill")
+            } else {
+                noticeLabel("Only visible to you. Ask an admin to add this if it should apply to everyone.", systemImage: "eye.slash.fill")
             }
-            .font(.footnote)
-            .foregroundStyle(.appSecondaryText)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func noticeLabel(_ text: String, systemImage: String) -> some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.footnote)
+        .foregroundStyle(.appSecondaryText)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var deniedView: some View {

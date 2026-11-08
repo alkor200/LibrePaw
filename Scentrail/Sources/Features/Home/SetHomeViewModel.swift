@@ -23,23 +23,41 @@ final class SetHomeViewModel {
     private(set) var isShowingDeleteConfirmation = false
     private(set) var isDeleting = false
     private(set) var didDelete = false
-    /// `nil` until ``loadAdministratorStatus()`` resolves, see
+    /// `nil` until ``loadPermissionContext()`` resolves, see
     /// `HomesViewModel`'s equivalent; `SetHomeView` only shows its
-    /// visibility notice once this is known (see ADR-0019).
+    /// visibility notice (and decides whether editing is allowed at all)
+    /// once this is known (see ADR-0019, ADR-0021).
     private(set) var isAdministrator: Bool?
+    private(set) var currentUserID: Int?
 
     private let existingHomeID: Int?
+    private let existingHomeOwnerID: Int?
     private let petRepository: PetRepository
 
     init(pet: Pet, existingHome: HomeGeofence?, petRepository: PetRepository, locationService: LocationService) {
         self.pet = pet
         self.isEditingExistingHome = existingHome != nil
         self.existingHomeID = existingHome?.id
+        self.existingHomeOwnerID = existingHome?.ownerUserID
         self.name = existingHome?.name ?? "Home"
         self.homeCoordinate = existingHome?.center
         self.radiusMeters = existingHome?.radiusMeters ?? 50
         self.petRepository = petRepository
         self.locationService = locationService
+    }
+
+    /// Whether the signed-in account is allowed to change anything here at
+    /// all: always true when adding a new home (the creator always manages
+    /// their own), for an existing one only an admin or whoever created it
+    /// can (see `HomesViewModel.canManage(_:)` and ADR-0021, including why
+    /// an untracked legacy owner defaults to "no"). `nil`, same as
+    /// ``isAdministrator``, until the permission context has loaded.
+    var canManage: Bool? {
+        guard isEditingExistingHome else { return true }
+        guard let isAdministrator else { return nil }
+        if isAdministrator { return true }
+        guard let currentUserID, let existingHomeOwnerID else { return false }
+        return existingHomeOwnerID == currentUserID
     }
 
     /// Defaults the pin to the owner's current location, but only before
@@ -51,13 +69,20 @@ final class SetHomeViewModel {
     }
 
     /// Best-effort, same reasoning as `HomesViewModel`'s equivalent: this
-    /// just gates the visibility notice, not something worth surfacing an
-    /// error for.
-    func loadAdministratorStatus() async {
-        isAdministrator = try? await petRepository.isCurrentUserAdministrator()
+    /// just gates the visibility notice and (via ``canManage``) whether
+    /// editing is allowed, not something worth surfacing an error for.
+    func loadPermissionContext() async {
+        async let administrator = petRepository.isCurrentUserAdministrator()
+        async let userID = petRepository.currentUserID()
+        isAdministrator = try? await administrator
+        currentUserID = try? await userID
     }
 
     func save() async {
+        guard canManage == true else {
+            errorMessage = "Only an admin can edit a home you didn't create."
+            return
+        }
         guard let coordinate = homeCoordinate else {
             errorMessage = "Drag the map to choose a location first."
             return
@@ -93,9 +118,10 @@ final class SetHomeViewModel {
     }
 
     /// Only reachable when editing (the toolbar button that calls this is
-    /// hidden while adding), so `existingHomeID` is always set here.
+    /// hidden while adding, or while `canManage` isn't `true`), so
+    /// `existingHomeID` is always set here.
     func confirmDelete() async {
-        guard let existingHomeID else { return }
+        guard let existingHomeID, canManage == true else { return }
         isShowingDeleteConfirmation = false
         isDeleting = true
         errorMessage = nil

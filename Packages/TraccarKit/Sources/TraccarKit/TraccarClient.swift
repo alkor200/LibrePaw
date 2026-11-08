@@ -70,15 +70,23 @@ public actor TraccarClient {
         return try await getJSON("/api/geofences", queryItems: queryItems)
     }
 
+    /// One geofence by id, including its current attributes, used before an
+    /// update that must carry forward an attribute (e.g. who created it,
+    /// see ADR-0021) the update's own payload isn't changing, since
+    /// `updateGeofence` replaces `attributes` wholesale rather than merging.
+    public func fetchGeofence(id: Int) async throws -> TraccarGeofence {
+        try await getJSON("/api/geofences/\(id)")
+    }
+
     /// Creates a new geofence. Does not link it to any device, follow up
     /// with ``linkGeofence(geofenceId:toDeviceId:)``.
-    public func createGeofence(name: String, area: String, attributes: [String: Bool]) async throws -> TraccarGeofence {
+    public func createGeofence(name: String, area: String, attributes: [String: JSONValue]) async throws -> TraccarGeofence {
         try await sendJSON(method: "POST", "/api/geofences", body: NewTraccarGeofence(name: name, area: area, attributes: attributes))
     }
 
     /// Updates an existing geofence in place (e.g. moving "home" to a new
     /// location keeps the same geofence id, so device links are unaffected).
-    public func updateGeofence(id: Int, name: String, area: String, attributes: [String: Bool]) async throws {
+    public func updateGeofence(id: Int, name: String, area: String, attributes: [String: JSONValue]) async throws {
         let _: TraccarGeofence = try await sendJSON(
             method: "PUT",
             "/api/geofences/\(id)",
@@ -369,7 +377,7 @@ public actor TraccarClient {
         return try decoder.decode(TraccarSocketUpdate.self, from: data)
     }
 
-    // MARK:, Cookie session (media and WebSocket, see ADR-0012)
+    // MARK: - Cookie session (media and WebSocket, see ADR-0012)
 
     private func ensureCookieSession() async throws {
         guard !hasCookieSession else { return }
@@ -398,7 +406,7 @@ public actor TraccarClient {
         hasCookieSession = true
     }
 
-    // MARK:, Transport
+    // MARK: - Transport
 
     private func getJSON<T: Decodable>(_ path: String, queryItems: [URLQueryItem] = []) async throws -> T {
         guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {

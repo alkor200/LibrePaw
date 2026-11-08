@@ -91,7 +91,7 @@ struct PetDetailView: View {
         }
     }
 
-    // MARK:, Header
+    // MARK: - Header
 
     private var header: some View {
         VStack(spacing: 8) {
@@ -133,7 +133,7 @@ struct PetDetailView: View {
         }
     }
 
-    // MARK:, Find button
+    // MARK: - Find button
 
     private var findButton: some View {
         NavigationLink(value: PetDetailRoute.findPet) {
@@ -144,7 +144,7 @@ struct PetDetailView: View {
         .controlSize(.large)
     }
 
-    // MARK:, Actions
+    // MARK: - Actions
 
     private var actionsCard: some View {
         VStack(spacing: 0) {
@@ -206,7 +206,7 @@ struct PetDetailView: View {
         .contentShape(Rectangle())
     }
 
-    // MARK:, Stats
+    // MARK: - Stats
 
     private var statGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -254,7 +254,7 @@ struct PetDetailView: View {
         }
     }
 
-    // MARK:, Location
+    // MARK: - Location
 
     @ViewBuilder
     private var locationRow: some View {
@@ -276,7 +276,7 @@ struct PetDetailView: View {
         }
     }
 
-    // MARK:, Formatting
+    // MARK: - Formatting
 
     private func formattedSpeed(_ kilometersPerHour: Double) -> String {
         kilometersPerHour.formatted(.number.precision(.fractionLength(0))) + " km/h"

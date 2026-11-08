@@ -98,6 +98,7 @@ struct PreviewPetRepository: PetRepository {
     }
 
     func isCurrentUserAdministrator() async throws -> Bool { true }
+    func currentUserID() async throws -> Int { 1 }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }
 

@@ -105,11 +105,15 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
-    // MARK:, Home geofences and excursions (see ADR-0014, ADR-0016)
+    // MARK: - Home geofences and excursions (see ADR-0014, ADR-0016)
 
     /// Marks a geofence as one Scentrail manages as a "home", so it can be
     /// found again regardless of whether the owner renames it in Traccar.
     private static let homeAttributeKey = "scentrailHome"
+    /// The Traccar user id of whoever created this home (see ADR-0021).
+    /// Traccar itself tracks no such thing, so Scentrail stamps it as a
+    /// plain attribute at creation time and never changes it afterward.
+    private static let ownerAttributeKey = "scentrailOwnerId"
 
     func homeGeofences(forPetID petID: Int) async throws -> [HomeGeofence] {
         do {
@@ -127,7 +131,12 @@ struct TraccarPetRepository: PetRepository {
                 centerLongitude: center.longitude,
                 radiusMeters: radiusMeters
             )
-            let created = try await client.createGeofence(name: name, area: area, attributes: [Self.homeAttributeKey: true])
+            let ownerID = try? await client.fetchCurrentUser().id
+            var attributes: [String: JSONValue] = [Self.homeAttributeKey: .bool(true)]
+            if let ownerID {
+                attributes[Self.ownerAttributeKey] = .double(Double(ownerID))
+            }
+            let created = try await client.createGeofence(name: name, area: area, attributes: attributes)
             try await client.linkGeofence(geofenceId: created.id, toDeviceId: petID)
             await syncGeofenceVisibility(geofenceId: created.id, petID: petID)
         } catch let error as TraccarError {
@@ -142,7 +151,16 @@ struct TraccarPetRepository: PetRepository {
                 centerLongitude: center.longitude,
                 radiusMeters: radiusMeters
             )
-            try await client.updateGeofence(id: homeID, name: name, area: area, attributes: [Self.homeAttributeKey: true])
+            // `updateGeofence` replaces `attributes` wholesale, so the
+            // existing owner stamp (if any) has to be read back and carried
+            // forward explicitly, otherwise editing a home would silently
+            // erase who created it (see ADR-0021).
+            let existingGeofence = try? await client.fetchGeofence(id: homeID)
+            var attributes: [String: JSONValue] = [Self.homeAttributeKey: .bool(true)]
+            if let existingOwner = existingGeofence?.attributes[Self.ownerAttributeKey] {
+                attributes[Self.ownerAttributeKey] = existingOwner
+            }
+            try await client.updateGeofence(id: homeID, name: name, area: area, attributes: attributes)
             await syncGeofenceVisibility(geofenceId: homeID, petID: petID)
         } catch let error as TraccarError {
             throw error.asScentrailError
@@ -200,11 +218,19 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
-    // MARK:, Admin status and pet sharing (see ADR-0017, ADR-0018)
+    // MARK: - Admin status and pet sharing (see ADR-0017, ADR-0018)
 
     func isCurrentUserAdministrator() async throws -> Bool {
         do {
             return try await client.fetchCurrentUser().administrator
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
+    func currentUserID() async throws -> Int {
+        do {
+            return try await client.fetchCurrentUser().id
         } catch let error as TraccarError {
             throw error.asScentrailError
         }
@@ -387,11 +413,13 @@ struct TraccarPetRepository: PetRepository {
 
     private static func homeGeofence(from geofence: TraccarGeofence) -> HomeGeofence? {
         guard let parsed = TraccarGeofenceArea.parseCircle(geofence.area) else { return nil }
+        let ownerUserID = geofence.attributes[Self.ownerAttributeKey]?.doubleValue.map(Int.init)
         return HomeGeofence(
             id: geofence.id,
             name: geofence.name,
             center: Coordinate(latitude: parsed.latitude, longitude: parsed.longitude),
-            radiusMeters: parsed.radiusMeters
+            radiusMeters: parsed.radiusMeters,
+            ownerUserID: ownerUserID
         )
     }
 

@@ -14,10 +14,12 @@ final class HomesViewModel {
     private(set) var homes: [HomeGeofence] = []
     private(set) var isLoading = true
     private(set) var errorMessage: String?
-    /// `nil` until ``loadAdministratorStatus()`` resolves, `HomesView` only
-    /// shows its visibility notice once this is known, rather than flashing
-    /// the non-admin wording at an admin for a moment.
+    /// `nil` until ``loadPermissionContext()`` resolves, `HomesView` only
+    /// shows its visibility notice (and per-row edit/delete affordances)
+    /// once this is known, rather than flashing the wrong state for a
+    /// moment.
     private(set) var isAdministrator: Bool?
+    private(set) var currentUserID: Int?
 
     private let petRepository: PetRepository
     /// The most recently started load, so a newer one can cancel a stale one
@@ -60,13 +62,34 @@ final class HomesViewModel {
     }
 
     /// Best-effort, same reasoning as `PetDetailViewModel`'s equivalent:
-    /// this just gates the visibility notice, not something worth
-    /// surfacing an error for.
-    func loadAdministratorStatus() async {
-        isAdministrator = try? await petRepository.isCurrentUserAdministrator()
+    /// this just gates the visibility notice and per-row affordances, not
+    /// something worth surfacing an error for.
+    func loadPermissionContext() async {
+        async let administrator = petRepository.isCurrentUserAdministrator()
+        async let userID = petRepository.currentUserID()
+        isAdministrator = try? await administrator
+        currentUserID = try? await userID
+    }
+
+    /// Whether the signed-in account is allowed to edit or delete `home`:
+    /// an admin always can, otherwise only whoever created it (see
+    /// ``HomeGeofence/ownerUserID`` and ADR-0021). A home with no recorded
+    /// owner (created before this was tracked) is treated as not theirs,
+    /// Traccar itself puts no limit on who can edit or delete a geofence
+    /// they can merely see, so the safe default for an unknown owner is to
+    /// withhold management rather than risk a non-admin deleting a home
+    /// someone else (possibly the whole household) relies on.
+    func canManage(_ home: HomeGeofence) -> Bool {
+        if isAdministrator == true { return true }
+        guard let currentUserID, let ownerUserID = home.ownerUserID else { return false }
+        return ownerUserID == currentUserID
     }
 
     func delete(_ home: HomeGeofence) async {
+        guard canManage(home) else {
+            errorMessage = "Only an admin can delete a home you didn't create."
+            return
+        }
         do {
             try await petRepository.deleteHomeGeofence(home.id)
             homes.removeAll { $0.id == home.id }

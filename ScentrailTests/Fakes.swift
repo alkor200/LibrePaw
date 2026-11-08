@@ -51,5 +51,6 @@ struct FakePetRepository: PetRepository {
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats { .zero }
     func isCurrentUserAdministrator() async throws -> Bool { false }
+    func currentUserID() async throws -> Int { 1 }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }

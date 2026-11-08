@@ -65,6 +65,11 @@ public protocol PetRepository: Sendable {
     /// confirmed against a live server, see ADR-0017, ADR-0018.
     func isCurrentUserAdministrator() async throws -> Bool
 
+    /// The signed-in Traccar account's own user id, used to tell whether the
+    /// current user created a given home (see ``HomeGeofence/ownerUserID``
+    /// and ADR-0021).
+    func currentUserID() async throws -> Int
+
     /// Shares a pet with another Traccar user, found by email, admin-only
     /// server-side, same as the rest of ADR-0018. Throws if no user with
     /// that email exists on this server.
