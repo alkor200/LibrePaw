@@ -58,7 +58,7 @@ struct PetDetailView: View {
             case .map:
                 PetMapView(petRepository: petRepository, locationService: locationService, initialFocus: viewModel.pet)
             case .trail:
-                TodaysTrailView(viewModel: viewModel, petRepository: petRepository)
+                TrailView(viewModel: TrailViewModel(pet: viewModel.pet, petRepository: petRepository), petRepository: petRepository)
             case .excursions:
                 ExcursionsView(
                     viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository),
@@ -155,7 +155,7 @@ struct PetDetailView: View {
             Divider().padding(.leading, 44).overlay(Color.appBorder)
 
             NavigationLink(value: PetDetailRoute.trail) {
-                actionRow(systemImage: "point.topleft.down.curvedto.point.bottomright.up", title: "Today's Trail")
+                actionRow(systemImage: "point.topleft.down.curvedto.point.bottomright.up", title: "Trail")
             }
 
             Divider().padding(.leading, 44).overlay(Color.appBorder)

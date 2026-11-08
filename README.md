@@ -13,7 +13,7 @@ its own backend, and is not affiliated with the Traccar project.
 - Sign in to your own Traccar server.
 - A map of every pet's last known position, plus your own location.
 - See all your pets (Traccar "devices") with their live online/offline status.
-- Per-pet detail view with today's trail, speed, battery level and address.
+- Per-pet detail view with speed, battery level and address.
 - **Find Pet**: an AirTag-style compass arrow + distance pointing you toward
   a pet.
 - Pet avatars on the map: a photo if you set one (see
@@ -23,6 +23,9 @@ its own backend, and is not affiliated with the Traccar project.
   from home and back, with distance and duration. A trip can start at one
   home and end at another (e.g. "Home → Cabin") if that's where the pet's
   positions actually show it going.
+- **Trail**: every excursion in an adjustable window (24 hours by default,
+  up to 30 days) drawn on the map at once, each walk in its own color, tap
+  one to open its excursion detail.
 - **Share a pet** with another Traccar account by email, right from the
   app (admin accounts only, see
   [Sharing a pet](#sharing-a-pet-and-multiple-household-accounts) below).
@@ -187,6 +190,7 @@ Key decisions, each recorded as an ADR:
 | [0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md) | Grant explicit user permissions when creating or editing a home geofence (non-admin editing superseded by 0018) |
 | [0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md) | Restrict adding homes and sharing a pet to administrator accounts (homes part superseded by 0019; pet sharing still admin-only) |
 | [0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md) | Re-enable home management for non-admin accounts, with an in-app visibility notice |
+| [0020](docs/adr/0020-trail-aggregates-excursions-over-an-adjustable-window.md) | "Trail" aggregates excursions over an adjustable window, replacing "Today's Trail" |
 
 ## Roadmap
 
