@@ -21,7 +21,7 @@ struct TraccarGeofenceAreaTests {
 
     @Test("parseCircle reads a fixed, independently-written WKT string correctly")
     func parseCircleReadsIndependentFixture() throws {
-        // Deliberately not derived from circleWKT - a round-trip test alone
+        // Deliberately not derived from circleWKT, a round-trip test alone
         // previously hid a lat/lon order bug because both functions shared
         // the same (wrong) assumption. This pins the format against a
         // literal string matching Traccar's own GeofenceCircle.toWkt output.

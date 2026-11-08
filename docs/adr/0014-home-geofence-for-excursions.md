@@ -6,8 +6,8 @@ Accepted
 
 ## Context
 
-The ask: a list of "excursions" - periods from when a pet leaves home until
-it returns - distance, duration, each. Traccar does have a built-in
+The ask: a list of "excursions", periods from when a pet leaves home until
+it returns, distance, duration, each. Traccar does have a built-in
 `GET /api/reports/trips` endpoint that already computes trips server-side
 from motion/stop detection. Tested against a live server before building
 anything on top of it:
@@ -18,7 +18,7 @@ Trip 2: 47.4m over 1 minute
 Trip 3: 60.6m over 1 minute
 ```
 
-This is GPS/motion jitter, not real walks - Traccar's trip detection is
+This is GPS/motion jitter, not real walks, Traccar's trip detection is
 tuned for vehicles, far too sensitive to a collar's movement pattern at
 rest. Using it directly would produce dozens of meaningless "excursions" a
 day, and a single real walk with a couple of sniff-stops could fragment
@@ -34,7 +34,7 @@ wanted, using only existing Traccar primitives:
   `toWkt`/`fromWkt` directly, *not* standard WKT's (X, Y) =
   (longitude, latitude) order. An earlier version of this ADR (and the code)
   got this backwards, "confirmed" only by writing and reading back a
-  geofence with our own (consistently wrong) convention - a round-trip that
+  geofence with our own (consistently wrong) convention, a round-trip that
   passes even when the order is wrong, since both ends agree with each
   other, just not with Traccar's actual geofence evaluation. The bug only
   surfaced once a geofence built this way was tested against real geofence
@@ -43,9 +43,9 @@ wanted, using only existing Traccar primitives:
 - `POST /api/permissions` with `{deviceId, geofenceId}` links a geofence to
   a device.
 - Crossing a linked geofence generates `geofenceEnter`/`geofenceExit`
-  events, readable via `GET /api/reports/events?type=...` - and this
+  events, readable via `GET /api/reports/events?type=...`, and this
   endpoint, unlike `/api/session`, `/api/media`, and `/api/socket`, uses
-  ordinary Basic Auth (confirmed live) - it's a normal JAX-RS resource, not
+  ordinary Basic Auth (confirmed live), it's a normal JAX-RS resource, not
   one of the special-cased ones from ADR-0006/0012/0013.
 
 ## Decision
@@ -53,7 +53,7 @@ wanted, using only existing Traccar primitives:
 **Setting home** (`PetRepository.setHomeGeofence(forPetID:center:radiusMeters:)`):
 creates (or moves, if one already exists) a circular geofence, linked to the
 pet's device. `SetHomeView` ("`<Pet>`'s Home" on screen) shows a full-screen
-map with a pin fixed at the center and a radius slider (20–100m - a "home"
+map with a pin fixed at the center and a radius slider (20–100m, a "home"
 geofence realistically never needs to be larger); the owner drags the map
 underneath the pin to place or move it, the same interaction Apple Maps uses
 for dropping a pin, rather than being limited to wherever they're currently
@@ -61,7 +61,7 @@ standing. The pin defaults to the owner's current location only when no home
 is set yet.
 
 The geofence is identified by a custom boolean attribute,
-`attributes.scentrailHome = true`, rather than by name - robust against the
+`attributes.scentrailHome = true`, rather than by name, robust against the
 owner renaming it in Traccar's own UI, and avoids colliding with any other
 geofences they might already have for unrelated reasons.
 
@@ -70,7 +70,7 @@ fetches `geofenceExit` and `geofenceEnter` events separately (simpler and
 unambiguous vs. relying on uncertain multi-value query-parameter encoding
 for a combined request), filters both to the home geofence's id, then pairs
 each exit with the next enter after it via a single linear merge pass. An
-exit with no following enter yet means the pet is currently away - modeled
+exit with no following enter yet means the pet is currently away, modeled
 as `Excursion.endTime == nil` (`isOngoing`), not an error. Distance per
 excursion is computed the same way as the pet detail page's daily-distance
 stat: summing `Coordinate.distanceMeters(to:)` over the position history
@@ -79,7 +79,7 @@ for that time window.
 ## Consequences
 
 - No new Scentrail-side storage: "home" and the excursion history both live
-  entirely in Traccar, as a geofence and its events - consistent with
+  entirely in Traccar, as a geofence and its events, consistent with
   Scentrail's "thin client" scope (ADR-0002).
 - One owner-driven setup step (`Set Home`) is required before any
   excursions appear; `ExcursionsView` explains this in its empty state
@@ -88,7 +88,7 @@ for that time window.
   excursion (to compute its distance/trail bounds) on top of the two event
   queries, run concurrently via a `TaskGroup` rather than one at a time. The
   original "acceptable since it's a bounded, low-frequency list" reasoning
-  only held for `ExcursionsView`'s 7-day window - `lifetimeExcursionStats`
+  only held for `ExcursionsView`'s 7-day window, `lifetimeExcursionStats`
   (below) can request a pet's *entire* history, where this N+1 pattern would
   otherwise mean one network round trip per excursion ever recorded; running
   them concurrently keeps that from being a serial, one-at-a-time wait, and

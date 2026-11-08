@@ -5,7 +5,7 @@ public struct TraccarGeofence: Decodable, Sendable, Identifiable, Equatable {
     public let id: Int
     public let name: String
     /// The geofence shape encoded as WKT (e.g. `CIRCLE (lat lon, radiusMeters)`
-    /// for a circle - see ``TraccarGeofenceArea``).
+    /// for a circle, see ``TraccarGeofenceArea``).
     public let area: String
     public let attributes: [String: JSONValue]
 
@@ -33,14 +33,14 @@ struct UpdatedTraccarGeofence: Encodable, Sendable {
 }
 
 /// Links a device to a geofence via `POST /api/permissions`. This alone does
-/// **not** make the geofence visible to any user - see
+/// **not** make the geofence visible to any user, see
 /// ``UserGeofencePermission`` and ADR-0017.
 struct GeofenceDevicePermission: Encodable, Sendable {
     let deviceId: Int
     let geofenceId: Int
 }
 
-/// Links a user to a geofence via `POST /api/permissions` - required, on top
+/// Links a user to a geofence via `POST /api/permissions`, required, on top
 /// of ``GeofenceDevicePermission``, for that user to see or manage the
 /// geofence at all (confirmed against Traccar's own docs/source; see
 /// ADR-0017).
@@ -51,16 +51,16 @@ struct UserGeofencePermission: Encodable, Sendable {
 
 /// One permission link as returned by `GET /api/permissions`. Traccar's
 /// `Permission` object can carry many different `*Id` fields depending on
-/// which two were queried (userId+deviceId, userId+geofenceId, etc.) - only
+/// which two were queried (userId+deviceId, userId+geofenceId, etc.), only
 /// the ones Scentrail reads are modeled here, the rest decode as absent.
 ///
 /// Unlike every other Traccar JSON response (camelCase, e.g. `TraccarDevice`'s
 /// `groupId`), confirmed against a live server that `/api/permissions`
 /// specifically returns this object's keys in **UPPERCASE**
-/// (`{"USERID":4,"DEVICEID":3}`) - evidently raw SQL column names leaking
+/// (`{"USERID":4,"DEVICEID":3}`), evidently raw SQL column names leaking
 /// through rather than going through normal POJO serialization. Decoding
-/// with the usual camelCase keys doesn't throw - `Int?` properties that
-/// don't match just decode as `nil` - so this silently returned an empty
+/// with the usual camelCase keys doesn't throw, `Int?` properties that
+/// don't match just decode as `nil`, so this silently returned an empty
 /// result from every caller instead of an error, which is a much nastier
 /// failure mode to catch. Explicit `CodingKeys` below map to the real keys.
 public struct TraccarPermission: Decodable, Sendable, Equatable {
@@ -85,7 +85,7 @@ public struct TraccarPermission: Decodable, Sendable, Equatable {
 /// uses for circular geofences.
 ///
 /// This is **latitude first**, unlike standard WKT's (X, Y) =
-/// (longitude, latitude) axis order - confirmed by reading Traccar's own
+/// (longitude, latitude) axis order, confirmed by reading Traccar's own
 /// `GeofenceCircle.fromWkt`/`toWkt` source directly (`centerLatitude` is
 /// parsed from the first token, `centerLongitude` from the second) after an
 /// earlier version of this code got the order backwards. That bug shipped

@@ -40,7 +40,7 @@ struct PetMapView: View {
                         // values as pets move, and tying navigation to that
                         // same binding let an unrelated re-render of this
                         // view re-resolve the destination while pet detail
-                        // was already pushed - racing with navigation
+                        // was already pushed, racing with navigation
                         // happening deeper in the stack and leaving pet
                         // detail's buttons unresponsive (and, eventually,
                         // this map unable to render at all).

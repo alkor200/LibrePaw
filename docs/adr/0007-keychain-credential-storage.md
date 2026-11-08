@@ -17,7 +17,7 @@ plist, trivially readable on a jailbroken device or from a backup).
 - The password is stored exclusively in the iOS **Keychain**
   (`kSecClassGenericPassword`), via a small first-party wrapper
   (`KeychainCredentialStore` in `ScentrailKit`), with no third-party
-  dependency - the Keychain API surface we need (add/read/update/delete one
+  dependency, the Keychain API surface we need (add/read/update/delete one
   generic password item) is small enough that a wrapper library would add a
   dependency for little benefit.
 - The server URL and email are non-secret and are also stored in the

@@ -3,7 +3,7 @@ import MapKit
 import ScentrailKit
 
 /// Today's recorded trail on its own full-screen map, reached from the pet
-/// detail page's actions card - styled like `PetMapView`. Reads straight
+/// detail page's actions card, styled like `PetMapView`. Reads straight
 /// from `PetDetailViewModel`, which already loads today's trail for the
 /// "Distance Today" stat tile, so no separate fetch is needed here.
 struct TodaysTrailView: View {

@@ -3,7 +3,7 @@ import Foundation
 /// A tracked pet, as understood by Scentrail.
 ///
 /// This is Scentrail's own domain model, mapped from a Traccar "device" at
-/// the repository boundary (see ADR-0002 and ADR-0005) - nothing above
+/// the repository boundary (see ADR-0002 and ADR-0005), nothing above
 /// ``PetRepository`` needs to know that Traccar, or the word "device",
 /// exists.
 public struct Pet: Identifiable, Sendable, Hashable {

@@ -28,7 +28,7 @@ before opening the project in Xcode.
 ## Consequences
 
 - Adding/removing/moving source files does not require touching the
-  `.xcodeproj` directly - XcodeGen uses folder references driven by
+  `.xcodeproj` directly, XcodeGen uses folder references driven by
   `project.yml`'s `sources:` entries, so new files under an existing source
   directory are picked up automatically on the next `xcodegen generate`.
 - Build settings, targets, and scheme configuration live in `project.yml`

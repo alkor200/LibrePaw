@@ -2,30 +2,30 @@
 
 ## Status
 
-Accepted (revised - see Context)
+Accepted (revised, see Context)
 
 ## Context
 
 Map pins and the pet detail screen should show something more recognizable
-than a generic map marker - ideally a photo of the actual pet.
+than a generic map marker, ideally a photo of the actual pet.
 
 This ADR originally assumed Traccar had no photo concept and specified a
 manual `photo` attribute holding a direct image URL. That assumption was
-wrong and was never verified against Traccar's actual behavior - a bug
+wrong and was never verified against Traccar's actual behavior, a bug
 report from real-world testing (a photo set in Traccar didn't show up in
 Scentrail) prompted inspecting the
 [traccar-web](https://github.com/traccar/traccar-web) client source
 directly, which showed:
 
 - Traccar's web UI already has a built-in **device image upload** control
-  (in the device edit dialog) - owners don't need to touch raw attributes.
+  (in the device edit dialog), owners don't need to touch raw attributes.
 - Uploading calls `POST /api/devices/{id}/image`; the server stores the file
   and returns its generated filename, which the client saves as the
   device's `deviceImage` attribute (not `photo`).
-- The image is served back at `/api/media/<uniqueId>/<filename>` - keyed by
+- The image is served back at `/api/media/<uniqueId>/<filename>`, keyed by
   the device's `uniqueId`, not its numeric id. This endpoint turned out to
   need its *own* authentication mechanism (a cookie session, not Basic
-  Auth) - see [ADR-0012](0012-cookie-session-for-media-requests.md) for that
+  Auth), see [ADR-0012](0012-cookie-session-for-media-requests.md) for that
   second round of verification-against-reality.
 
 ## Decision
@@ -48,16 +48,16 @@ directly, which showed:
 
 ## Consequences
 
-- No new backend/storage requirement on Scentrail's side - the upload flow
+- No new backend/storage requirement on Scentrail's side, the upload flow
   is entirely Traccar's existing feature; Scentrail only *displays* it.
 - The photo-loading path now goes through the same layered architecture as
   everything else (`TraccarKit` → `ScentrailKit` → app), rather than being a
-  special case that bypasses `PetRepository` - consistent with ADR-0005.
+  special case that bypasses `PetRepository`, consistent with ADR-0005.
 - `UIImage`-based loading has no persistent cache beyond what
   `URLSession`'s default cache gives `TraccarClient.fetchData`; acceptable
   for the MVP given photos rarely change and devices are few. A future
   iteration could add explicit caching if this becomes a problem.
 - This ADR is a good example of why ADR context should be verified against
-  the real system rather than assumed - the original version of this
+  the real system rather than assumed, the original version of this
   decision shipped without ever being checked against Traccar's actual API
   behavior.

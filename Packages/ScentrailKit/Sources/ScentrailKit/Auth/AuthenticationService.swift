@@ -4,11 +4,11 @@ import Foundation
 /// the active session.
 ///
 /// This is the only `ScentrailKit` type that knows how to construct a
-/// `TraccarKit` client - see ADR-0005. Nothing in the `Scentrail` app target
+/// `TraccarKit` client, see ADR-0005. Nothing in the `Scentrail` app target
 /// needs to `import TraccarKit`.
 public protocol AuthenticationService: Sendable {
     /// The session persisted from a previous launch, if any. Does not
-    /// validate it against the server - that happens lazily on first use.
+    /// validate it against the server, that happens lazily on first use.
     func restoreSession() throws -> StoredSession?
 
     /// Validates the given credentials against the server and, on success,

@@ -9,7 +9,7 @@ final class PetDetailViewModel {
     private(set) var isLoadingTrail = false
     private(set) var trailErrorMessage: String?
     private(set) var lifetimeStats: LifetimeStats?
-    /// Gates the "Share `<Pet>`" action (see ADR-0018) - sharing a device
+    /// Gates the "Share `<Pet>`" action (see ADR-0018), sharing a device
     /// with another Traccar user requires an administrator account
     /// server-side, confirmed against a live server. Defaults to `false`
     /// (hide the option) if admin status can't be determined.

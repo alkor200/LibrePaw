@@ -6,7 +6,7 @@ import Foundation
 /// every JSON request uses HTTP Basic Auth rather than a cookie-based
 /// session, and ADR-0012 for why media requests are the one exception.
 ///
-/// `TraccarKit` knows nothing about "pets" - it only speaks Traccar's own
+/// `TraccarKit` knows nothing about "pets", it only speaks Traccar's own
 /// vocabulary (devices, positions) so that it stays reusable outside of
 /// Scentrail.
 public actor TraccarClient {
@@ -70,7 +70,7 @@ public actor TraccarClient {
         return try await getJSON("/api/geofences", queryItems: queryItems)
     }
 
-    /// Creates a new geofence. Does not link it to any device - follow up
+    /// Creates a new geofence. Does not link it to any device, follow up
     /// with ``linkGeofence(geofenceId:toDeviceId:)``.
     public func createGeofence(name: String, area: String, attributes: [String: Bool]) async throws -> TraccarGeofence {
         try await sendJSON(method: "POST", "/api/geofences", body: NewTraccarGeofence(name: name, area: area, attributes: attributes))
@@ -93,7 +93,7 @@ public actor TraccarClient {
     }
 
     /// Deletes a geofence entirely (e.g. removing one of a pet's several
-    /// home areas - see ADR-0016).
+    /// home areas, see ADR-0016).
     public func deleteGeofence(id: Int) async throws {
         try await sendNoBody(method: "DELETE", "/api/geofences/\(id)")
     }
@@ -106,24 +106,24 @@ public actor TraccarClient {
     }
 
     /// The ids of every user with an explicit permission link to `deviceId`
-    /// (`GET /api/permissions?userId=0&deviceId=<id>` - `0` means "any").
+    /// (`GET /api/permissions?userId=0&deviceId=<id>`, `0` means "any").
     ///
     /// Two separate things confirmed against a live server, both of which
     /// callers must treat this as best-effort for:
-    /// - **Requires an administrator account for *any* query shape** -
+    /// - **Requires an administrator account for *any* query shape**,
     ///   `PermissionsService.checkAdmin()` runs unconditionally before even
     ///   looking at the query parameters, so a non-admin gets a `400` (a raw
     ///   Java stack trace as the body, not a JSON error) even asking only
-    ///   about their own permissions - see ADR-0017.
+    ///   about their own permissions, see ADR-0017.
     /// - **`userId` must be the *first* query parameter in the URL, even as
     ///   admin.** `?deviceId=<id>&userId=0` throws `Table "TC_DEVICE_USER"
-    ///   not found` - a genuine server-side bug on at least one tested
+    ///   not found`, a genuine server-side bug on at least one tested
     ///   Traccar version, not a permissions issue (confirmed: same account,
     ///   same query values, only the parameter *order* changed, and the
     ///   failing shape fails identically for an admin). The working table is
     ///   evidently always addressed as `tc_user_<other>`, so Traccar's own
     ///   query builder only resolves it correctly when `userId` precedes the
-    ///   other id in the URL - see ADR-0017.
+    ///   other id in the URL, see ADR-0017.
     public func fetchPermittedUserIDs(deviceId: Int) async throws -> [Int] {
         let permissions: [TraccarPermission] = try await getJSON("/api/permissions", queryItems: [
             URLQueryItem(name: "userId", value: "0"),
@@ -134,8 +134,8 @@ public actor TraccarClient {
 
     /// The currently authenticated user. Resolved via the cookie-session
     /// dance from ADR-0012 (`GET /api/session` after establishing a
-    /// cookie) - **not** `GET /api/users`, which - confirmed against a live
-    /// server - returns an empty array for a non-admin account regardless
+    /// cookie), **not** `GET /api/users`, which, confirmed against a live
+    /// server, returns an empty array for a non-admin account regardless
     /// of query parameters (even `?userId=<own id>`), rather than returning
     /// "self" as might be assumed; see ADR-0017.
     public func fetchCurrentUser() async throws -> TraccarUser {
@@ -165,7 +165,7 @@ public actor TraccarClient {
     /// server-side (`GET /api/users?keyword=`). Confirmed against a live
     /// server: for an administrator this searches every user on the server;
     /// for anyone else it returns an empty array regardless of the keyword
-    /// (see ``fetchCurrentUser()``'s doc comment and ADR-0017) - so this is
+    /// (see ``fetchCurrentUser()``'s doc comment and ADR-0017), so this is
     /// only useful when the caller is already known to be an admin (see
     /// ADR-0018).
     public func fetchUsers(keyword: String) async throws -> [TraccarUser] {
@@ -195,18 +195,18 @@ public actor TraccarClient {
     /// `deviceImage` attribute at the result.
     ///
     /// Traccar's upload endpoint (`POST /api/devices/{id}/image`) only
-    /// stores the file and hands back its filename - nothing links it to the
+    /// stores the file and hands back its filename, nothing links it to the
     /// device until a follow-up write (confirmed against Traccar's own
     /// `DeviceResource` and the official web client's `DevicePage`, which
-    /// does exactly this two-step dance - see ADR-0011).
+    /// does exactly this two-step dance, see ADR-0011).
     ///
     /// That follow-up merges into the device's *raw* JSON rather than going
     /// through ``TraccarDevice`` (which only models the fields Scentrail
     /// otherwise needs): `PUT /api/devices/{id}` replaces every column on
     /// the server (confirmed against Traccar's `BaseObjectResource`, which
     /// deserializes the body and writes it with `Columns.Exclude("id")`), so
-    /// omitting a field Traccar stores - `phone`, `model`, `contact`,
-    /// `groupId`, `calendarId`, `expirationTime` - would silently blank it
+    /// omitting a field Traccar stores, `phone`, `model`, `contact`,
+    /// `groupId`, `calendarId`, `expirationTime`, would silently blank it
     /// out. Round-tripping the untouched raw object avoids that regardless
     /// of which fields exist on a given server version.
     public func updateDeviceImage(deviceId: Int, imageData: Data, contentType: String) async throws {
@@ -269,11 +269,11 @@ public actor TraccarClient {
 
     /// Fetches raw bytes (e.g. a device image under `/api/media/...`) from
     /// this server. `url` must be on the same host as this client's
-    /// `serverURL` - credentials are never sent elsewhere.
+    /// `serverURL`, credentials are never sent elsewhere.
     ///
     /// Unlike every other endpoint, Traccar's media files ignore HTTP Basic
     /// Auth entirely and require a cookie-based session (verified against a
-    /// live server - see ADR-0012). This method establishes one lazily, on
+    /// live server, see ADR-0012). This method establishes one lazily, on
     /// first use, and transparently re-establishes it once if it has expired.
     public func fetchData(from url: URL) async throws -> Data {
         guard url.host == credentials.serverURL.host, url.scheme == credentials.serverURL.scheme else {
@@ -283,7 +283,7 @@ public actor TraccarClient {
         try await ensureCookieSession()
 
         // Traccar reuses the same filename ("device.jpg") on every photo
-        // upload, so the URL never changes when a photo is replaced - a
+        // upload, so the URL never changes when a photo is replaced, a
         // cached response here would keep serving the old image bytes
         // indefinitely.
         var request = URLRequest(url: url)
@@ -302,7 +302,7 @@ public actor TraccarClient {
     /// A continuous stream of live device/position updates from Traccar's
     /// WebSocket feed (`/api/socket`). Like media requests, this endpoint
     /// ignores Basic Auth and needs a cookie session (verified against a live
-    /// server - see ADR-0012 and ADR-0013).
+    /// server, see ADR-0012 and ADR-0013).
     ///
     /// Transient connection drops are retried automatically after
     /// `reconnectDelay`, so this stream only finishes (with an error) when
@@ -352,7 +352,7 @@ public actor TraccarClient {
         return urlSession.webSocketTask(with: url)
     }
 
-    /// Internal (not `private`) so it can be unit tested directly - a real
+    /// Internal (not `private`) so it can be unit tested directly, a real
     /// `URLSessionWebSocketTask` can't be driven through `MockURLProtocol`,
     /// so this is the one piece of ``liveUpdates(reconnectDelay:)`` that gets
     /// dedicated test coverage; the rest was verified against a live server.
@@ -369,7 +369,7 @@ public actor TraccarClient {
         return try decoder.decode(TraccarSocketUpdate.self, from: data)
     }
 
-    // MARK: - Cookie session (media and WebSocket - see ADR-0012)
+    // MARK:, Cookie session (media and WebSocket, see ADR-0012)
 
     private func ensureCookieSession() async throws {
         guard !hasCookieSession else { return }
@@ -398,7 +398,7 @@ public actor TraccarClient {
         hasCookieSession = true
     }
 
-    // MARK: - Transport
+    // MARK:, Transport
 
     private func getJSON<T: Decodable>(_ path: String, queryItems: [URLQueryItem] = []) async throws -> T {
         guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {

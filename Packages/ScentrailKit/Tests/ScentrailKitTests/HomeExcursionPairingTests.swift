@@ -11,7 +11,7 @@ struct HomeExcursionPairingTests {
 
     @Test("A pet leaving one home and returning via another pairs as a single excursion")
     func exitAndEnterAtDifferentHomesStillPair() {
-        // Home 1 ("Home") exit, Home 2 ("Cabin") enter - a trip between the
+        // Home 1 ("Home") exit, Home 2 ("Cabin") enter, a trip between the
         // two, not a round trip to either one (see ADR-0016).
         let exit = event(id: 1, type: TraccarEvent.EventType.geofenceExit, secondsFromNow: -3_600, geofenceId: 1)
         let enter = event(id: 2, type: TraccarEvent.EventType.geofenceEnter, secondsFromNow: -1_800, geofenceId: 2)
@@ -26,7 +26,7 @@ struct HomeExcursionPairingTests {
     @Test("Exits and enters across several homes are merged purely by time, not grouped per geofence")
     func mergesAcrossHomesChronologically() {
         // Leaves Home 1, passes near Home 2 without stopping long enough to
-        // register, then returns to Home 1 - one excursion, using only the
+        // register, then returns to Home 1, one excursion, using only the
         // first exit and the next enter after it.
         let exitHome1 = event(id: 1, type: TraccarEvent.EventType.geofenceExit, secondsFromNow: -7_200, geofenceId: 1)
         let enterHome1 = event(id: 2, type: TraccarEvent.EventType.geofenceEnter, secondsFromNow: -3_600, geofenceId: 1)

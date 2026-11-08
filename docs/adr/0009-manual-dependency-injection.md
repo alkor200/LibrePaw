@@ -33,7 +33,7 @@ struct ScentrailApp: App {
 ```
 
 Tests construct view models directly with fake/mock implementations of the
-`ScentrailKit` protocols - no container, no framework, no reflection-based
+`ScentrailKit` protocols, no container, no framework, no reflection-based
 resolution.
 
 ## Consequences

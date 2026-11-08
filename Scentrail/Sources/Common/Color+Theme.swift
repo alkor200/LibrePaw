@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Scentrail's brand color tokens, backed by light/dark asset-catalog
-/// colorsets of the same name (`Assets.xcassets`) - see each case's doc
+/// colorsets of the same name (`Assets.xcassets`), see each case's doc
 /// comment for the exact hex pair. `AccentColor` itself is set to
 /// `appPrimary`'s values, so every `.tint`-driven control (buttons, the
 /// tab bar, `NavigationLink` chevrons, …) already follows this palette
@@ -9,8 +9,8 @@ import SwiftUI
 ///
 /// Declared on `ShapeStyle where Self == Color` rather than directly on
 /// `Color`: that's what makes the leading-dot shorthand
-/// (`.foregroundStyle(.appText)`, `.background(.appSurface, in: ...)`) resolve
-/// - a plain `extension Color { static let … }` only supports the fully
+/// (`.foregroundStyle(.appText)`, `.background(.appSurface, in: ...)`) resolve,
+/// a plain `extension Color { static let … }` only supports the fully
 /// qualified `Color.appText` form.
 extension ShapeStyle where Self == Color {
     /// Page background. `#F5F8F4` light / `#171D1A` dark.

@@ -21,7 +21,7 @@ device/position updates, as an alternative to polling `GET /api/positions`.
 ## Decision
 
 - **Authentication: HTTP Basic Auth**, sent on every request. The client is
-  fully stateless between requests - there is no session to expire, refresh,
+  fully stateless between requests, there is no session to expire, refresh,
   or invalidate on the client side beyond discarding the stored credential.
 - ~~**Live updates: REST polling**, not the WebSocket feed. `PetListViewModel`
   and `PetMapViewModel` refresh devices/positions on a timer (default 20s)
@@ -34,7 +34,7 @@ device/position updates, as an alternative to polling `GET /api/positions`.
 To validate credentials at login time, we call `GET /api/devices` rather than
 `GET /api/session`. Traccar's `/api/session` `GET` endpoint only checks for an
 existing *cookie-based* session and returns 404 unconditionally when there is
-none - it ignores any `Authorization` header entirely, so it cannot be used
+none, it ignores any `Authorization` header entirely, so it cannot be used
 to validate Basic Auth credentials (confirmed against a live Traccar server;
 `GET /api/devices` correctly returns 401 for bad credentials and 200 for
 good ones). `/api/devices` is also the first call the app needs after login
@@ -45,7 +45,7 @@ regardless, so no extra round-trip is added.
 - Significantly simpler client: no cookie storage, no 401-then-relogin
   retry logic, no session-expiry edge cases.
 - The password (or a user-generated Traccar API token, if the server
-  supports it) must be kept available to attach to every request - it is
+  supports it) must be kept available to attach to every request, it is
   stored in the Keychain (see [0007](0007-keychain-credential-storage.md))
   and held in memory by the authenticated `TraccarClient` instance.
 - Every request requires HTTPS to avoid sending Basic Auth credentials in
@@ -58,6 +58,6 @@ regardless, so no extra round-trip is added.
   (e.g. via `URLSessionWebSocketTask` in `TraccarKit`) behind the same
   repository protocol in `ScentrailKit`, without changing any view model.
 - **Update:** [ADR-0012](0012-cookie-session-for-media-requests.md) adds one
-  narrow exception to "Basic Auth only" - Traccar's device media endpoint
+  narrow exception to "Basic Auth only", Traccar's device media endpoint
   ignores Basic Auth and requires a cookie session instead. Every other
   endpoint is unaffected.

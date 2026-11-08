@@ -2,7 +2,7 @@
 
 Scentrail is an open source iOS app for keeping an eye on your pets' GPS
 trackers. It is a native SwiftUI client for [Traccar](https://www.traccar.org/),
-a self-hostable, open source GPS tracking platform - Scentrail does not run
+a self-hostable, open source GPS tracking platform. Scentrail does not run
 its own backend, and is not affiliated with the Traccar project.
 
 > **Status:** early MVP. See [Roadmap](#roadmap) for what's deliberately out
@@ -24,7 +24,7 @@ its own backend, and is not affiliated with the Traccar project.
   home and end at another (e.g. "Home → Cabin") if that's where the pet's
   positions actually show it going.
 - **Share a pet** with another Traccar account by email, right from the
-  app (admin accounts only - see
+  app (admin accounts only, see
   [Sharing a pet](#sharing-a-pet-and-multiple-household-accounts) below).
 - Live position updates over Traccar's WebSocket feed, and a switchable
   standard/satellite/hybrid map layer.
@@ -49,8 +49,8 @@ open Scentrail.xcodeproj
 
 To run on a real device (not just the simulator), you'll need to fill in
 `DEVELOPMENT_TEAM` in `Local.xcconfig` with your own Apple Development team
-id - `security find-identity -v -p codesigning` prints it, or find it under
-Xcode → Settings → Accounts. This file is gitignored and, unlike an
+id. Run `security find-identity -v -p codesigning` to find it, or look it up
+under Xcode → Settings → Accounts. This file is gitignored and, unlike an
 environment variable, survives every `xcodegen generate` (see ADR-0015).
 
 Build and run the `Scentrail` scheme on an iOS 17+ simulator or device, then
@@ -63,27 +63,27 @@ re-run `xcodegen generate` before building.
 
 Use Traccar's own device image upload: open the device in Traccar's web UI →
 **Edit Device** → upload an image. Scentrail reads it back via Traccar's
-`deviceImage` attribute and `/api/media/...` endpoint - no Scentrail-specific
+`deviceImage` attribute and `/api/media/...` endpoint, no Scentrail-specific
 setup needed. Devices without a photo show a paw icon instead.
 
 ### Setting a pet's home locations
 
 Open a pet's detail screen → **`<Pet>`'s Homes** → **Add Home**, give it a
 name, stand (or drag the map to) where you want it to be, pick a radius,
-and save - Scentrail creates a Traccar geofence linked to that pet's
+and save. Scentrail creates a Traccar geofence linked to that pet's
 device, visible in Traccar's own web UI too. Add as many as you like (e.g.
 "Home" and "Cabin"); swipe to delete one, or tap it to move/rename it.
 Excursions only start appearing once at least one home is set.
 
 Any account can do this, but **who else can see the result depends on
-whether you're a Traccar administrator** - Traccar has no way for a
+whether you're a Traccar administrator**: Traccar has no way for a
 non-admin to make a geofence visible to anyone besides themselves (see
 [ADR-0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md)).
 Scentrail shows which case applies right on the Homes screen:
 
 - **Administrator**: a home you add is visible to everyone with access to
   that pet, and so are the excursions it generates.
-- **Non-admin**: a home you add - and the excursions it generates - is
+- **Non-admin**: a home you add, and the excursions it generates, is
   only ever visible to you. If a home should apply to the whole household,
   have the admin account add it instead
   (see [ADR-0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md)).
@@ -92,7 +92,7 @@ Scentrail shows which case applies right on the Homes screen:
 
 If more than one person in your household uses Scentrail against the same
 Traccar server, the server's **admin account** should be the one adding
-homes and sharing pets - from a pet's detail screen, **Share `<Pet>`**,
+homes and sharing pets. From a pet's detail screen, tap **Share `<Pet>`**,
 enter the other person's Traccar account email, and they'll see the pet
 (and any homes already set up for it) in their own copy of Scentrail
 immediately. This is also admin-only, and for the same reason as above:
@@ -103,7 +103,7 @@ Traccar requires admin rights to grant another account access to anything
 
 Scentrail uses a small set of brand color tokens, each a light/dark pair
 in `Assets.xcassets` and exposed in code via `Color.appX` (see
-`Scentrail/Sources/Common/Color+Theme.swift`) - `AccentColor` itself
+`Scentrail/Sources/Common/Color+Theme.swift`). `AccentColor` itself
 matches `Primary`, so most buttons, the tab bar tint, and similar
 `.tint`-driven controls follow this palette automatically.
 
@@ -148,7 +148,7 @@ ScentrailKit (local package)   Domain models (Pet, PetPosition), repository
 TraccarKit (local package)     A standalone Traccar REST + WebSocket client
 ```
 
-- **`TraccarKit`** knows nothing about "pets" - it is a general-purpose,
+- **`TraccarKit`** knows nothing about "pets", it is a general-purpose,
   reusable Swift client for Traccar's REST API (devices, positions) and its
   WebSocket live feed. It could be extracted into its own repository
   without changes.
@@ -158,7 +158,7 @@ TraccarKit (local package)     A standalone Traccar REST + WebSocket client
 - **`Scentrail`** (the app target) contains only SwiftUI views and view
   models, grouped by feature (`Authentication`, `PetList`, `Map`,
   `PetDetail`, `Find`, `Home`, `Excursions`, `Settings`). It depends on
-  `ScentrailKit` only - never
+  `ScentrailKit` only, never
   directly on `TraccarKit`. It's also the only place that touches
   `CoreLocation` (for the user's own position/heading); the distance and
   bearing math itself lives in `ScentrailKit` as plain functions on
@@ -196,7 +196,7 @@ Deliberately out of scope for the current MVP (see the ADRs above for why):
 - In-app photo upload (today, use Traccar's own "Edit Device" image upload).
 - Breed info, vet records, and other pet-care data unrelated to tracking.
 
-Contributions toward any of these are welcome - please open an issue to
+Contributions toward any of these are welcome, please open an issue to
 discuss the approach first, especially if it touches an existing ADR.
 
 ## Contributing

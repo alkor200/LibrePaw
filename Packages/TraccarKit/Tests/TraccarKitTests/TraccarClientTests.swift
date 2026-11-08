@@ -19,7 +19,7 @@ final class LockedArray<Element>: @unchecked Sendable {
 
 private extension URLRequest {
     /// `URLProtocol` subclasses often see `httpBody` as `nil` even when the
-    /// original request set it - `URLSession` moves it into a stream before
+    /// original request set it, `URLSession` moves it into a stream before
     /// handing the request off. This reads it back from whichever is present.
     var bodyData: Data {
         if let httpBody {
@@ -44,7 +44,7 @@ private extension URLRequest {
 }
 
 // Serialized because all tests share `MockURLProtocol.requestHandler`, a single
-// static slot - running them concurrently would race on which handler is active.
+// static slot, running them concurrently would race on which handler is active.
 @Suite("TraccarClient", .serialized)
 struct TraccarClientTests {
     private func makeClient() -> TraccarClient {
@@ -319,7 +319,7 @@ struct TraccarClientTests {
             // Order matters here, not just presence: confirmed against a
             // live server that `userId` must come *before* `deviceId` in the
             // URL or Traccar's query builder resolves the wrong (nonexistent)
-            // table - see the doc comment on fetchPermittedUserIDs.
+            // table, see the doc comment on fetchPermittedUserIDs.
             #expect(queryNames == ["userId", "deviceId"])
             let queryValues = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value) })
             #expect(queryValues["deviceId"] == "3")

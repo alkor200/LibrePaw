@@ -4,8 +4,8 @@ import UIKit
 
 /// A minimal in-app photo editor: pick a photo from the library, pinch/drag
 /// to position it inside a circular crop, save. Renders exactly what's
-/// visible inside the circle to a fixed-size JPEG and hands it to `onSave`
-/// - callers are responsible for actually uploading it.
+/// visible inside the circle to a fixed-size JPEG and hands it to `onSave`,
+/// callers are responsible for actually uploading it.
 struct PhotoEditorView: View {
     let petName: String
     let onSave: (Data) async throws -> Void
@@ -130,7 +130,7 @@ struct PhotoEditorView: View {
         }
     }
 
-    /// Keeps the crop circle filled with image content - without this, a
+    /// Keeps the crop circle filled with image content, without this, a
     /// large pan or a zoom-out-then-pan could reveal blank space.
     private func clampedOffset(_ offset: CGSize, scale: CGFloat, imageSize: CGSize) -> CGSize {
         let fillScale = max(cropDiameter / imageSize.width, cropDiameter / imageSize.height)
@@ -161,7 +161,7 @@ struct PhotoEditorView: View {
         defer { isSaving = false }
 
         guard let jpegData = renderCircularCrop(image: selectedImage) else {
-            errorMessage = "Couldn't process that photo - try a different one."
+            errorMessage = "Couldn't process that photo, try a different one."
             return
         }
 
