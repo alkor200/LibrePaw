@@ -13,7 +13,7 @@ This ADR originally assumed Traccar had no photo concept and specified a
 manual `photo` attribute holding a direct image URL. That assumption was
 wrong and was never verified against Traccar's actual behavior, a bug
 report from real-world testing (a photo set in Traccar didn't show up in
-Scentrail) prompted inspecting the
+LibrePaw) prompted inspecting the
 [traccar-web](https://github.com/traccar/traccar-web) client source
 directly, which showed:
 
@@ -48,10 +48,10 @@ directly, which showed:
 
 ## Consequences
 
-- No new backend/storage requirement on Scentrail's side, the upload flow
-  is entirely Traccar's existing feature; Scentrail only *displays* it.
+- No new backend/storage requirement on LibrePaw's side, the upload flow
+  is entirely Traccar's existing feature; LibrePaw only *displays* it.
 - The photo-loading path now goes through the same layered architecture as
-  everything else (`TraccarKit` → `ScentrailKit` → app), rather than being a
+  everything else (`TraccarKit` → `LibrePawKit` → app), rather than being a
   special case that bypasses `PetRepository`, consistent with ADR-0005.
 - `UIImage`-based loading has no persistent cache beyond what
   `URLSession`'s default cache gives `TraccarClient.fetchData`; acceptable

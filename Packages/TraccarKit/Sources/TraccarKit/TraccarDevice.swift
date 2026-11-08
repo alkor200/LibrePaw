@@ -3,8 +3,8 @@ import Foundation
 /// A device as returned by Traccar's `/api/devices` endpoint.
 ///
 /// In Traccar, a "device" is anything reporting GPS positions (a collar, an
-/// OBD tracker, a phone running a tracking client). Scentrail maps this to
-/// its own `Pet` domain model in `ScentrailKit`.
+/// OBD tracker, a phone running a tracking client). LibrePaw maps this to
+/// its own `Pet` domain model in `LibrePawKit`.
 public struct TraccarDevice: Decodable, Sendable, Identifiable, Equatable {
     public enum Status: String, Decodable, Sendable {
         case online
@@ -46,7 +46,7 @@ public struct TraccarDevice: Decodable, Sendable, Identifiable, Equatable {
 }
 
 /// Links a user to a device via `POST /api/permissions`, so that user can
-/// see the device (and, from there, whatever else Scentrail shares with
+/// see the device (and, from there, whatever else LibrePaw shares with
 /// them for it, see ADR-0018). Confirmed against a live server:
 /// server-side this requires the caller to be a Traccar administrator,
 /// the same way granting a *geofence* to another user does (ADR-0017).

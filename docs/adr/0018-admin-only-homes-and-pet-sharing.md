@@ -33,15 +33,15 @@ already had ordinary device-level access to the same pet:
   or device, `POST /api/permissions` for an object you don't already
   manage returns `java.lang.SecurityException: User access denied`,
   regardless of which side of the link is "self."
-- This is deliberate Traccar design, not a gap Scentrail can route around:
+- This is deliberate Traccar design, not a gap LibrePaw can route around:
   official docs describe sharing an object as an explicit admin action
   ("As an admin you can share any objects including geofences from
   Settings > Users menu"), and there is no server config setting that
   changes this.
 
-Scentrail's target user (ADR-0002) already always has an admin account -
+LibrePaw's target user (ADR-0002) already always has an admin account -
 they're the one who stood up their own Traccar server. Family members using
-Scentrail against that same server are typically non-admin accounts the
+LibrePaw against that same server are typically non-admin accounts the
 admin shared devices with.
 
 ## Decision
@@ -76,12 +76,12 @@ admin shared devices with.
 - A non-admin has no in-app path to homes at all now, including editing one,
   a stricter cut than ADR-0017 originally drew (which still allowed
   editing). Consistent with the household model from the Context above:
-  Scentrail's non-admin accounts are there to *see* what the admin set up,
+  LibrePaw's non-admin accounts are there to *see* what the admin set up,
   not manage it.
   **(Reversed by ADR-0019, see this ADR's Status.)**
 - `isCurrentUserAdministrator()` and `loadAdministratorStatus()` are called
   once per screen visit (`HomesView`, `PetDetailView`), not cached across
-  the app, consistent with Scentrail's "thin client" scope (ADR-0002) and
+  the app, consistent with LibrePaw's "thin client" scope (ADR-0002) and
   the precedent set by `lifetimeExcursionStats` rather than introducing new
   session-wide state.
 - `sharePet` also walks the pet's existing homes and grants the new user

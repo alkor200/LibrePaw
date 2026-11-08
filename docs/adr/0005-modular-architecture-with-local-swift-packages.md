@@ -22,38 +22,38 @@ that is premature for the current app size and would slow down iteration.
 
 ## Decision
 
-Two local Swift packages, consumed by the `Scentrail` app target:
+Two local Swift packages, consumed by the `LibrePaw` app target:
 
-1. **`TraccarKit`**, a standalone, Scentrail-agnostic Swift client for the
+1. **`TraccarKit`**, a standalone, LibrePaw-agnostic Swift client for the
    Traccar REST API. Knows about Traccar's wire format (devices, positions,
    sessions) and HTTP authentication. Has zero dependency on SwiftUI, zero
    knowledge of "pets". Could be extracted into its own repository later
    with no code changes.
 
-2. **`ScentrailKit`**, the app's domain and data layer. Defines the app's
+2. **`LibrePawKit`**, the app's domain and data layer. Defines the app's
    own vocabulary (`Pet`, `PetPosition`, `PetStatus`), repository protocols,
    the authentication/session service, and Keychain-backed credential
    storage. Depends on `TraccarKit` to implement those repositories, but
    exposes only its own domain types, `TraccarKit`'s DTOs never leak past
    this layer.
 
-The `Scentrail` app target contains only SwiftUI views and view models
+The `LibrePaw` app target contains only SwiftUI views and view models
 (MVVM), grouped by feature folder (`Features/Authentication`,
 `Features/PetList`, `Features/Map`, `Features/PetDetail`,
-`Features/Settings`). View models depend on `ScentrailKit` protocols, never
+`Features/Settings`). View models depend on `LibrePawKit` protocols, never
 on `TraccarKit` directly.
 
 Dependency direction:
 
 ```
-Scentrail (app, SwiftUI + view models)
-   -> ScentrailKit (domain models, repository protocols, use cases)
+LibrePaw (app, SwiftUI + view models)
+   -> LibrePawKit (domain models, repository protocols, use cases)
         -> TraccarKit (Traccar REST client, DTOs)
 ```
 
 ## Consequences
 
-- Business logic in `ScentrailKit` is testable with plain `swift test`, no
+- Business logic in `LibrePawKit` is testable with plain `swift test`, no
   simulator required.
 - `TraccarKit` has no reason to ever import SwiftUI/UIKit/Combine, if it
   does, that is a sign of a layering mistake.

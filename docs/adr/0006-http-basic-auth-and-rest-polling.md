@@ -56,7 +56,7 @@ regardless, so no extra round-trip is added.
   periodic battery/network while a relevant screen is open. This is an
   explicit MVP trade-off; a future ADR can introduce the WebSocket feed
   (e.g. via `URLSessionWebSocketTask` in `TraccarKit`) behind the same
-  repository protocol in `ScentrailKit`, without changing any view model.
+  repository protocol in `LibrePawKit`, without changing any view model.
 - **Update:** [ADR-0012](0012-cookie-session-for-media-requests.md) adds one
   narrow exception to "Basic Auth only", Traccar's device media endpoint
   ignores Basic Auth and requires a cookie session instead. Every other

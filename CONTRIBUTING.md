@@ -1,6 +1,6 @@
-# Contributing to Scentrail
+# Contributing to LibrePaw
 
-Thanks for your interest in Scentrail! This project is an MVP and welcomes
+Thanks for your interest in LibrePaw! This project is an MVP and welcomes
 contributions, big or small.
 
 ## Before you start
@@ -22,9 +22,9 @@ See [README.md](README.md#getting-started).
 - All code and comments are in English.
 - SwiftUI only, no UIKit view controllers (see
   [ADR-0003](docs/adr/0003-ios-platform-and-ui-framework.md)).
-- Follow the existing layering: `TraccarKit` → `ScentrailKit` → `Scentrail`
+- Follow the existing layering: `TraccarKit` → `LibrePawKit` → `LibrePaw`
   app target. Don't let `TraccarKit` types (its DTOs, `TraccarClient`) leak
-  past `ScentrailKit` (see [ADR-0005](docs/adr/0005-modular-architecture-with-local-swift-packages.md)).
+  past `LibrePawKit` (see [ADR-0005](docs/adr/0005-modular-architecture-with-local-swift-packages.md)).
 - Prefer Apple's native UI components and interaction patterns (`List`,
   `Form`, `NavigationStack`, system colors/SF Symbols) over custom-built
   equivalents.
@@ -33,10 +33,10 @@ See [README.md](README.md#getting-started).
 
 ## Tests
 
-- `TraccarKit` and `ScentrailKit` changes should come with `swift test`
+- `TraccarKit` and `LibrePawKit` changes should come with `swift test`
   coverage in the corresponding package.
-- View model changes should come with a test in `ScentrailTests` using the
-  fakes in `ScentrailTests/Fakes.swift` (or new fakes alongside them).
+- View model changes should come with a test in `LibrePawTests` using the
+  fakes in `LibrePawTests/Fakes.swift` (or new fakes alongside them).
 
 ## Pull requests
 

@@ -18,14 +18,14 @@ Checked before building anything: Traccar's geofence↔device link
 (`POST /api/permissions`) is already many-to-many, a device can have any
 number of geofences linked to it, each firing its own independent
 `geofenceEnter`/`geofenceExit` events. Nothing about Traccar itself assumes
-"one home per device"; that assumption was only ever in Scentrail's own
+"one home per device"; that assumption was only ever in LibrePaw's own
 code.
 
 ## Decision
 
 - `HomeGeofence` gains `id` and `name`, both already available for free
   from Traccar's own geofence object (`TraccarGeofence.id`/`.name`), so this
-  is not new Scentrail-side storage, just exposing fields that were already
+  is not new LibrePaw-side storage, just exposing fields that were already
   being fetched and previously discarded.
 - `PetRepository.homeGeofence(forPetID:)` → `homeGeofences(forPetID:)`
   returning `[HomeGeofence]`. The old `setHomeGeofence` (create-or-move, one
@@ -93,5 +93,5 @@ code.
   one: `ExcursionsView`'s existing empty state already covers "no home
   set yet," now equally correct for "no home set *anymore*."
 - No migration needed for existing single-home setups: the existing
-  `Home (Scentrail)`-named geofence is just one more row in the
+  `Home (LibrePaw)`-named geofence is just one more row in the
   now-plural list the first time `homeGeofences` is called.

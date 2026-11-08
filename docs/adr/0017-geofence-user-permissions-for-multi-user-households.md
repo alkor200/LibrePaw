@@ -23,7 +23,7 @@ use against a live server with more than one Traccar account:
 - Reloading `HomesView` sometimes showed "Couldn't Load Homes" with a
   cancellation-flavored message, even though the list had just loaded fine.
 
-The first turned out to be a real gap in ADR-0014/ADR-0016: Scentrail only
+The first turned out to be a real gap in ADR-0014/ADR-0016: LibrePaw only
 ever linked a new geofence to the pet's **device** (`POST /api/permissions
 {deviceId, geofenceId}`), never to a **user**. Tested directly against a
 live server (not guessed from docs) with a dedicated non-admin test
@@ -179,7 +179,7 @@ admin, with no manual permission grant in between.
   a home (even a no-op save) the repair path for one that predates this
   fix or whose sync partially failed.
 - The admin-only ceiling on discovering/granting other users' access is a
-  real Traccar limitation, not a Scentrail shortcut, there is currently no
+  real Traccar limitation, not a LibrePaw shortcut, there is currently no
   way to fully close it from a non-admin account. Worth revisiting only if
   Traccar adds a less-privileged "who else can see this device" endpoint.
 - This ADR's own first draft is itself an example of the exact mistake

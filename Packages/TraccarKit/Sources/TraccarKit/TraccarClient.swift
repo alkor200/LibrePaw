@@ -8,7 +8,7 @@ import Foundation
 ///
 /// `TraccarKit` knows nothing about "pets", it only speaks Traccar's own
 /// vocabulary (devices, positions) so that it stays reusable outside of
-/// Scentrail.
+/// LibrePaw.
 public actor TraccarClient {
     private let credentials: TraccarCredentials
     private let urlSession: URLSession
@@ -209,7 +209,7 @@ public actor TraccarClient {
     /// does exactly this two-step dance, see ADR-0011).
     ///
     /// That follow-up merges into the device's *raw* JSON rather than going
-    /// through ``TraccarDevice`` (which only models the fields Scentrail
+    /// through ``TraccarDevice`` (which only models the fields LibrePaw
     /// otherwise needs): `PUT /api/devices/{id}` replaces every column on
     /// the server (confirmed against Traccar's `BaseObjectResource`, which
     /// deserializes the body and writes it with `Columns.Exclude("id")`), so

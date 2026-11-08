@@ -8,10 +8,10 @@ Accepted, supersedes [ADR-0021](0021-client-side-home-ownership-for-non-admin-ed
 
 Asked to stop layering an app-level restriction on top of Traccar's own
 permissions: whatever Traccar's actual permission model allows an account
-to do, Scentrail should allow too, and whatever it doesn't allow,
-Scentrail shouldn't offer in the first place, rather than let the user
+to do, LibrePaw should allow too, and whatever it doesn't allow,
+LibrePaw shouldn't offer in the first place, rather than let the user
 find out from a server error. ADR-0021's client-side home ownership
-(`scentrailOwnerId`, restricting edit/delete to whoever created a given
+(`librepawOwnerId`, restricting edit/delete to whoever created a given
 home) was exactly the kind of extra restriction this asks to remove,
 Traccar itself never drew that distinction.
 
@@ -36,7 +36,7 @@ on the non-admin account via the admin one and re-testing):
 - `disableReports`: blocks `GET /api/reports/events`, the only endpoint
   excursions and the trail are built from (`fetchExcursions` pairs its
   enter/exit events, see ADR-0014/0016), with `SecurityException:
-  Operation restricted`. Nothing else Scentrail calls uses `/api/reports`.
+  Operation restricted`. Nothing else LibrePaw calls uses `/api/reports`.
 - Confirmed separately, without any ownership check at all: a non-admin
   with ordinary view access to a geofence or device it didn't create can
   edit or delete it outright (the same finding ADR-0021 made, now acted
@@ -44,7 +44,7 @@ on the non-admin account via the admin one and re-testing):
 
 ## Decision
 
-- `AccountPermissions` (new, `ScentrailKit/Domain`), four booleans
+- `AccountPermissions` (new, `LibrePawKit/Domain`), four booleans
   computed from `TraccarUser`'s now-widened set of fields
   (`readonly`, `deviceReadonly`, `disableReports`, alongside the existing
   `administrator`): `isAdministrator`, `canManageHomes`
@@ -55,7 +55,7 @@ on the non-admin account via the admin one and re-testing):
   by a single `currentUserPermissions() async throws -> AccountPermissions`,
   one `fetchCurrentUser()` call instead of two.
 - `HomeGeofence.ownerUserID` removed entirely, along with the
-  `scentrailOwnerId` attribute Scentrail used to stamp on every home it
+  `librepawOwnerId` attribute LibrePaw used to stamp on every home it
   created (ADR-0021's mechanism). `addHomeGeofence`/`updateHomeGeofence`
   no longer read or write it.
 - `HomesViewModel.canManage(_ home:)` (per-home, ownership-based) replaced
@@ -89,12 +89,12 @@ on the non-admin account via the admin one and re-testing):
   ownership restriction ADR-0021 added is gone, anyone who can see a home
   can manage it, same as Traccar's own web UI would let them.
 - The four `AccountPermissions` flags are a direct read of Traccar's own
-  settings, nothing in Scentrail adds a stricter rule on top (aside from
+  settings, nothing in LibrePaw adds a stricter rule on top (aside from
   sharing staying admin-only, which is Traccar's own restriction, not
-  Scentrail's). Someone who wants a Scentrail user restricted to viewing
+  LibrePaw's). Someone who wants a LibrePaw user restricted to viewing
   only sets `readonly` (and/or `deviceReadonly`, `disableReports`) on
-  that Traccar account directly, there's no separate Scentrail-side
+  that Traccar account directly, there's no separate LibrePaw-side
   setting to keep in sync with it.
-- `scentrailOwnerId` attributes already written on existing geofences by
+- `librepawOwnerId` attributes already written on existing geofences by
   a pre-ADR-0023 build are simply never read again, harmless leftover
   data, no migration needed.

@@ -6,7 +6,7 @@ Superseded by [ADR-0010](0010-device-location-for-distance-and-find-pet.md)
 
 ## Context
 
-Scentrail displays the location of *pets*, which comes entirely from GPS
+LibrePaw displays the location of *pets*, which comes entirely from GPS
 tracker hardware reporting into Traccar. It is tempting to also show "my
 current location" on the map for context (e.g. "how far is my dog from me"),
 which would require `CoreLocation` and the

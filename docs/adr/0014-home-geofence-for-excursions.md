@@ -78,9 +78,9 @@ for that time window.
 
 ## Consequences
 
-- No new Scentrail-side storage: "home" and the excursion history both live
+- No new LibrePaw-side storage: "home" and the excursion history both live
   entirely in Traccar, as a geofence and its events, consistent with
-  Scentrail's "thin client" scope (ADR-0002).
+  LibrePaw's "thin client" scope (ADR-0002).
 - One owner-driven setup step (`Set Home`) is required before any
   excursions appear; `ExcursionsView` explains this in its empty state
   rather than failing silently.

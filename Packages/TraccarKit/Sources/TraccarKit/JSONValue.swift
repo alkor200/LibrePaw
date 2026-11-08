@@ -41,7 +41,7 @@ extension JSONValue: Decodable {
         } else if let value = try? container.decode(String.self) {
             self = .string(value)
         } else {
-            // Nested objects/arrays are not needed by Scentrail today; treat as null
+            // Nested objects/arrays are not needed by LibrePaw today; treat as null
             // rather than failing the whole decode of the containing device/position.
             self = .null
         }

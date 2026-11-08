@@ -1,6 +1,6 @@
 import Foundation
 
-/// A user as returned by `/api/users`, only the fields Scentrail needs to
+/// A user as returned by `/api/users`, only the fields LibrePaw needs to
 /// identify "the currently authenticated user" and what Traccar itself
 /// lets that account do (see ADR-0017, ADR-0018, ADR-0023).
 public struct TraccarUser: Decodable, Sendable, Equatable {

@@ -14,7 +14,7 @@ conflicts in. This is a well-known pain point for open source iOS projects.
 
 The Xcode project is **generated, not committed**. [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 reads a single declarative `project.yml` at the repository root and produces
-`Scentrail.xcodeproj`. The generated project is gitignored.
+`LibrePaw.xcodeproj`. The generated project is gitignored.
 
 Contributors run:
 

@@ -35,7 +35,7 @@ automatically after `reconnectDelay` (default 5s), the stream only
 finishes on an unrecoverable error or when the caller stops consuming it.
 
 `PetRepository.livePetUpdates() -> AsyncThrowingStream<[Pet], Error>` is the
-`ScentrailKit`-level API consumed by the app. `TraccarPetRepository`
+`LibrePawKit`-level API consumed by the app. `TraccarPetRepository`
 implements it as a hybrid:
 
 1. One initial snapshot via the existing REST calls (`fetchDevices` +

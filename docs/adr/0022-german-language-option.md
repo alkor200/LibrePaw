@@ -10,7 +10,7 @@ Asked for a German language option, with an in-app switch rather than
 relying solely on the device's system language, but defaulting to
 whatever that system language already is rather than forcing a choice.
 
-Scentrail had no localization infrastructure at all: every string was a
+LibrePaw had no localization infrastructure at all: every string was a
 hardcoded English literal, and `Info.plist` declared no
 `CFBundleLocalizations`.
 
@@ -31,7 +31,7 @@ making an in-app override actually change what's on screen:
 
 ## Decision
 
-- `Scentrail/Resources/Localizable.xcstrings`, a hand-authored String
+- `LibrePaw/Resources/Localizable.xcstrings`, a hand-authored String
   Catalog covering every user-facing string in the app, English as the
   source language, German as the one translation.
 - `AppLanguage` (`.system`/`.english`/`.german`), persisted via

@@ -11,7 +11,7 @@ jobs:
     runs-on: macos-15
     strategy:
       matrix:
-        package: [TraccarKit, ScentrailKit]
+        package: [TraccarKit, LibrePawKit]
     steps:
       - uses: actions/checkout@v4
       - name: swift test (${{ matrix.package }})
@@ -33,7 +33,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild test \
-            -project Scentrail.xcodeproj \
-            -scheme Scentrail \
+            -project LibrePaw.xcodeproj \
+            -scheme LibrePaw \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             | xcpretty

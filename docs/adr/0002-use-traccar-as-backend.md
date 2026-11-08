@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Scentrail needs a server that receives GPS positions from pet-tracking
+LibrePaw needs a server that receives GPS positions from pet-tracking
 hardware (collars/trackers) and exposes them to client apps. Building and
 operating a custom GPS ingestion backend (device protocols, storage,
 geofencing, historical reporting) is a large undertaking and out of scope for
@@ -24,14 +24,14 @@ GPS tracking platform that already:
 
 ## Decision
 
-Scentrail is a client application for an existing, user-supplied Traccar
+LibrePaw is a client application for an existing, user-supplied Traccar
 server. We do not build or vendor any server-side code. Traccar's domain
 language is reused directly:
 
 - A Traccar **device** represents a pet's tracker/collar.
 - A Traccar **position** represents one GPS fix.
 
-The app's domain layer (`ScentrailKit`) renames "device" to **Pet** at the
+The app's domain layer (`LibrePawKit`) renames "device" to **Pet** at the
 boundary, since that is the concept the end user cares about, but the
 underlying wire format and REST semantics are Traccar's, unmodified.
 
@@ -40,7 +40,7 @@ underlying wire format and REST semantics are Traccar's, unmodified.
 - Users must have access to a running Traccar server (self-hosted or
   hosted-by-a-third-party) and at least one configured tracker device.
 - The app's networking layer (`TraccarKit`) is intentionally decoupled from
-  Scentrail-specific concepts, so it can plausibly be reused or extracted as
+  LibrePaw-specific concepts, so it can plausibly be reused or extracted as
   a standalone Traccar Swift client package later (see
   [0005](0005-modular-architecture-with-local-swift-packages.md)).
 - We inherit Traccar's data model and limitations (e.g. no built-in concept

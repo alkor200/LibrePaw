@@ -1,6 +1,6 @@
-name: Scentrail
+name: LibrePaw
 options:
-  bundleIdPrefix: org.scentrail
+  bundleIdPrefix: org.librepaw
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -8,21 +8,21 @@ options:
 packages:
   TraccarKit:
     path: Packages/TraccarKit
-  ScentrailKit:
-    path: Packages/ScentrailKit
+  LibrePawKit:
+    path: Packages/LibrePawKit
 
 targets:
-  Scentrail:
+  LibrePaw:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: Scentrail/Sources
-      - path: Scentrail/Resources
+      - path: LibrePaw/Sources
+      - path: LibrePaw/Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.scentrail.app
-        PRODUCT_NAME: Scentrail
+        PRODUCT_BUNDLE_IDENTIFIER: org.librepaw.app
+        PRODUCT_NAME: LibrePaw
         SWIFT_VERSION: 6.0
         SWIFT_STRICT_CONCURRENCY: complete
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -37,14 +37,14 @@ targets:
     # which `xcodegen generate` only *references* rather than writes, so it
     # survives every regeneration.
     configFiles:
-      Debug: Scentrail/Config/Local.xcconfig
-      Release: Scentrail/Config/Local.xcconfig
+      Debug: LibrePaw/Config/Local.xcconfig
+      Release: LibrePaw/Config/Local.xcconfig
     dependencies:
-      - package: ScentrailKit
+      - package: LibrePawKit
     info:
-      path: Scentrail/Resources/Info.plist
+      path: LibrePaw/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Scentrail
+        CFBundleDisplayName: LibrePaw
         # Substituted from the MARKETING_VERSION/CURRENT_PROJECT_VERSION build
         # settings above at build time - XcodeGen's own Info.plist defaults
         # otherwise hardcode "1.0"/"1" regardless of those settings.
@@ -53,7 +53,7 @@ targets:
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, de]
         ITSAppUsesNonExemptEncryption: false
-        NSLocationWhenInUseUsageDescription: "Scentrail uses your location to show how far away your pet is and to point you in their direction in the Find Pet screen."
+        NSLocationWhenInUseUsageDescription: "LibrePaw uses your location to show how far away your pet is and to point you in their direction in the Find Pet screen."
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -61,47 +61,47 @@ targets:
           UIApplicationSupportsMultipleScenes: false
     scheme:
       testTargets:
-        - ScentrailTests
-        - ScentrailUITests
+        - LibrePawTests
+        - LibrePawUITests
       gatherCoverageData: true
 
-  ScentrailTests:
+  LibrePawTests:
     type: bundle.unit-test
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: ScentrailTests
+      - path: LibrePawTests
     dependencies:
-      - target: Scentrail
+      - target: LibrePaw
     settings:
       base:
         SWIFT_VERSION: 6.0
         GENERATE_INFOPLIST_FILE: YES
 
-  ScentrailUITests:
+  LibrePawUITests:
     type: bundle.ui-testing
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: ScentrailUITests
+      - path: LibrePawUITests
     dependencies:
-      - target: Scentrail
+      - target: LibrePaw
     settings:
       base:
         SWIFT_VERSION: 6.0
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  Scentrail:
+  LibrePaw:
     build:
       targets:
-        Scentrail: all
+        LibrePaw: all
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - ScentrailTests
-        - ScentrailUITests
+        - LibrePawTests
+        - LibrePawUITests
     archive:
       config: Release

@@ -38,7 +38,7 @@ never who actually created the specific home being looked at.
 ## Decision
 
 - `HomeGeofence` gains `ownerUserID: Int?`, Traccar itself has no concept
-  of geofence ownership, so Scentrail stamps its own: a `scentrailOwnerId`
+  of geofence ownership, so LibrePaw stamps its own: a `librepawOwnerId`
   attribute (alongside the existing `scentrailHome` marker) holding the
   creating account's Traccar user id, written once at
   `addHomeGeofence` time and carried forward unchanged on every
@@ -88,7 +88,7 @@ never who actually created the specific home being looked at.
 - This is a client-side restriction only, not a server-side one, Traccar
   itself still allows the underlying `PUT`/`DELETE` for anyone with
   geofence-level view access. Anyone calling the Traccar API directly
-  (rather than through Scentrail) bypasses this entirely, the same
+  (rather than through LibrePaw) bypasses this entirely, the same
   caveat ADR-0018 already carries for its own admin-only gates.
 - `createGeofence`/`updateGeofence`'s `attributes` parameter widened from
   `[String: Bool]` to `[String: JSONValue]` to carry a numeric owner id

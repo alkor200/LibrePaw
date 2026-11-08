@@ -52,7 +52,7 @@ struct UserGeofencePermission: Encodable, Sendable {
 /// One permission link as returned by `GET /api/permissions`. Traccar's
 /// `Permission` object can carry many different `*Id` fields depending on
 /// which two were queried (userId+deviceId, userId+geofenceId, etc.), only
-/// the ones Scentrail reads are modeled here, the rest decode as absent.
+/// the ones LibrePaw reads are modeled here, the rest decode as absent.
 ///
 /// Unlike every other Traccar JSON response (camelCase, e.g. `TraccarDevice`'s
 /// `groupId`), confirmed against a live server that `/api/permissions`

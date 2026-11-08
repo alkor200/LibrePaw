@@ -16,7 +16,7 @@ plist, trivially readable on a jailbroken device or from a backup).
 
 - The password is stored exclusively in the iOS **Keychain**
   (`kSecClassGenericPassword`), via a small first-party wrapper
-  (`KeychainCredentialStore` in `ScentrailKit`), with no third-party
+  (`KeychainCredentialStore` in `LibrePawKit`), with no third-party
   dependency, the Keychain API surface we need (add/read/update/delete one
   generic password item) is small enough that a wrapper library would add a
   dependency for little benefit.
@@ -30,8 +30,8 @@ plist, trivially readable on a jailbroken device or from a backup).
 ## Consequences
 
 - No third-party Keychain wrapper dependency.
-- `ScentrailKit` has a direct dependency on the `Security` framework, which
-  is acceptable since `ScentrailKit` is the app-specific data layer (unlike
+- `LibrePawKit` has a direct dependency on the `Security` framework, which
+  is acceptable since `LibrePawKit` is the app-specific data layer (unlike
   `TraccarKit`, which has no storage concerns at all).
 - Unit tests that exercise `KeychainCredentialStore` run against the real
   Keychain (available in the simulator), using a dedicated test-only service

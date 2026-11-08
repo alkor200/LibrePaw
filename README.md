@@ -1,8 +1,8 @@
-# Scentrail
+# LibrePaw
 
-Scentrail is an open source iOS app for keeping an eye on your pets' GPS
+LibrePaw is an open source iOS app for keeping an eye on your pets' GPS
 trackers. It is a native SwiftUI client for [Traccar](https://www.traccar.org/),
-a self-hostable, open source GPS tracking platform. Scentrail does not run
+a self-hostable, open source GPS tracking platform. LibrePaw does not run
 its own backend, and is not affiliated with the Traccar project.
 
 > **Status:** early MVP. See [Roadmap](#roadmap) for what's deliberately out
@@ -47,10 +47,10 @@ its own backend, and is not affiliated with the Traccar project.
 ```sh
 git clone https://github.com/<your-fork>/Scentrail.git
 cd Scentrail
-cp Scentrail/Config/Local.xcconfig.example Scentrail/Config/Local.xcconfig
+cp LibrePaw/Config/Local.xcconfig.example LibrePaw/Config/Local.xcconfig
 # edit Local.xcconfig and fill in your own DEVELOPMENT_TEAM (see ADR-0015)
 xcodegen generate
-open Scentrail.xcodeproj
+open LibrePaw.xcodeproj
 ```
 
 To run on a real device (not just the simulator), you'll need to fill in
@@ -59,7 +59,7 @@ id. Run `security find-identity -v -p codesigning` to find it, or look it up
 under Xcode → Settings → Accounts. This file is gitignored and, unlike an
 environment variable, survives every `xcodegen generate` (see ADR-0015).
 
-Build and run the `Scentrail` scheme on an iOS 17+ simulator or device, then
+Build and run the `LibrePaw` scheme on an iOS 17+ simulator or device, then
 sign in with your Traccar server's address and your account's email/password.
 
 Whenever you add, remove, or move source files, or change `project.yml`,
@@ -68,15 +68,15 @@ re-run `xcodegen generate` before building.
 ### Setting a pet photo
 
 Use Traccar's own device image upload: open the device in Traccar's web UI →
-**Edit Device** → upload an image. Scentrail reads it back via Traccar's
-`deviceImage` attribute and `/api/media/...` endpoint, no Scentrail-specific
+**Edit Device** → upload an image. LibrePaw reads it back via Traccar's
+`deviceImage` attribute and `/api/media/...` endpoint, no LibrePaw-specific
 setup needed. Devices without a photo show a paw icon instead.
 
 ### Setting a pet's home locations
 
 Open a pet's detail screen → **`<Pet>`'s Homes** → **Add Home**, give it a
 name, stand (or drag the map to) where you want it to be, pick a radius,
-and save. Scentrail creates a Traccar geofence linked to that pet's
+and save. LibrePaw creates a Traccar geofence linked to that pet's
 device, visible in Traccar's own web UI too. Add as many as you like (e.g.
 "Home" and "Cabin"); swipe to delete one, or tap it to move/rename it.
 Excursions only start appearing once at least one home is set.
@@ -85,7 +85,7 @@ Any account can do this, but **who else can see the result depends on
 whether you're a Traccar administrator**: Traccar has no way for a
 non-admin to make a geofence visible to anyone besides themselves (see
 [ADR-0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md)).
-Scentrail shows which case applies right on the Homes screen:
+LibrePaw shows which case applies right on the Homes screen:
 
 - **Administrator**: a home you add is visible to everyone with access to
   that pet, and so are the excursions it generates.
@@ -95,29 +95,29 @@ Scentrail shows which case applies right on the Homes screen:
   (see [ADR-0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md)).
 
 Anyone who can see a home, admin or not, can also edit or delete it,
-Scentrail follows whatever Traccar's own permissions allow rather than
+LibrePaw follows whatever Traccar's own permissions allow rather than
 adding a stricter rule of its own. The one exception is a Traccar account
-set to read-only (or with reports disabled): Scentrail then only shows
+set to read-only (or with reports disabled): LibrePaw then only shows
 what that account can actually do, adding/editing/deleting homes and
 viewing Trail/Excursions disappear accordingly
 (see [ADR-0023](docs/adr/0023-follow-traccars-own-permission-model.md)).
 
 ### Sharing a pet and multiple household accounts
 
-If more than one person in your household uses Scentrail against the same
+If more than one person in your household uses LibrePaw against the same
 Traccar server, the server's **admin account** should be the one adding
 homes and sharing pets. From a pet's detail screen, tap **Share `<Pet>`**,
 enter the other person's Traccar account email, and they'll see the pet
-(and any homes already set up for it) in their own copy of Scentrail
+(and any homes already set up for it) in their own copy of LibrePaw
 immediately. This is also admin-only, and for the same reason as above:
 Traccar requires admin rights to grant another account access to anything
 (see [ADR-0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md)).
 
 ## Color scheme
 
-Scentrail uses a small set of brand color tokens, each a light/dark pair
+LibrePaw uses a small set of brand color tokens, each a light/dark pair
 in `Assets.xcassets` and exposed in code via `Color.appX` (see
-`Scentrail/Sources/Common/Color+Theme.swift`). `AccentColor` itself
+`LibrePaw/Sources/Common/Color+Theme.swift`). `AccentColor` itself
 matches `Primary`, so most buttons, the tab bar tint, and similar
 `.tint`-driven controls follow this palette automatically.
 
@@ -140,22 +140,22 @@ without Xcode:
 
 ```sh
 cd Packages/TraccarKit && swift test
-cd Packages/ScentrailKit && swift test
+cd Packages/LibrePawKit && swift test
 ```
 
-App-layer tests (view models) run via the `ScentrailTests` target in Xcode
+App-layer tests (view models) run via the `LibrePawTests` target in Xcode
 (`Cmd+U`), since they depend on the app module.
 
 ## Architecture
 
-Scentrail is split into three layers (see [`docs/adr`](docs/adr) for the full
+LibrePaw is split into three layers (see [`docs/adr`](docs/adr) for the full
 reasoning behind each decision):
 
 ```
-Scentrail (app target)         SwiftUI views + @Observable view models (MVVM)
+LibrePaw (app target)         SwiftUI views + @Observable view models (MVVM)
    │
    ▼
-ScentrailKit (local package)   Domain models (Pet, PetPosition), repository
+LibrePawKit (local package)   Domain models (Pet, PetPosition), repository
                                 protocols, Keychain-backed auth
    │
    ▼
@@ -166,16 +166,16 @@ TraccarKit (local package)     A standalone Traccar REST + WebSocket client
   reusable Swift client for Traccar's REST API (devices, positions) and its
   WebSocket live feed. It could be extracted into its own repository
   without changes.
-- **`ScentrailKit`** is the app's domain and data layer: it maps Traccar's
-  "devices" onto Scentrail's own `Pet` model, defines the `PetRepository` and
+- **`LibrePawKit`** is the app's domain and data layer: it maps Traccar's
+  "devices" onto LibrePaw's own `Pet` model, defines the `PetRepository` and
   `AuthenticationService` protocols, and stores credentials in the Keychain.
-- **`Scentrail`** (the app target) contains only SwiftUI views and view
+- **`LibrePaw`** (the app target) contains only SwiftUI views and view
   models, grouped by feature (`Authentication`, `PetList`, `Map`,
   `PetDetail`, `Find`, `Home`, `Excursions`, `Settings`). It depends on
-  `ScentrailKit` only, never
+  `LibrePawKit` only, never
   directly on `TraccarKit`. It's also the only place that touches
   `CoreLocation` (for the user's own position/heading); the distance and
-  bearing math itself lives in `ScentrailKit` as plain functions on
+  bearing math itself lives in `LibrePawKit` as plain functions on
   `Coordinate`.
 
 Key decisions, each recorded as an ADR:
@@ -205,6 +205,7 @@ Key decisions, each recorded as an ADR:
 | [0021](docs/adr/0021-client-side-home-ownership-for-non-admin-edit-delete.md) | Track home ownership client-side, restrict non-admin edit/delete to the creator (superseded by 0023) |
 | [0022](docs/adr/0022-german-language-option.md) | In-app German language option, defaulting to the device's own setting |
 | [0023](docs/adr/0023-follow-traccars-own-permission-model.md) | Follow Traccar's own permission model instead of a client-side one |
+| [0024](docs/adr/0024-rename-to-librepaw.md) | Rename the app from Scentrail to LibrePaw |
 
 ## Roadmap
 
@@ -223,4 +224,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Scentrail is available under the [MIT License](LICENSE).
+LibrePaw is available under the [MIT License](LICENSE).

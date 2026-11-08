@@ -17,7 +17,7 @@ which ADR-0008 explicitly ruled out.
 
 The app now requests **"When In Use" location access** (not "Always") the
 first time the Map tab or a "Find Pet" screen is opened, not proactively at
-launch. A new app-layer `LocationService` (`Scentrail/Sources/Common`) wraps
+launch. A new app-layer `LocationService` (`LibrePaw/Sources/Common`) wraps
 `CLLocationManager` and exposes the user's coordinate, compass heading, and
 authorization state.
 
@@ -32,7 +32,7 @@ Two features consume it:
    neither the phone's Bluetooth trackers nor Traccar provide).
 
 The distance and bearing math (haversine distance, initial great-circle
-bearing) lives in `ScentrailKit` as plain functions on `Coordinate`, no
+bearing) lives in `LibrePawKit` as plain functions on `Coordinate`, no
 CoreLocation dependency there, consistent with ADR-0005. Only the *app*
 layer touches `CoreLocation`, to read the device's own position/heading.
 

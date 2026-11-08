@@ -26,22 +26,22 @@ Capabilities tab to reselect it.
 ## Decision
 
 `DEVELOPMENT_TEAM` is no longer set in `project.yml` at all. Instead, the
-`Scentrail` target references an external xcconfig file via XcodeGen's
+`LibrePaw` target references an external xcconfig file via XcodeGen's
 `configFiles`:
 
 ```yaml
 configFiles:
-  Debug: Scentrail/Config/Local.xcconfig
-  Release: Scentrail/Config/Local.xcconfig
+  Debug: LibrePaw/Config/Local.xcconfig
+  Release: LibrePaw/Config/Local.xcconfig
 ```
 
-`Scentrail/Config/Local.xcconfig` is gitignored and contains one line:
+`LibrePaw/Config/Local.xcconfig` is gitignored and contains one line:
 
 ```
 DEVELOPMENT_TEAM = <your team id>
 ```
 
-A committed `Scentrail/Config/Local.xcconfig.example` documents the format
+A committed `LibrePaw/Config/Local.xcconfig.example` documents the format
 and how to find your team id. Each developer copies it once, on first
 clone.
 
@@ -57,7 +57,7 @@ once set.
 - One-time setup per clone (copy the `.example` file, fill in one line) -
   slightly more than the env var approach's (nonexistent) setup, but it
   only has to happen once rather than before every `xcodegen generate`.
-- `Scentrail/Config/Local.xcconfig` must exist for the project to build with
+- `LibrePaw/Config/Local.xcconfig` must exist for the project to build with
   a team at all; without it, Xcode falls back to no team (same as today's
   behavior when the env var was unset), which is a clear, discoverable
   failure (a Signing error in Xcode) rather than a silent reset.
