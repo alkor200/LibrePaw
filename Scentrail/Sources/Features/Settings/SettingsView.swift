@@ -3,6 +3,7 @@ import ScentrailKit
 
 struct SettingsView: View {
     @State private var viewModel: SettingsViewModel
+    @Environment(LanguageSettings.self) private var languageSettings
 
     init(session: StoredSession, onLogOut: @escaping () -> Void) {
         _viewModel = State(initialValue: SettingsViewModel(session: session, onLogOut: onLogOut))
@@ -13,6 +14,20 @@ struct SettingsView: View {
             Section("Account") {
                 LabeledContent("Server", value: viewModel.session.serverURL.host ?? viewModel.session.serverURL.absoluteString)
                 LabeledContent("Email", value: viewModel.session.email)
+            }
+            .listRowBackground(Color.appSurface)
+
+            Section {
+                Picker("Language", selection: Binding(
+                    get: { languageSettings.language },
+                    set: { languageSettings.language = $0 }
+                )) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.label).tag(language)
+                    }
+                }
+            } footer: {
+                Text("Automatic follows your iPhone's own language setting.")
             }
             .listRowBackground(Color.appSurface)
 
@@ -57,4 +72,5 @@ struct SettingsView: View {
             onLogOut: {}
         )
     }
+    .environment(LanguageSettings())
 }

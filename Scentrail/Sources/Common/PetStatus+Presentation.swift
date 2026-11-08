@@ -6,9 +6,9 @@ import ScentrailKit
 extension Pet.Status {
     var label: String {
         switch self {
-        case .online: "Online"
-        case .offline: "Offline"
-        case .unknown: "Unknown"
+        case .online: localized("Online")
+        case .offline: localized("Offline")
+        case .unknown: localized("Unknown")
         }
     }
 

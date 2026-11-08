@@ -12,9 +12,9 @@ enum MapLayer: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .standard: "Standard"
-        case .satellite: "Satellite"
-        case .hybrid: "Hybrid"
+        case .standard: localized("Standard")
+        case .satellite: localized("Satellite")
+        case .hybrid: localized("Hybrid")
         }
     }
 

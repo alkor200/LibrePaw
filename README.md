@@ -31,6 +31,9 @@ its own backend, and is not affiliated with the Traccar project.
   [Sharing a pet](#sharing-a-pet-and-multiple-household-accounts) below).
 - Live position updates over Traccar's WebSocket feed, and a switchable
   standard/satellite/hybrid map layer.
+- English and German, switchable in Settings, defaulting to automatic
+  (follows the device's own language setting, see
+  [ADR-0022](docs/adr/0022-german-language-option.md)).
 
 ## Requirements
 
@@ -197,6 +200,7 @@ Key decisions, each recorded as an ADR:
 | [0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md) | Re-enable home management for non-admin accounts, with an in-app visibility notice |
 | [0020](docs/adr/0020-trail-aggregates-excursions-over-an-adjustable-window.md) | "Trail" aggregates excursions over an adjustable window, replacing "Today's Trail" |
 | [0021](docs/adr/0021-client-side-home-ownership-for-non-admin-edit-delete.md) | Track home ownership client-side, restrict non-admin edit/delete to the creator |
+| [0022](docs/adr/0022-german-language-option.md) | In-app German language option, defaulting to the device's own setting |
 
 ## Roadmap
 

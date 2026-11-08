@@ -39,7 +39,7 @@ final class SetHomeViewModel {
         self.isEditingExistingHome = existingHome != nil
         self.existingHomeID = existingHome?.id
         self.existingHomeOwnerID = existingHome?.ownerUserID
-        self.name = existingHome?.name ?? "Home"
+        self.name = existingHome?.name ?? localized("Home")
         self.homeCoordinate = existingHome?.center
         self.radiusMeters = existingHome?.radiusMeters ?? 50
         self.petRepository = petRepository
@@ -80,16 +80,16 @@ final class SetHomeViewModel {
 
     func save() async {
         guard canManage == true else {
-            errorMessage = "Only an admin can edit a home you didn't create."
+            errorMessage = localized("Only an admin can edit a home you didn't create.")
             return
         }
         guard let coordinate = homeCoordinate else {
-            errorMessage = "Drag the map to choose a location first."
+            errorMessage = localized("Drag the map to choose a location first.")
             return
         }
         let trimmedName = name.trimmed
         guard !trimmedName.isEmpty else {
-            errorMessage = "Give this home a name."
+            errorMessage = localized("Give this home a name.")
             return
         }
 

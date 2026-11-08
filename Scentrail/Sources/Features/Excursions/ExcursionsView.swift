@@ -110,8 +110,12 @@ private struct ExcursionRow: View {
 
     private func durationText(_ seconds: TimeInterval) -> String {
         let minutes = Int(seconds / 60)
-        if minutes < 60 { return "\(minutes) min" }
-        return "\(minutes / 60)h \(minutes % 60)m"
+        if minutes < 60 {
+            return "\(minutes) \(localized("duration.minutes.unit"))"
+        }
+        let h = localized("duration.hours.abbreviation")
+        let m = localized("duration.minutes.abbreviation")
+        return "\(minutes / 60)\(h) \(minutes % 60)\(m)"
     }
 
     private func distanceText(_ meters: Double) -> String {

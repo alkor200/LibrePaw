@@ -108,7 +108,7 @@ struct PetDetailView: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Change \(viewModel.pet.name)'s photo")
+            .accessibilityLabel(localized("Change %@'s photo", viewModel.pet.name))
 
             Text(viewModel.pet.name)
                 .font(.title2.bold())
@@ -123,7 +123,7 @@ struct PetDetailView: View {
     private var statusCaption: String {
         switch viewModel.pet.status {
         case .online:
-            "Online"
+            localized("Online")
         case .offline, .unknown:
             if let lastSeenAt = viewModel.pet.lastSeenAt {
                 "\(viewModel.pet.status.label) · \(lastSeenAt.formatted(.relative(presentation: .named)))"
@@ -190,7 +190,7 @@ struct PetDetailView: View {
         .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func actionRow(systemImage: String, title: String) -> some View {
+    private func actionRow(systemImage: String, title: LocalizedStringKey) -> some View {
         HStack {
             Image(systemName: systemImage)
                 .foregroundStyle(.tint)
@@ -233,7 +233,7 @@ struct PetDetailView: View {
 
     private struct StatTile: View {
         let systemImage: String
-        let title: String
+        let title: LocalizedStringKey
         let value: String
 
         var body: some View {
@@ -299,12 +299,15 @@ struct PetDetailView: View {
         let days = totalMinutes / (60 * 24)
         let hours = (totalMinutes / 60) % 24
         let minutes = totalMinutes % 60
+        let d = localized("duration.days.abbreviation")
+        let h = localized("duration.hours.abbreviation")
+        let m = localized("duration.minutes.abbreviation")
         if days > 0 {
-            return "\(days)d \(hours)h"
+            return "\(days)\(d) \(hours)\(h)"
         } else if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            return "\(hours)\(h) \(minutes)\(m)"
         } else {
-            return "\(minutes)m"
+            return "\(minutes)\(m)"
         }
     }
 

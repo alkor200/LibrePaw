@@ -68,7 +68,10 @@ struct TrailView: View {
                 ContentUnavailableView(
                     "No Trail Yet",
                     systemImage: "point.topleft.down.curvedto.point.bottomright.up",
-                    description: Text("\(viewModel.pet.name) hasn't been on an excursion in the last \(viewModel.window.label.lowercased()).")
+                    // Not `.window.label.lowercased()`: German capitalizes
+                    // nouns mid-sentence ("24 Stunden"), lowercasing it
+                    // would misspell the translation.
+                    description: Text("\(viewModel.pet.name) hasn't been on an excursion in the last \(viewModel.window.label).")
                 )
             } else if let errorMessage = viewModel.errorMessage {
                 ContentUnavailableView {

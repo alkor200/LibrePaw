@@ -10,10 +10,10 @@ enum TrailWindow: CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .oneDay: "24 Hours"
-        case .threeDays: "3 Days"
-        case .sevenDays: "7 Days"
-        case .thirtyDays: "30 Days"
+        case .oneDay: localized("24 Hours")
+        case .threeDays: localized("3 Days")
+        case .sevenDays: localized("7 Days")
+        case .thirtyDays: localized("30 Days")
         }
     }
 

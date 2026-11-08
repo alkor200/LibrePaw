@@ -70,7 +70,7 @@ struct PhotoEditorView: View {
         }
     }
 
-    private func photoPickerButton(label: String, prominent: Bool) -> some View {
+    private func photoPickerButton(label: LocalizedStringKey, prominent: Bool) -> some View {
         PhotosPicker(selection: $pickerItem, matching: .images) {
             if prominent {
                 VStack(spacing: 12) {
@@ -161,7 +161,7 @@ struct PhotoEditorView: View {
         defer { isSaving = false }
 
         guard let jpegData = renderCircularCrop(image: selectedImage) else {
-            errorMessage = "Couldn't process that photo, try a different one."
+            errorMessage = localized("Couldn't process that photo, try a different one.")
             return
         }
 

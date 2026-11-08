@@ -50,6 +50,8 @@ targets:
         # otherwise hardcode "1.0"/"1" regardless of those settings.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, de]
         ITSAppUsesNonExemptEncryption: false
         NSLocationWhenInUseUsageDescription: "Scentrail uses your location to show how far away your pet is and to point you in their direction in the Find Pet screen."
         UILaunchScreen: {}

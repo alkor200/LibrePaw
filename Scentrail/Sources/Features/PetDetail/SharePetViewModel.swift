@@ -22,7 +22,7 @@ final class SharePetViewModel {
     func share() async {
         let trimmedEmail = email.trimmed
         guard !trimmedEmail.isEmpty else {
-            errorMessage = "Enter the email address of the Traccar account to share \(pet.name) with."
+            errorMessage = localized("Enter the email address of the Traccar account to share %@ with.", pet.name)
             return
         }
 

@@ -36,7 +36,7 @@ struct ExcursionDetailView: View {
             statTile(systemImage: "flag.fill", title: "Started", value: timeText(viewModel.excursion.startTime))
 
             if viewModel.excursion.isOngoing {
-                statTile(systemImage: "figure.walk.motion", title: "Status", value: "Away now")
+                statTile(systemImage: "figure.walk.motion", title: "Status", value: localized("Away now"))
             } else if let endTime = viewModel.excursion.endTime {
                 statTile(systemImage: "flag.checkered", title: "Ended", value: timeText(endTime))
             }
@@ -73,7 +73,7 @@ struct ExcursionDetailView: View {
             .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private func statTile(systemImage: String, title: String, value: String) -> some View {
+    private func statTile(systemImage: String, title: LocalizedStringKey, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Image(systemName: systemImage)
                 .font(.footnote)
@@ -147,8 +147,12 @@ struct ExcursionDetailView: View {
 
     private func durationText(_ seconds: TimeInterval) -> String {
         let minutes = Int(seconds / 60)
-        if minutes < 60 { return "\(minutes) min" }
-        return "\(minutes / 60)h \(minutes % 60)m"
+        if minutes < 60 {
+            return "\(minutes) \(localized("duration.minutes.unit"))"
+        }
+        let h = localized("duration.hours.abbreviation")
+        let m = localized("duration.minutes.abbreviation")
+        return "\(minutes / 60)\(h) \(minutes % 60)\(m)"
     }
 
     private func distanceText(_ meters: Double) -> String {

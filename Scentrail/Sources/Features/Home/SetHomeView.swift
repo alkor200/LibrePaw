@@ -41,7 +41,7 @@ struct SetHomeView: View {
     var body: some View {
         content
             .background(Color.appBackground)
-            .navigationTitle(viewModel.isEditingExistingHome ? "Edit Home" : "Add Home")
+            .navigationTitle(viewModel.isEditingExistingHome ? Text("Edit Home") : Text("Add Home"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if viewModel.isEditingExistingHome, viewModel.canManage == true {
@@ -124,7 +124,7 @@ struct SetHomeView: View {
                 .textFieldStyle(.roundedBorder)
                 .disabled(viewModel.canManage == false)
 
-            Text("Drag the map to place \(viewModel.name.trimmed.isEmpty ? "it" : viewModel.name).")
+            Text("Drag the map to place \(viewModel.name.trimmed.isEmpty ? localized("it") : viewModel.name).")
                 .font(.footnote)
                 .foregroundStyle(.appSecondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,7 +163,7 @@ struct SetHomeView: View {
                         if viewModel.isSaving {
                             ProgressView()
                         } else {
-                            Text(viewModel.isEditingExistingHome ? "Save" : "Add Home")
+                            viewModel.isEditingExistingHome ? Text("Save") : Text("Add Home")
                         }
                         Spacer()
                     }
@@ -195,7 +195,7 @@ struct SetHomeView: View {
         }
     }
 
-    private func noticeLabel(_ text: String, systemImage: String) -> some View {
+    private func noticeLabel(_ text: LocalizedStringKey, systemImage: String) -> some View {
         Label {
             Text(text)
         } icon: {

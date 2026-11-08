@@ -4,6 +4,7 @@ import SwiftUI
 /// ``AppSession``'s state.
 struct RootView: View {
     @State private var appSession: AppSession
+    @State private var languageSettings = LanguageSettings()
     private let locationService: LocationService
 
     init(dependencies: AppDependencies) {
@@ -26,5 +27,8 @@ struct RootView: View {
         .task {
             appSession.restoreSessionIfAvailable()
         }
+        .environment(languageSettings)
+        .environment(\.locale, languageSettings.language.locale ?? Locale.autoupdatingCurrent)
+        .id(languageSettings.language)
     }
 }

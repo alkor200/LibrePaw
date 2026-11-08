@@ -107,24 +107,34 @@ struct HomesView: View {
     /// visible to themselves, while an admin's applies to the whole
     /// household. Shown only once ``HomesViewModel/isAdministrator`` is
     /// known, so it never flashes the wrong wording while loading.
+    ///
+    /// `if`/`else` rather than a `Text(bool ? "a" : "b")` ternary, each
+    /// branch its own interpolated `LocalizedStringKey` literal, simply
+    /// because that reads clearer with two full sentences this long.
     @ViewBuilder
     private var visibilityNotice: some View {
         if let isAdministrator = viewModel.isAdministrator {
-            Label {
-                Text(isAdministrator
-                    ? "As an admin, homes you add here are visible to everyone with access to \(viewModel.pet.name)."
-                    : "Homes you add here, and the excursions they create, are only visible to you. Ask an admin to add a home if it should apply to everyone. A lock icon means a home someone else set up, you can view it but not edit or delete it.")
-            } icon: {
-                Image(systemName: isAdministrator ? "person.3.fill" : "eye.slash.fill")
+            if isAdministrator {
+                visibilityNoticeLabel("As an admin, homes you add here are visible to everyone with access to \(viewModel.pet.name).", systemImage: "person.3.fill")
+            } else {
+                visibilityNoticeLabel("Homes you add here, and the excursions they create, are only visible to you. Ask an admin to add a home if it should apply to everyone. A lock icon means a home someone else set up, you can view it but not edit or delete it.", systemImage: "eye.slash.fill")
             }
-            .font(.footnote)
-            .foregroundStyle(.appSecondaryText)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .padding(.horizontal)
-            .padding(.top, 8)
         }
+    }
+
+    private func visibilityNoticeLabel(_ text: LocalizedStringKey, systemImage: String) -> some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.footnote)
+        .foregroundStyle(.appSecondaryText)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.horizontal)
+        .padding(.top, 8)
     }
 }
 

@@ -87,7 +87,7 @@ final class HomesViewModel {
 
     func delete(_ home: HomeGeofence) async {
         guard canManage(home) else {
-            errorMessage = "Only an admin can delete a home you didn't create."
+            errorMessage = localized("Only an admin can delete a home you didn't create.")
             return
         }
         do {

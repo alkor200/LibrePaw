@@ -40,7 +40,7 @@ struct PetGridCell: View {
     private var subtitle: String {
         switch pet.status {
         case .online:
-            "Online"
+            localized("Online")
         case .offline, .unknown:
             if let lastSeenAt = pet.lastSeenAt {
                 lastSeenAt.formatted(.relative(presentation: .named))

@@ -27,7 +27,7 @@ final class LoginViewModel {
         errorMessage = nil
 
         guard let url = normalizedServerURL() else {
-            errorMessage = "Enter a valid server address, e.g. traccar.example.com"
+            errorMessage = localized("Enter a valid server address, e.g. traccar.example.com")
             return
         }
 
