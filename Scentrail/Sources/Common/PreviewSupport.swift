@@ -59,11 +59,16 @@ struct PreviewPetRepository: PetRepository {
         }
     }
 
-    func homeGeofence(forPetID petID: Int) async throws -> HomeGeofence? {
-        HomeGeofence(center: Coordinate(latitude: 52.5200, longitude: 13.4050), radiusMeters: 100)
+    func homeGeofences(forPetID petID: Int) async throws -> [HomeGeofence] {
+        [
+            HomeGeofence(id: 1, name: "Home", center: Coordinate(latitude: 52.5200, longitude: 13.4050), radiusMeters: 100),
+            HomeGeofence(id: 2, name: "Cabin", center: Coordinate(latitude: 52.4100, longitude: 13.0500), radiusMeters: 60)
+        ]
     }
 
-    func setHomeGeofence(forPetID petID: Int, center: Coordinate, radiusMeters: Double) async throws {}
+    func addHomeGeofence(forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {}
+    func updateHomeGeofence(_ homeID: Int, forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {}
+    func deleteHomeGeofence(_ homeID: Int) async throws {}
 
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] {
         [
@@ -72,8 +77,10 @@ struct PreviewPetRepository: PetRepository {
                 startTime: .now.addingTimeInterval(-3600 * 3),
                 endTime: .now.addingTimeInterval(-3600 * 2),
                 startCoordinate: Coordinate(latitude: 52.5200, longitude: 13.4050),
-                endCoordinate: Coordinate(latitude: 52.5200, longitude: 13.4050),
-                distanceMeters: 1240
+                endCoordinate: Coordinate(latitude: 52.4100, longitude: 13.0500),
+                distanceMeters: 1240,
+                startHomeID: 1,
+                endHomeID: 2
             ),
             Excursion(
                 id: 2,
@@ -89,6 +96,9 @@ struct PreviewPetRepository: PetRepository {
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
         LifetimeStats(totalDistanceMeters: 42_300, totalDurationSeconds: 3600 * 11)
     }
+
+    func isCurrentUserAdministrator() async throws -> Bool { true }
+    func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }
 
 struct PreviewAuthenticationService: AuthenticationService {

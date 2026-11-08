@@ -105,36 +105,122 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
-    // MARK: - Home geofence and excursions (see ADR-0014)
+    // MARK: - Home geofences and excursions (see ADR-0014, ADR-0016)
 
-    /// Marks a geofence as the one Scentrail manages as "home", so it can be
+    /// Marks a geofence as one Scentrail manages as a "home", so it can be
     /// found again regardless of whether the owner renames it in Traccar.
     private static let homeAttributeKey = "scentrailHome"
-    private static let homeGeofenceName = "Home (Scentrail)"
 
-    func homeGeofence(forPetID petID: Int) async throws -> HomeGeofence? {
+    func homeGeofences(forPetID petID: Int) async throws -> [HomeGeofence] {
         do {
-            guard let home = try await homeTraccarGeofence(forPetID: petID) else { return nil }
-            return Self.homeGeofence(from: home)
+            let homes = try await homeTraccarGeofences(forPetID: petID)
+            return homes.compactMap(Self.homeGeofence(from:))
         } catch let error as TraccarError {
             throw error.asScentrailError
         }
     }
 
-    func setHomeGeofence(forPetID petID: Int, center: Coordinate, radiusMeters: Double) async throws {
+    func addHomeGeofence(forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {
         do {
             let area = TraccarGeofenceArea.circleWKT(
                 centerLatitude: center.latitude,
                 centerLongitude: center.longitude,
                 radiusMeters: radiusMeters
             )
-            let attributes = [Self.homeAttributeKey: true]
+            let created = try await client.createGeofence(name: name, area: area, attributes: [Self.homeAttributeKey: true])
+            try await client.linkGeofence(geofenceId: created.id, toDeviceId: petID)
+            await syncGeofenceVisibility(geofenceId: created.id, petID: petID)
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
 
-            if let existing = try await homeTraccarGeofence(forPetID: petID) {
-                try await client.updateGeofence(id: existing.id, name: Self.homeGeofenceName, area: area, attributes: attributes)
-            } else {
-                let created = try await client.createGeofence(name: Self.homeGeofenceName, area: area, attributes: attributes)
-                try await client.linkGeofence(geofenceId: created.id, toDeviceId: petID)
+    func updateHomeGeofence(_ homeID: Int, forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {
+        do {
+            let area = TraccarGeofenceArea.circleWKT(
+                centerLatitude: center.latitude,
+                centerLongitude: center.longitude,
+                radiusMeters: radiusMeters
+            )
+            try await client.updateGeofence(id: homeID, name: name, area: area, attributes: [Self.homeAttributeKey: true])
+            await syncGeofenceVisibility(geofenceId: homeID, petID: petID)
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
+    /// Grants whoever is using Scentrail right now, plus every user with an
+    /// explicit permission link to the pet's device, the same link to this
+    /// geofence — linking a geofence to a *device* only controls which
+    /// device's crossings generate events for it, it does not by itself
+    /// make the geofence visible to any user (confirmed against a live
+    /// server; see ADR-0017).
+    ///
+    /// Both steps are unconditional, not diffed against existing links
+    /// first: `POST /api/permissions` for a link that already exists was
+    /// confirmed (live server) to just return `204` again rather than
+    /// erroring, so there's nothing to protect against by checking first.
+    ///
+    /// Both are also best-effort — this never throws, and the device link
+    /// made just before this is called has already succeeded, which is what
+    /// matters for excursion detection; this only affects who can
+    /// additionally *see* the home in Scentrail/Traccar's own UI:
+    /// - Granting the current user needs `fetchCurrentUser()`, which only
+    ///   needs an ordinary account and works for anyone.
+    /// - Granting every other device-permitted user needs
+    ///   `fetchPermittedUserIDs(deviceId:)`, which — confirmed against a
+    ///   live server — only works for an administrator account; for
+    ///   anyone else it fails here every time, silently, which is fine:
+    ///   that person still got their own grant above. An admin editing a
+    ///   home once (even without changing anything) is what extends it to
+    ///   the rest of the household — see ADR-0017.
+    private func syncGeofenceVisibility(geofenceId: Int, petID: Int) async {
+        if let currentUser = try? await client.fetchCurrentUser() {
+            try? await client.linkGeofence(geofenceId: geofenceId, toUserId: currentUser.id)
+        }
+
+        if let deviceUserIDs = try? await client.fetchPermittedUserIDs(deviceId: petID) {
+            for userID in deviceUserIDs {
+                try? await client.linkGeofence(geofenceId: geofenceId, toUserId: userID)
+            }
+        }
+    }
+
+    func deleteHomeGeofence(_ homeID: Int) async throws {
+        do {
+            try await client.deleteGeofence(id: homeID)
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
+    // MARK: - Admin status and pet sharing (see ADR-0017, ADR-0018)
+
+    func isCurrentUserAdministrator() async throws -> Bool {
+        do {
+            return try await client.fetchCurrentUser().administrator
+        } catch let error as TraccarError {
+            throw error.asScentrailError
+        }
+    }
+
+    func sharePet(forPetID petID: Int, withEmail email: String) async throws {
+        do {
+            let matches = try await client.fetchUsers(keyword: email)
+            guard let user = matches.first(where: { $0.email.caseInsensitiveCompare(email) == .orderedSame }) else {
+                throw ScentrailError.unexpected("No Traccar user with that email was found on this server.")
+            }
+            try await client.linkDevice(deviceId: petID, toUserId: user.id)
+
+            // Best-effort: the caller is already confirmed admin to reach
+            // this screen (see ADR-0018), so also grant the new user access
+            // to every home already set up for this pet — otherwise they'd
+            // see the pet but not its excursions until an admin happened to
+            // edit a home (ADR-0017's sync-on-edit).
+            if let homes = try? await homeTraccarGeofences(forPetID: petID) {
+                for home in homes {
+                    try? await client.linkGeofence(geofenceId: home.id, toUserId: user.id)
+                }
             }
         } catch let error as TraccarError {
             throw error.asScentrailError
@@ -143,32 +229,17 @@ struct TraccarPetRepository: PetRepository {
 
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] {
         do {
-            guard let home = try await homeTraccarGeofence(forPetID: petID) else { return [] }
+            let homes = try await homeTraccarGeofences(forPetID: petID)
+            guard !homes.isEmpty else { return [] }
+            let homeIDs = Set(homes.map(\.id))
 
             async let exitEvents = client.fetchEvents(deviceId: petID, from: from, to: to, type: TraccarEvent.EventType.geofenceExit)
             async let enterEvents = client.fetchEvents(deviceId: petID, from: from, to: to, type: TraccarEvent.EventType.geofenceEnter)
 
-            let exits = try await exitEvents
-                .filter { $0.geofenceId == home.id }
-                .sorted { $0.eventTime < $1.eventTime }
-            let enters = try await enterEvents
-                .filter { $0.geofenceId == home.id }
-                .sorted { $0.eventTime < $1.eventTime }
+            let exits = try await exitEvents.filter { homeIDs.contains($0.geofenceId ?? -1) }
+            let enters = try await enterEvents.filter { homeIDs.contains($0.geofenceId ?? -1) }
 
-            // Pairing exits with enters is inherently sequential (each step
-            // consumes the enters list in order), but nothing about that
-            // requires the *positions* fetch inside makeExcursion to also
-            // run one at a time — so pair up front, then fetch concurrently.
-            var pairs: [(exit: TraccarEvent, enter: TraccarEvent?)] = []
-            var enterIndex = 0
-            for exit in exits {
-                while enterIndex < enters.count, enters[enterIndex].eventTime <= exit.eventTime {
-                    enterIndex += 1
-                }
-                let matchingEnter = enterIndex < enters.count ? enters[enterIndex] : nil
-                if matchingEnter != nil { enterIndex += 1 }
-                pairs.append((exit, matchingEnter))
-            }
+            let pairs = Self.pairHomeExitsWithEnters(exits: exits, enters: enters)
 
             // Bounded rather than fully unbounded: a pet with years of
             // history backfilling lifetime stats for the first time could
@@ -182,6 +253,38 @@ struct TraccarPetRepository: PetRepository {
         } catch let error as TraccarError {
             throw error.asScentrailError
         }
+    }
+
+    /// Pairs each home-geofence exit with the next home-geofence enter
+    /// chronologically after it — pulled out of `fetchExcursions` so the
+    /// pairing itself can be unit tested directly, the same way
+    /// `mergeLifetimeStats` is (see its doc comment).
+    ///
+    /// With multiple homes (ADR-0016), `exits`/`enters` are no longer all
+    /// crossings of a single geofence — they're crossings of *any* of the
+    /// pet's homes, merged into one timeline. The pairing itself needs no
+    /// extra logic for that: an exit is still just paired with whichever
+    /// enter comes right after it, regardless of which specific home either
+    /// belongs to, so a pet leaving one home and returning via another
+    /// becomes one excursion rather than two.
+    static func pairHomeExitsWithEnters(
+        exits: [TraccarEvent],
+        enters: [TraccarEvent]
+    ) -> [(exit: TraccarEvent, enter: TraccarEvent?)] {
+        let sortedExits = exits.sorted { $0.eventTime < $1.eventTime }
+        let sortedEnters = enters.sorted { $0.eventTime < $1.eventTime }
+
+        var pairs: [(exit: TraccarEvent, enter: TraccarEvent?)] = []
+        var enterIndex = 0
+        for exit in sortedExits {
+            while enterIndex < sortedEnters.count, sortedEnters[enterIndex].eventTime <= exit.eventTime {
+                enterIndex += 1
+            }
+            let matchingEnter = enterIndex < sortedEnters.count ? sortedEnters[enterIndex] : nil
+            if matchingEnter != nil { enterIndex += 1 }
+            pairs.append((exit, matchingEnter))
+        }
+        return pairs
     }
 
     /// Only re-fetches excursions that ended after the last cached run —
@@ -265,18 +368,22 @@ struct TraccarPetRepository: PetRepository {
             endTime: endTime,
             startCoordinate: coordinates.first,
             endCoordinate: coordinates.last,
-            distanceMeters: distance
+            distanceMeters: distance,
+            startHomeID: exit.geofenceId,
+            endHomeID: enter?.geofenceId
         )
     }
 
-    private func homeTraccarGeofence(forPetID petID: Int) async throws -> TraccarGeofence? {
+    private func homeTraccarGeofences(forPetID petID: Int) async throws -> [TraccarGeofence] {
         let geofences = try await client.fetchGeofences(deviceId: petID)
-        return geofences.first { $0.attributes[Self.homeAttributeKey]?.boolValue == true }
+        return geofences.filter { $0.attributes[Self.homeAttributeKey]?.boolValue == true }
     }
 
     private static func homeGeofence(from geofence: TraccarGeofence) -> HomeGeofence? {
         guard let parsed = TraccarGeofenceArea.parseCircle(geofence.area) else { return nil }
         return HomeGeofence(
+            id: geofence.id,
+            name: geofence.name,
             center: Coordinate(latitude: parsed.latitude, longitude: parsed.longitude),
             radiusMeters: parsed.radiusMeters
         )

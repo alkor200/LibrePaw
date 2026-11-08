@@ -271,4 +271,112 @@ struct TraccarClientTests {
         let positions = try await makeClient().fetchLatestPositions(deviceIds: [1, 2])
         #expect(positions.isEmpty)
     }
+
+    @Test("deleteGeofence sends a DELETE to the geofence's own path with Basic Auth and no body")
+    func deleteGeofenceSendsDeleteRequest() async throws {
+        MockURLProtocol.requestHandler = { request in
+            #expect(request.httpMethod == "DELETE")
+            #expect(request.url?.path == "/api/geofences/42")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Basic b3duZXJAZXhhbXBsZS5jb206c2VjcmV0")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await makeClient().deleteGeofence(id: 42)
+    }
+
+    @Test("linkGeofence(toUserId:) POSTs a userId/geofenceId permission")
+    func linkGeofenceToUserSendsPermission() async throws {
+        MockURLProtocol.requestHandler = { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path == "/api/permissions")
+            let body = try JSONSerialization.jsonObject(with: request.bodyData) as? [String: Int]
+            #expect(body?["userId"] == 7)
+            #expect(body?["geofenceId"] == 42)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await makeClient().linkGeofence(geofenceId: 42, toUserId: 7)
+    }
+
+    @Test("fetchPermittedUserIDs(deviceId:) queries with userId=0 and returns the userId of each permission")
+    func fetchPermittedUserIDsForDeviceBuildsQueryAndParses() async throws {
+        let json = """
+        [{"userId": 7, "deviceId": 3}, {"userId": 9, "deviceId": 3}]
+        """.data(using: .utf8)!
+
+        MockURLProtocol.requestHandler = { request in
+            let components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
+            let queryValues = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value) })
+            #expect(queryValues["deviceId"] == "3")
+            #expect(queryValues["userId"] == "0")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json)
+        }
+
+        let userIDs = try await makeClient().fetchPermittedUserIDs(deviceId: 3)
+        #expect(Set(userIDs) == [7, 9])
+    }
+
+    @Test("fetchCurrentUser establishes a cookie session, then GETs /api/session for the User object")
+    func fetchCurrentUserUsesCookieSession() async throws {
+        let json = """
+        {"id": 4, "email": "owner@example.com", "administrator": true}
+        """.data(using: .utf8)!
+        let requestedPaths = LockedArray<String>()
+
+        MockURLProtocol.requestHandler = { request in
+            requestedPaths.append(request.url?.path ?? "")
+
+            if request.url?.path == "/api/session", request.httpMethod == "POST" {
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, Data())
+            } else {
+                #expect(request.url?.path == "/api/session")
+                #expect(request.httpMethod == "GET")
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, json)
+            }
+        }
+
+        let user = try await makeClient().fetchCurrentUser()
+
+        #expect(user.id == 4)
+        #expect(user.administrator == true)
+        #expect(requestedPaths.values == ["/api/session", "/api/session"])
+    }
+
+    @Test("fetchUsers(keyword:) sends the keyword as a query parameter")
+    func fetchUsersBuildsKeywordQuery() async throws {
+        let json = """
+        [{"id": 5, "email": "family@example.com", "administrator": false}]
+        """.data(using: .utf8)!
+
+        MockURLProtocol.requestHandler = { request in
+            #expect(request.url?.path == "/api/users")
+            let components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
+            #expect(components.queryItems?.first(where: { $0.name == "keyword" })?.value == "family@example.com")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json)
+        }
+
+        let users = try await makeClient().fetchUsers(keyword: "family@example.com")
+        #expect(users.first?.id == 5)
+    }
+
+    @Test("linkDevice(toUserId:) POSTs a userId/deviceId permission")
+    func linkDeviceToUserSendsPermission() async throws {
+        MockURLProtocol.requestHandler = { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path == "/api/permissions")
+            let body = try JSONSerialization.jsonObject(with: request.bodyData) as? [String: Int]
+            #expect(body?["userId"] == 5)
+            #expect(body?["deviceId"] == 1)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        try await makeClient().linkDevice(deviceId: 1, toUserId: 5)
+    }
 }

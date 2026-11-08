@@ -92,6 +92,84 @@ public actor TraccarClient {
         try await sendJSONNoContent(method: "POST", "/api/permissions", body: GeofenceDevicePermission(deviceId: deviceId, geofenceId: geofenceId))
     }
 
+    /// Deletes a geofence entirely (e.g. removing one of a pet's several
+    /// home areas — see ADR-0016).
+    public func deleteGeofence(id: Int) async throws {
+        try await sendNoBody(method: "DELETE", "/api/geofences/\(id)")
+    }
+
+    /// Links a geofence to a user, so that user can see and manage it —
+    /// linking a geofence to a device alone does **not** do this (see
+    /// ``linkGeofence(geofenceId:toDeviceId:)`` and ADR-0017).
+    public func linkGeofence(geofenceId: Int, toUserId userId: Int) async throws {
+        try await sendJSONNoContent(method: "POST", "/api/permissions", body: UserGeofencePermission(userId: userId, geofenceId: geofenceId))
+    }
+
+    /// The ids of every user with an explicit permission link to `deviceId`
+    /// (`GET /api/permissions?deviceId=<id>&userId=0` — `0` on one side
+    /// means "any", per Traccar's own API reference).
+    ///
+    /// **Confirmed against a live server: this endpoint requires an
+    /// administrator account for *any* query shape** — `PermissionsService
+    /// .checkAdmin()` runs unconditionally before even looking at the query
+    /// parameters, so a non-admin gets a `400` (a raw Java stack trace as
+    /// the body, not a JSON error) even asking only about their own
+    /// permissions. Callers must treat this as best-effort/admin-only, never
+    /// as something every account can rely on — see ADR-0017.
+    public func fetchPermittedUserIDs(deviceId: Int) async throws -> [Int] {
+        let permissions: [TraccarPermission] = try await getJSON("/api/permissions", queryItems: [
+            URLQueryItem(name: "deviceId", value: String(deviceId)),
+            URLQueryItem(name: "userId", value: "0")
+        ])
+        return permissions.compactMap(\.userId)
+    }
+
+    /// The currently authenticated user. Resolved via the cookie-session
+    /// dance from ADR-0012 (`GET /api/session` after establishing a
+    /// cookie) — **not** `GET /api/users`, which — confirmed against a live
+    /// server — returns an empty array for a non-admin account regardless
+    /// of query parameters (even `?userId=<own id>`), rather than returning
+    /// "self" as might be assumed; see ADR-0017.
+    public func fetchCurrentUser() async throws -> TraccarUser {
+        try await ensureCookieSession()
+
+        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
+            throw TraccarError.invalidServerURL
+        }
+        components.path = (components.path as NSString).appendingPathComponent("/api/session")
+        guard let url = components.url else {
+            throw TraccarError.invalidServerURL
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await perform(request)
+        let validData = try validated(data, response)
+        do {
+            return try decoder.decode(TraccarUser.self, from: validData)
+        } catch {
+            throw TraccarError.decoding(String(describing: error))
+        }
+    }
+
+    /// Searches Traccar's user list by a keyword matched against name/email
+    /// server-side (`GET /api/users?keyword=`). Confirmed against a live
+    /// server: for an administrator this searches every user on the server;
+    /// for anyone else it returns an empty array regardless of the keyword
+    /// (see ``fetchCurrentUser()``'s doc comment and ADR-0017) — so this is
+    /// only useful when the caller is already known to be an admin (see
+    /// ADR-0018).
+    public func fetchUsers(keyword: String) async throws -> [TraccarUser] {
+        try await getJSON("/api/users", queryItems: [URLQueryItem(name: "keyword", value: keyword)])
+    }
+
+    /// Links a user to a device, so that user can see it (see
+    /// ``UserDevicePermission`` and ADR-0018).
+    public func linkDevice(deviceId: Int, toUserId userId: Int) async throws {
+        try await sendJSONNoContent(method: "POST", "/api/permissions", body: UserDevicePermission(userId: userId, deviceId: deviceId))
+    }
+
     /// Historical events for one device in a time range, filtered to a
     /// single event type (Traccar's `type` query parameter accepts multiple
     /// values, but callers here only ever need one at a time).
@@ -351,6 +429,23 @@ public actor TraccarClient {
 
     private func sendJSONNoContent<Body: Encodable>(method: String, _ path: String, body: Body) async throws {
         _ = try await send(method: method, path, body: body)
+    }
+
+    private func sendNoBody(method: String, _ path: String) async throws {
+        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
+            throw TraccarError.invalidServerURL
+        }
+        components.path = (components.path as NSString).appendingPathComponent(path)
+        guard let url = components.url else {
+            throw TraccarError.invalidServerURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(credentials.basicAuthHeaderValue, forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await perform(request)
+        _ = try validated(data, response)
     }
 
     private func send<Body: Encodable>(method: String, _ path: String, body: Body) async throws -> Data {

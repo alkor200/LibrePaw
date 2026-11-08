@@ -15,7 +15,8 @@ private enum PetDetailRoute: Hashable {
     case map
     case trail
     case excursions
-    case setHome
+    case homes
+    case sharePet
 }
 
 struct PetDetailView: View {
@@ -63,8 +64,14 @@ struct PetDetailView: View {
                     viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository),
                     petRepository: petRepository
                 )
-            case .setHome:
-                SetHomeView(viewModel: SetHomeViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
+            case .homes:
+                HomesView(
+                    viewModel: HomesViewModel(pet: viewModel.pet, petRepository: petRepository),
+                    petRepository: petRepository,
+                    locationService: locationService
+                )
+            case .sharePet:
+                SharePetView(viewModel: SharePetViewModel(pet: viewModel.pet, petRepository: petRepository))
             }
         }
         .task {
@@ -72,6 +79,9 @@ struct PetDetailView: View {
         }
         .task {
             await viewModel.loadLifetimeStats()
+        }
+        .task {
+            await viewModel.loadAdministratorStatus()
         }
         .sheet(isPresented: $isShowingPhotoEditor) {
             PhotoEditorView(petName: viewModel.pet.name) { jpegData in
@@ -154,10 +164,24 @@ struct PetDetailView: View {
                 actionRow(systemImage: "figure.walk", title: "Excursions")
             }
 
-            Divider().padding(.leading, 44)
+            // Homes and sharing are both admin-only (see ADR-0017,
+            // ADR-0018) — a non-admin has nothing to do on either screen,
+            // since they can't make a home visible to anyone but
+            // themselves or share the pet at all, so neither entry point
+            // is shown to them at all rather than leading somewhere
+            // useless.
+            if viewModel.isAdministrator {
+                Divider().padding(.leading, 44)
 
-            NavigationLink(value: PetDetailRoute.setHome) {
-                actionRow(systemImage: "house.fill", title: "\(viewModel.pet.name)'s Home")
+                NavigationLink(value: PetDetailRoute.homes) {
+                    actionRow(systemImage: "house.fill", title: "\(viewModel.pet.name)'s Homes")
+                }
+
+                Divider().padding(.leading, 44)
+
+                NavigationLink(value: PetDetailRoute.sharePet) {
+                    actionRow(systemImage: "person.badge.plus", title: "Share \(viewModel.pet.name)")
+                }
             }
         }
         .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

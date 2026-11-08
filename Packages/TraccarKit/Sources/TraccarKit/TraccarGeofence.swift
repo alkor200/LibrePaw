@@ -32,10 +32,37 @@ struct UpdatedTraccarGeofence: Encodable, Sendable {
     let attributes: [String: Bool]
 }
 
-/// Links a device to a geofence via `POST /api/permissions`.
+/// Links a device to a geofence via `POST /api/permissions`. This alone does
+/// **not** make the geofence visible to any user — see
+/// ``UserGeofencePermission`` and ADR-0017.
 struct GeofenceDevicePermission: Encodable, Sendable {
     let deviceId: Int
     let geofenceId: Int
+}
+
+/// Links a user to a geofence via `POST /api/permissions` — required, on top
+/// of ``GeofenceDevicePermission``, for that user to see or manage the
+/// geofence at all (confirmed against Traccar's own docs/source; see
+/// ADR-0017).
+struct UserGeofencePermission: Encodable, Sendable {
+    let userId: Int
+    let geofenceId: Int
+}
+
+/// One permission link as returned by `GET /api/permissions`. Traccar's
+/// `Permission` object can carry many different `*Id` fields depending on
+/// which two were queried (userId+deviceId, userId+geofenceId, etc.) — only
+/// the ones Scentrail reads are modeled here, the rest decode as absent.
+public struct TraccarPermission: Decodable, Sendable, Equatable {
+    public let userId: Int?
+    public let deviceId: Int?
+    public let geofenceId: Int?
+
+    public init(userId: Int?, deviceId: Int?, geofenceId: Int?) {
+        self.userId = userId
+        self.deviceId = deviceId
+        self.geofenceId = geofenceId
+    }
 }
 
 /// Builds and parses the WKT `CIRCLE (lat lon, radiusMeters)` format Traccar

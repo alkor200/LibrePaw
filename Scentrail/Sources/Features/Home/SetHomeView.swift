@@ -11,21 +11,68 @@ import ScentrailKit
 struct SetHomeView: View {
     @State private var viewModel: SetHomeViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var hasCenteredCamera = false
+    @State private var cameraPosition: MapCameraPosition
+    @State private var hasCenteredCamera: Bool
 
     init(viewModel: SetHomeViewModel) {
         _viewModel = State(initialValue: viewModel)
+        // When editing an existing home, `viewModel.homeCoordinate` is
+        // already set at init time (unlike adding a new one, where it only
+        // becomes available later via `.task`/`.onChange` below) — so `Map`
+        // takes the `homeCoordinate != nil` branch in `content` on its very
+        // first render. Seeding `cameraPosition` with its final region here,
+        // rather than leaving it at `.automatic` and jumping it to `.region`
+        // a moment later in `.task`, matters a lot more than it looks:
+        // without this, `Map` mounts once at `.automatic` and is then
+        // immediately redirected, which — observed on the simulator, see
+        // ADR-0016 — sent `MKMapView` into a repeated re-initialization
+        // spiral (each pass paying its multi-second cold-start cost) that
+        // pegged the main thread and made the app look hung/crashed. Mounting
+        // already at the final region avoids that transition entirely.
+        if let coordinate = viewModel.homeCoordinate {
+            _cameraPosition = State(initialValue: .region(Self.region(center: coordinate, radiusMeters: viewModel.radiusMeters)))
+            _hasCenteredCamera = State(initialValue: true)
+        } else {
+            _cameraPosition = State(initialValue: .automatic)
+            _hasCenteredCamera = State(initialValue: false)
+        }
     }
 
     var body: some View {
         content
-            .navigationTitle("\(viewModel.pet.name)'s Home")
+            .navigationTitle(viewModel.isEditingExistingHome ? "Edit Home" : "Add Home")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if viewModel.isEditingExistingHome {
+                    ToolbarItem(placement: .destructiveAction) {
+                        Button(role: .destructive) {
+                            viewModel.requestDelete()
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .disabled(viewModel.isDeleting)
+                    }
+                }
+            }
+            .confirmationDialog(
+                "Delete \(viewModel.name)?",
+                isPresented: Binding(
+                    get: { viewModel.isShowingDeleteConfirmation },
+                    set: { isPresented in if !isPresented { viewModel.cancelDelete() } }
+                )
+            ) {
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await viewModel.confirmDelete()
+                        if viewModel.didDelete { dismiss() }
+                    }
+                }
+                Button("Cancel", role: .cancel) { viewModel.cancelDelete() }
+            }
             .task {
                 viewModel.locationService.requestAuthorizationIfNeeded()
                 viewModel.locationService.startUpdating()
-                await viewModel.loadExistingHome()
+                viewModel.useCurrentLocationIfUnset()
                 centerCameraIfNeeded()
             }
             .onChange(of: viewModel.locationService.coordinate) {
@@ -70,7 +117,10 @@ struct SetHomeView: View {
 
     private var controlsCard: some View {
         VStack(spacing: 16) {
-            Label(homeStatusText, systemImage: "house.fill")
+            TextField("Name", text: $viewModel.name)
+                .textFieldStyle(.roundedBorder)
+
+            Text("Drag the map to place \(viewModel.name.trimmed.isEmpty ? "it" : viewModel.name).")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,7 +141,7 @@ struct SetHomeView: View {
 
             Button {
                 Task {
-                    await viewModel.saveHome()
+                    await viewModel.save()
                     if viewModel.didSave { dismiss() }
                 }
             } label: {
@@ -100,7 +150,7 @@ struct SetHomeView: View {
                     if viewModel.isSaving {
                         ProgressView()
                     } else {
-                        Text("Save Home")
+                        Text(viewModel.isEditingExistingHome ? "Save" : "Add Home")
                     }
                     Spacer()
                 }
@@ -111,14 +161,6 @@ struct SetHomeView: View {
         }
         .padding()
         .background(.regularMaterial)
-    }
-
-    private var homeStatusText: String {
-        if let existingHome = viewModel.existingHome {
-            "Home is set, radius \(Int(existingHome.radiusMeters)) m. Drag the map to move it."
-        } else {
-            "No home set yet for \(viewModel.pet.name). Drag the map to place it."
-        }
     }
 
     private var deniedView: some View {
@@ -136,16 +178,22 @@ struct SetHomeView: View {
     }
 
     private func centerCameraIfNeeded() {
-        guard !hasCenteredCamera, let coordinate = viewModel.homeCoordinate?.clLocationCoordinate2D else { return }
+        guard !hasCenteredCamera, let coordinate = viewModel.homeCoordinate else { return }
         hasCenteredCamera = true
-        cameraPosition = .region(
-            MKCoordinateRegion(center: coordinate, latitudinalMeters: viewModel.radiusMeters * 6, longitudinalMeters: viewModel.radiusMeters * 6)
+        cameraPosition = .region(Self.region(center: coordinate, radiusMeters: viewModel.radiusMeters))
+    }
+
+    private static func region(center: Coordinate, radiusMeters: Double) -> MKCoordinateRegion {
+        MKCoordinateRegion(
+            center: center.clLocationCoordinate2D,
+            latitudinalMeters: radiusMeters * 6,
+            longitudinalMeters: radiusMeters * 6
         )
     }
 }
 
 #Preview {
     NavigationStack {
-        SetHomeView(viewModel: SetHomeViewModel(pet: .previewOnline, petRepository: PreviewPetRepository(), locationService: LocationService()))
+        SetHomeView(viewModel: SetHomeViewModel(pet: .previewOnline, existingHome: nil, petRepository: PreviewPetRepository(), locationService: LocationService()))
     }
 }

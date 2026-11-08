@@ -1,47 +1,41 @@
 import Foundation
 import ScentrailKit
 
+/// Adds a new home, or edits one already in `existingHome` — the same
+/// screen either way (see ``SetHomeView``), distinguished only by whether a
+/// home was passed in from ``HomesView`` (see ADR-0016).
 @Observable
 @MainActor
 final class SetHomeViewModel {
     let pet: Pet
     let locationService: LocationService
+    let isEditingExistingHome: Bool
 
+    var name: String
     /// The pin's current position — editable by dragging the map underneath
-    /// it. Starts at the existing home if one is set, otherwise at the
-    /// owner's current location once that becomes available.
+    /// it. Starts at the existing home's center when editing, otherwise at
+    /// the owner's current location once that becomes available.
     var homeCoordinate: Coordinate?
-    var radiusMeters: Double = 50
-    private(set) var existingHome: HomeGeofence?
+    var radiusMeters: Double
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     private(set) var didSave = false
+    private(set) var isShowingDeleteConfirmation = false
+    private(set) var isDeleting = false
+    private(set) var didDelete = false
 
+    private let existingHomeID: Int?
     private let petRepository: PetRepository
 
-    init(pet: Pet, petRepository: PetRepository, locationService: LocationService) {
+    init(pet: Pet, existingHome: HomeGeofence?, petRepository: PetRepository, locationService: LocationService) {
         self.pet = pet
+        self.isEditingExistingHome = existingHome != nil
+        self.existingHomeID = existingHome?.id
+        self.name = existingHome?.name ?? "Home"
+        self.homeCoordinate = existingHome?.center
+        self.radiusMeters = existingHome?.radiusMeters ?? 50
         self.petRepository = petRepository
         self.locationService = locationService
-    }
-
-    func loadExistingHome() async {
-        do {
-            guard let home = try await petRepository.homeGeofence(forPetID: pet.id) else {
-                useCurrentLocationIfUnset()
-                return
-            }
-            existingHome = home
-            homeCoordinate = home.center
-            radiusMeters = home.radiusMeters
-        } catch {
-            // Deliberately distinct from "no home set yet": if we can't tell
-            // whether a home already exists, defaulting to "none" and
-            // letting the owner save would silently move their real home to
-            // wherever they happen to be standing. Surface the failure
-            // instead so they know to retry before saving.
-            errorMessage = "Couldn't check for an existing home (\(error.localizedDescription)). Try again before saving, so you don't accidentally move it."
-        }
     }
 
     /// Defaults the pin to the owner's current location, but only before
@@ -52,9 +46,14 @@ final class SetHomeViewModel {
         homeCoordinate = coordinate
     }
 
-    func saveHome() async {
+    func save() async {
         guard let coordinate = homeCoordinate else {
-            errorMessage = "Drag the map to choose a location for home first."
+            errorMessage = "Drag the map to choose a location first."
+            return
+        }
+        let trimmedName = name.trimmed
+        guard !trimmedName.isEmpty else {
+            errorMessage = "Give this home a name."
             return
         }
 
@@ -63,8 +62,37 @@ final class SetHomeViewModel {
         defer { isSaving = false }
 
         do {
-            try await petRepository.setHomeGeofence(forPetID: pet.id, center: coordinate, radiusMeters: radiusMeters)
+            if let existingHomeID {
+                try await petRepository.updateHomeGeofence(existingHomeID, forPetID: pet.id, name: trimmedName, center: coordinate, radiusMeters: radiusMeters)
+            } else {
+                try await petRepository.addHomeGeofence(forPetID: pet.id, name: trimmedName, center: coordinate, radiusMeters: radiusMeters)
+            }
             didSave = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func requestDelete() {
+        isShowingDeleteConfirmation = true
+    }
+
+    func cancelDelete() {
+        isShowingDeleteConfirmation = false
+    }
+
+    /// Only reachable when editing (the toolbar button that calls this is
+    /// hidden while adding), so `existingHomeID` is always set here.
+    func confirmDelete() async {
+        guard let existingHomeID else { return }
+        isShowingDeleteConfirmation = false
+        isDeleting = true
+        errorMessage = nil
+        defer { isDeleting = false }
+
+        do {
+            try await petRepository.deleteHomeGeofence(existingHomeID)
+            didDelete = true
         } catch {
             errorMessage = error.localizedDescription
         }

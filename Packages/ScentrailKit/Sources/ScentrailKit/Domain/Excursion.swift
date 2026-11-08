@@ -14,6 +14,12 @@ public struct Excursion: Identifiable, Sendable, Hashable {
     /// Total distance covered along the recorded trail, `nil` if too few
     /// positions were reported to measure it.
     public let distanceMeters: Double?
+    /// The home geofence (see ``HomeGeofence/id``) the pet left/returned to —
+    /// `nil` only if the underlying event didn't carry one. With multiple
+    /// homes (ADR-0016) these can differ: a pet can leave one home and come
+    /// back to another.
+    public let startHomeID: Int?
+    public let endHomeID: Int?
 
     public init(
         id: Int,
@@ -21,7 +27,9 @@ public struct Excursion: Identifiable, Sendable, Hashable {
         endTime: Date?,
         startCoordinate: Coordinate?,
         endCoordinate: Coordinate?,
-        distanceMeters: Double?
+        distanceMeters: Double?,
+        startHomeID: Int? = nil,
+        endHomeID: Int? = nil
     ) {
         self.id = id
         self.startTime = startTime
@@ -29,6 +37,8 @@ public struct Excursion: Identifiable, Sendable, Hashable {
         self.startCoordinate = startCoordinate
         self.endCoordinate = endCoordinate
         self.distanceMeters = distanceMeters
+        self.startHomeID = startHomeID
+        self.endHomeID = endHomeID
     }
 
     public var isOngoing: Bool { endTime == nil }

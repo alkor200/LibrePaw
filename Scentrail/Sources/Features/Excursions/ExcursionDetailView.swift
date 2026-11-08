@@ -15,6 +15,9 @@ struct ExcursionDetailView: View {
             if viewModel.excursion.isLikelyVehicleTrip {
                 vehicleTripBanner
             }
+            if let routeText = viewModel.routeText {
+                routeBanner(routeText)
+            }
             header
             mapCard
         }
@@ -53,7 +56,16 @@ struct ExcursionDetailView: View {
     }
 
     private var vehicleTripBanner: some View {
-        Label("This looks like a car or train ride, not a walk — it isn't counted in your totals.", systemImage: "car.fill")
+        Label("This looks like a car or train ride, it isn't counted in your totals.", systemImage: "car.fill")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func routeBanner(_ text: String) -> some View {
+        Label(text, systemImage: "arrow.triangle.swap")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -152,8 +164,10 @@ struct ExcursionDetailView: View {
                 startTime: .now.addingTimeInterval(-3600),
                 endTime: .now.addingTimeInterval(-1800),
                 startCoordinate: Coordinate(latitude: 52.5200, longitude: 13.4050),
-                endCoordinate: Coordinate(latitude: 52.5200, longitude: 13.4050),
-                distanceMeters: 1240
+                endCoordinate: Coordinate(latitude: 52.4100, longitude: 13.0500),
+                distanceMeters: 1240,
+                startHomeID: 1,
+                endHomeID: 2
             ),
             petID: Pet.previewOnline.id,
             petRepository: PreviewPetRepository()

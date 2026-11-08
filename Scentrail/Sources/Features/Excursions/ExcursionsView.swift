@@ -47,7 +47,7 @@ struct ExcursionsView: View {
         } else {
             List(viewModel.excursions) { excursion in
                 NavigationLink(value: excursion) {
-                    ExcursionRow(excursion: excursion)
+                    ExcursionRow(excursion: excursion, homeName: viewModel.homeName)
                 }
             }
             .listStyle(.plain)
@@ -57,6 +57,9 @@ struct ExcursionsView: View {
 
 private struct ExcursionRow: View {
     let excursion: Excursion
+    /// Resolves a home geofence id (see `Excursion.startHomeID`/`endHomeID`)
+    /// to the name the owner gave it, for the "Home → Cabin" route caption.
+    let homeName: (Int?) -> String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -75,6 +78,12 @@ private struct ExcursionRow: View {
                 }
             }
 
+            if let routeText {
+                Label(routeText, systemImage: "arrow.triangle.swap")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             HStack(spacing: 16) {
                 if let duration = excursion.duration {
                     Label(durationText(duration), systemImage: "clock")
@@ -87,6 +96,13 @@ private struct ExcursionRow: View {
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+    }
+
+    /// `nil` unless both ends resolve to a known home *and* they differ —
+    /// an ordinary round trip to the same home says nothing new here.
+    private var routeText: String? {
+        guard let start = homeName(excursion.startHomeID), let end = homeName(excursion.endHomeID), start != end else { return nil }
+        return "\(start) → \(end)"
     }
 
     private func durationText(_ seconds: TimeInterval) -> String {

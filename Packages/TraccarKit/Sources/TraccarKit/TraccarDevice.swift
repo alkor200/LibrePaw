@@ -44,3 +44,13 @@ public struct TraccarDevice: Decodable, Sendable, Identifiable, Equatable {
         self.attributes = attributes
     }
 }
+
+/// Links a user to a device via `POST /api/permissions`, so that user can
+/// see the device (and, from there, whatever else Scentrail shares with
+/// them for it — see ADR-0018). Confirmed against a live server:
+/// server-side this requires the caller to be a Traccar administrator,
+/// the same way granting a *geofence* to another user does (ADR-0017).
+struct UserDevicePermission: Encodable, Sendable {
+    let userId: Int
+    let deviceId: Int
+}

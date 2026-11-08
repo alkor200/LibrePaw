@@ -18,9 +18,14 @@ its own backend, and is not affiliated with the Traccar project.
   a pet.
 - Pet avatars on the map: a photo if you set one (see
   [Setting a pet photo](#setting-a-pet-photo)), otherwise a paw icon.
-- **Excursions**: set a pet's home location (current location + a radius,
-  right from the app) and see a list of trips away from home and back, with
-  distance and duration.
+- **Excursions**: set one or more of a pet's home locations (current
+  location + a radius, right from the app) and see a list of trips away
+  from home and back, with distance and duration. A trip can start at one
+  home and end at another (e.g. "Home → Cabin") if that's where the pet's
+  positions actually show it going.
+- **Share a pet** with another Traccar account by email, right from the
+  app (admin accounts only — see
+  [Sharing a pet](#sharing-a-pet-and-multiple-household-accounts) below).
 - Live position updates over Traccar's WebSocket feed, and a switchable
   standard/satellite/hybrid map layer.
 
@@ -61,12 +66,32 @@ Use Traccar's own device image upload: open the device in Traccar's web UI →
 `deviceImage` attribute and `/api/media/...` endpoint — no Scentrail-specific
 setup needed. Devices without a photo show a paw icon instead.
 
-### Setting a pet's home location
+### Setting a pet's home locations
 
-Open a pet's detail screen → **Set Home**, stand where you want "home" to
-be, pick a radius, and save — Scentrail creates a Traccar geofence (a
-`Home (Scentrail)` circle, visible in Traccar's own web UI too) linked to
-that pet's device. Excursions only start appearing once this is set.
+Open a pet's detail screen → **`<Pet>`'s Homes** → **Add Home**, give it a
+name, stand (or drag the map to) where you want it to be, pick a radius,
+and save — Scentrail creates a Traccar geofence linked to that pet's
+device, visible in Traccar's own web UI too. Add as many as you like (e.g.
+"Home" and "Cabin"); swipe to delete one, or tap it to move/rename it.
+Excursions only start appearing once at least one home is set.
+
+This is only available to a Traccar **administrator** account — Traccar
+has no way for a non-admin to make a geofence visible to anyone besides
+themselves, so a home a non-admin set up would silently only work for
+them (see [ADR-0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md)).
+Non-admin accounts don't see the "Homes" entry at all; excursions still
+work for them once an admin has set a home up.
+
+### Sharing a pet and multiple household accounts
+
+If more than one person in your household uses Scentrail against the same
+Traccar server, the server's **admin account** should be the one adding
+homes and sharing pets — from a pet's detail screen, **Share `<Pet>`**,
+enter the other person's Traccar account email, and they'll see the pet
+(and any homes already set up for it) in their own copy of Scentrail
+immediately. This is also admin-only, and for the same reason as above:
+Traccar requires admin rights to grant another account access to anything
+(see [ADR-0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md)).
 
 ## Running tests
 
@@ -132,6 +157,9 @@ Key decisions, each recorded as an ADR:
 | [0013](docs/adr/0013-websocket-live-updates.md) | Live updates via Traccar's WebSocket feed |
 | [0014](docs/adr/0014-home-geofence-for-excursions.md) | Derive excursions from a home geofence |
 | [0015](docs/adr/0015-per-developer-signing-config.md) | Per-developer signing config via a gitignored xcconfig file |
+| [0016](docs/adr/0016-multiple-home-geofences-per-pet.md) | Support multiple home geofences per pet |
+| [0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md) | Grant explicit user permissions when creating or editing a home geofence (non-admin editing superseded by 0018) |
+| [0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md) | Restrict adding homes and sharing a pet to administrator accounts |
 
 ## Roadmap
 

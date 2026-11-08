@@ -17,7 +17,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "ScentrailKit", dependencies: ["TraccarKit"]),
-        .testTarget(name: "ScentrailKitTests", dependencies: ["ScentrailKit"])
+        .testTarget(name: "ScentrailKitTests", dependencies: ["ScentrailKit", "TraccarKit"])
     ],
     swiftLanguageModes: [.v6]
 )

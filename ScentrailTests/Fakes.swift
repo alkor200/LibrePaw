@@ -44,8 +44,12 @@ struct FakePetRepository: PetRepository {
         }
     }
 
-    func homeGeofence(forPetID petID: Int) async throws -> HomeGeofence? { nil }
-    func setHomeGeofence(forPetID petID: Int, center: Coordinate, radiusMeters: Double) async throws {}
+    func homeGeofences(forPetID petID: Int) async throws -> [HomeGeofence] { [] }
+    func addHomeGeofence(forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {}
+    func updateHomeGeofence(_ homeID: Int, forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {}
+    func deleteHomeGeofence(_ homeID: Int) async throws {}
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats { .zero }
+    func isCurrentUserAdministrator() async throws -> Bool { false }
+    func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }
