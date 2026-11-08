@@ -15,6 +15,14 @@ struct FindPetView: View {
 
     var body: some View {
         content
+            // Not just on `compassView` below: a plain `VStack` only sizes
+            // itself to its widest child (the 260pt circle here), so
+            // without this, `.background` only paints that narrow column,
+            // leaving the system's own black fill visible down both sides
+            // in dark mode, confirmed live. Applied once, here, so every
+            // branch of `content` is covered rather than relying on each
+            // one to remember its own `.frame`.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.appBackground)
             .navigationTitle("Find \(viewModel.pet.name)")
             .navigationBarTitleDisplayMode(.inline)
@@ -34,7 +42,6 @@ struct FindPetView: View {
             )
         } else if viewModel.locationService.coordinate == nil {
             ProgressView("Finding your location…")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             compassView
         }

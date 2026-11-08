@@ -43,6 +43,7 @@ struct PhotoEditorView: View {
 
                 Spacer()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
             .background(Color.appBackground)
             .navigationTitle("\(petName)'s Photo")
