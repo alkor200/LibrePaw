@@ -3,7 +3,7 @@ import SwiftUI
 /// Scentrail's brand color tokens, backed by light/dark asset-catalog
 /// colorsets of the same name (`Assets.xcassets`) — see each case's doc
 /// comment for the exact hex pair. `AccentColor` itself is set to
-/// `appPrimaryDark`'s values, so every `.tint`-driven control (buttons, the
+/// `appPrimary`'s values, so every `.tint`-driven control (buttons, the
 /// tab bar, `NavigationLink` chevrons, …) already follows this palette
 /// without needing any of these explicitly.
 ///
@@ -18,11 +18,12 @@ extension ShapeStyle where Self == Color {
     /// Card/row surface drawn on top of ``appBackground``. `#FFFFFF` light /
     /// `#252E29` dark.
     static var appSurface: Color { Color("AppSurface") }
-    /// Brand highlight fill (badges, soft accents) — same value in both
+    /// Brand interactive color; matches `AccentColor`. Same value in both
     /// appearances: `#A8C5AE`.
     static var appPrimary: Color { Color("AppPrimary") }
-    /// Brand interactive color; matches `AccentColor`. `#668B70` light /
-    /// `#85AA8D` dark.
+    /// Stronger variant of ``appPrimary`` for when it needs more contrast
+    /// than the soft brand tone gives (e.g. text/icons that must stay
+    /// legible on a light surface). `#668B70` light / `#85AA8D` dark.
     static var appPrimaryDark: Color { Color("AppPrimaryDark") }
     /// Primary text. `#29352D` light / `#EFF5EF` dark.
     static var appText: Color { Color("AppText") }
