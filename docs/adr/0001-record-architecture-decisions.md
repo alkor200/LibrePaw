@@ -16,7 +16,7 @@ context that exists in a team's shared memory.
 
 We will use Architecture Decision Records (ADRs), as described by Michael
 Nygard, and keep them in `docs/adr`. Each ADR is numbered sequentially and
-immutable once accepted — if a decision changes, a new ADR supersedes the old
+immutable once accepted - if a decision changes, a new ADR supersedes the old
 one rather than editing it in place.
 
 Format per ADR:

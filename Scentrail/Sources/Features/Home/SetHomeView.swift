@@ -3,10 +3,10 @@ import UIKit
 import MapKit
 import ScentrailKit
 
-/// Shows a pet's current home (if any) and lets the owner move it — the pin
+/// Shows a pet's current home (if any) and lets the owner move it - the pin
 /// stays fixed at the center of the screen while the map pans underneath it,
 /// the same interaction Apple Maps and Maps-based pickers use for "drop a
-/// pin here" — rather than being limited to the owner's own current location
+/// pin here" - rather than being limited to the owner's own current location
 /// (see ADR-0014 for why home matters: it drives excursion detection).
 struct SetHomeView: View {
     @State private var viewModel: SetHomeViewModel
@@ -18,14 +18,14 @@ struct SetHomeView: View {
         _viewModel = State(initialValue: viewModel)
         // When editing an existing home, `viewModel.homeCoordinate` is
         // already set at init time (unlike adding a new one, where it only
-        // becomes available later via `.task`/`.onChange` below) — so `Map`
+        // becomes available later via `.task`/`.onChange` below) - so `Map`
         // takes the `homeCoordinate != nil` branch in `content` on its very
         // first render. Seeding `cameraPosition` with its final region here,
         // rather than leaving it at `.automatic` and jumping it to `.region`
         // a moment later in `.task`, matters a lot more than it looks:
         // without this, `Map` mounts once at `.automatic` and is then
-        // immediately redirected, which — observed on the simulator, see
-        // ADR-0016 — sent `MKMapView` into a repeated re-initialization
+        // immediately redirected, which - observed on the simulator, see
+        // ADR-0016 - sent `MKMapView` into a repeated re-initialization
         // spiral (each pass paying its multi-second cold-start cost) that
         // pegged the main thread and made the app look hung/crashed. Mounting
         // already at the final region avoids that transition entirely.
@@ -168,14 +168,14 @@ struct SetHomeView: View {
     }
 
     /// Same visibility explanation as `HomesView`'s, inline here too since
-    /// this is the actual point of action — see ADR-0019.
+    /// this is the actual point of action - see ADR-0019.
     @ViewBuilder
     private var visibilityNotice: some View {
         if let isAdministrator = viewModel.isAdministrator {
             Label {
                 Text(isAdministrator
                     ? "Visible to everyone with access to \(viewModel.pet.name)."
-                    : "Only visible to you — ask an admin to add this if it should apply to everyone.")
+                    : "Only visible to you - ask an admin to add this if it should apply to everyone.")
             } icon: {
                 Image(systemName: isAdministrator ? "person.3.fill" : "eye.slash.fill")
             }

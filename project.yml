@@ -31,7 +31,7 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
-    # DEVELOPMENT_TEAM is intentionally not set here — project.yml is shared/
+    # DEVELOPMENT_TEAM is intentionally not set here - project.yml is shared/
     # committed, and this value is personal per developer. It comes from
     # Config/Local.xcconfig instead (gitignored; see Config/Local.xcconfig.example),
     # which `xcodegen generate` only *references* rather than writes, so it
@@ -46,7 +46,7 @@ targets:
       properties:
         CFBundleDisplayName: Scentrail
         # Substituted from the MARKETING_VERSION/CURRENT_PROJECT_VERSION build
-        # settings above at build time — XcodeGen's own Info.plist defaults
+        # settings above at build time - XcodeGen's own Info.plist defaults
         # otherwise hardcode "1.0"/"1" regardless of those settings.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)

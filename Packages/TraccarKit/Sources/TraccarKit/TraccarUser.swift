@@ -1,6 +1,6 @@
 import Foundation
 
-/// A user as returned by `/api/users` — only the fields Scentrail needs to
+/// A user as returned by `/api/users` - only the fields Scentrail needs to
 /// identify "the currently authenticated user" and whether they're an
 /// administrator (see ADR-0017, ADR-0018).
 public struct TraccarUser: Decodable, Sendable, Equatable {

@@ -92,7 +92,7 @@ struct ExcursionDetailView: View {
     }
 
     /// Takes whatever vertical space the stat tiles above leave over, so the
-    /// whole screen — stats and route — fits without scrolling.
+    /// whole screen - stats and route - fits without scrolling.
     private var mapCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Route", systemImage: "point.topleft.down.curvedto.point.bottomright.up")

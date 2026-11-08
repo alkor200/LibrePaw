@@ -1,7 +1,7 @@
 import Foundation
 import ScentrailKit
 
-/// Grants another Traccar account access to this pet, by email — admin-only
+/// Grants another Traccar account access to this pet, by email - admin-only
 /// server-side (see ADR-0018).
 @Observable
 @MainActor

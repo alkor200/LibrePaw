@@ -151,7 +151,7 @@ struct TraccarPetRepository: PetRepository {
 
     /// Grants whoever is using Scentrail right now, plus every user with an
     /// explicit permission link to the pet's device, the same link to this
-    /// geofence — linking a geofence to a *device* only controls which
+    /// geofence - linking a geofence to a *device* only controls which
     /// device's crossings generate events for it, it does not by itself
     /// make the geofence visible to any user (confirmed against a live
     /// server; see ADR-0017).
@@ -161,19 +161,19 @@ struct TraccarPetRepository: PetRepository {
     /// confirmed (live server) to just return `204` again rather than
     /// erroring, so there's nothing to protect against by checking first.
     ///
-    /// Both are also best-effort — this never throws, and the device link
+    /// Both are also best-effort - this never throws, and the device link
     /// made just before this is called has already succeeded, which is what
     /// matters for excursion detection; this only affects who can
     /// additionally *see* the home in Scentrail/Traccar's own UI:
     /// - Granting the current user needs `fetchCurrentUser()`, which only
     ///   needs an ordinary account and works for anyone.
     /// - Granting every other device-permitted user needs
-    ///   `fetchPermittedUserIDs(deviceId:)`, which — confirmed against a
-    ///   live server — only works for an administrator account; for
+    ///   `fetchPermittedUserIDs(deviceId:)`, which - confirmed against a
+    ///   live server - only works for an administrator account; for
     ///   anyone else it fails here every time, silently, which is fine:
     ///   that person still got their own grant above. An admin editing a
     ///   home once (even without changing anything) is what extends it to
-    ///   the rest of the household — see ADR-0017.
+    ///   the rest of the household - see ADR-0017.
     private func syncGeofenceVisibility(geofenceId: Int, petID: Int) async {
         let selfID = try? await client.fetchCurrentUser().id
         if let selfID {
@@ -181,7 +181,7 @@ struct TraccarPetRepository: PetRepository {
         }
 
         if let deviceUserIDs = try? await client.fetchPermittedUserIDs(deviceId: petID) {
-            // Skip re-granting whoever we just granted above — confirmed
+            // Skip re-granting whoever we just granted above - confirmed
             // live that immediately re-POSTing the *same* permission can
             // fail with a 400 rather than the idempotent 204 the standalone
             // case returns, so this avoids a pointless, occasionally-noisy
@@ -220,7 +220,7 @@ struct TraccarPetRepository: PetRepository {
 
             // Best-effort: the caller is already confirmed admin to reach
             // this screen (see ADR-0018), so also grant the new user access
-            // to every home already set up for this pet — otherwise they'd
+            // to every home already set up for this pet - otherwise they'd
             // see the pet but not its excursions until an admin happened to
             // edit a home (ADR-0017's sync-on-edit).
             if let homes = try? await homeTraccarGeofences(forPetID: petID) {
@@ -249,7 +249,7 @@ struct TraccarPetRepository: PetRepository {
 
             // Bounded rather than fully unbounded: a pet with years of
             // history backfilling lifetime stats for the first time could
-            // otherwise fire a network request per excursion all at once —
+            // otherwise fire a network request per excursion all at once -
             // fine for a handful, not for a thousand-plus against a small
             // self-hosted server.
             let excursions = try await Self.concurrentMap(pairs, maxConcurrent: 20) { pair in
@@ -262,12 +262,12 @@ struct TraccarPetRepository: PetRepository {
     }
 
     /// Pairs each home-geofence exit with the next home-geofence enter
-    /// chronologically after it — pulled out of `fetchExcursions` so the
+    /// chronologically after it - pulled out of `fetchExcursions` so the
     /// pairing itself can be unit tested directly, the same way
     /// `mergeLifetimeStats` is (see its doc comment).
     ///
     /// With multiple homes (ADR-0016), `exits`/`enters` are no longer all
-    /// crossings of a single geofence — they're crossings of *any* of the
+    /// crossings of a single geofence - they're crossings of *any* of the
     /// pet's homes, merged into one timeline. The pairing itself needs no
     /// extra logic for that: an exit is still just paired with whichever
     /// enter comes right after it, regardless of which specific home either
@@ -293,7 +293,7 @@ struct TraccarPetRepository: PetRepository {
         return pairs
     }
 
-    /// Only re-fetches excursions that ended after the last cached run —
+    /// Only re-fetches excursions that ended after the last cached run -
     /// completed excursions' distance/duration get folded into the persisted
     /// totals once and never recomputed; an ongoing excursion (if any) is
     /// added fresh on top of the cache for display, without being persisted,
@@ -313,8 +313,8 @@ struct TraccarPetRepository: PetRepository {
     /// can be unit tested directly with hand-built excursions instead of a
     /// live/mocked server.
     ///
-    /// `recentExcursions` is whatever `fetchExcursions` returns — most
-    /// recent first (see its `sorted` above) — which matters here: this
+    /// `recentExcursions` is whatever `fetchExcursions` returns - most
+    /// recent first (see its `sorted` above) - which matters here: this
     /// walks the list newest-to-oldest but always compares each excursion's
     /// end time against the *original* `cached` watermark, not one updated
     /// mid-loop, so an older excursion later in the same batch is never
@@ -332,8 +332,8 @@ struct TraccarPetRepository: PetRepository {
         for excursion in recentExcursions {
             guard let endTime = excursion.endTime else { continue }
             if let originalWatermark, endTime <= originalWatermark { continue }
-            // Still advances the watermark below — it's genuinely been
-            // looked at and shouldn't be re-fetched next time — just not
+            // Still advances the watermark below - it's genuinely been
+            // looked at and shouldn't be re-fetched next time - just not
             // folded into the walking totals.
             if !excursion.isLikelyVehicleTrip {
                 totalDistance += excursion.distanceMeters ?? 0

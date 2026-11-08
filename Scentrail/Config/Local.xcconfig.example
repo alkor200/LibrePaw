@@ -1,6 +1,6 @@
 // Copy this file to "Local.xcconfig" (gitignored, next to this one) and
 // fill in your own Apple Development Team id. This keeps your personal
-// team out of project.yml, which is shared/committed — and unlike an
+// team out of project.yml, which is shared/committed - and unlike an
 // environment variable, Xcode reads this file directly at build time, so
 // `xcodegen generate` never resets it.
 //

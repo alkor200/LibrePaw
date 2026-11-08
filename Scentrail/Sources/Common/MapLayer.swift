@@ -1,7 +1,7 @@
 import MapKit
 import SwiftUI
 
-/// The map layers a user can switch between — mirrors the choices in
+/// The map layers a user can switch between - mirrors the choices in
 /// Apple's own Maps app.
 enum MapLayer: String, CaseIterable, Identifiable {
     case standard

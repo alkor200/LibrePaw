@@ -2,7 +2,7 @@ import Foundation
 
 /// What `TraccarPetRepository` persists between launches so lifetime stats
 /// don't need to be recomputed from a pet's entire excursion history on
-/// every load — only from whatever's new since `cachedThroughEndTime`.
+/// every load - only from whatever's new since `cachedThroughEndTime`.
 struct CachedLifetimeStats: Codable, Sendable, Equatable {
     var totalDistanceMeters: Double
     var totalDurationSeconds: TimeInterval
@@ -21,7 +21,7 @@ protocol LifetimeStatsStore: Sendable {
 /// Keychain instead).
 ///
 /// Keyed by server host as well as device id: Traccar device ids are small
-/// sequential integers, unique only *within* one server — without the host
+/// sequential integers, unique only *within* one server - without the host
 /// in the key, logging into a second server where some other pet happens to
 /// reuse the same id would show that pet's cached totals bleeding into this
 /// one's.

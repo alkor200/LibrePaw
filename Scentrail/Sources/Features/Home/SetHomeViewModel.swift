@@ -1,7 +1,7 @@
 import Foundation
 import ScentrailKit
 
-/// Adds a new home, or edits one already in `existingHome` — the same
+/// Adds a new home, or edits one already in `existingHome` - the same
 /// screen either way (see ``SetHomeView``), distinguished only by whether a
 /// home was passed in from ``HomesView`` (see ADR-0016).
 @Observable
@@ -12,7 +12,7 @@ final class SetHomeViewModel {
     let isEditingExistingHome: Bool
 
     var name: String
-    /// The pin's current position — editable by dragging the map underneath
+    /// The pin's current position - editable by dragging the map underneath
     /// it. Starts at the existing home's center when editing, otherwise at
     /// the owner's current location once that becomes available.
     var homeCoordinate: Coordinate?
@@ -23,7 +23,7 @@ final class SetHomeViewModel {
     private(set) var isShowingDeleteConfirmation = false
     private(set) var isDeleting = false
     private(set) var didDelete = false
-    /// `nil` until ``loadAdministratorStatus()`` resolves — see
+    /// `nil` until ``loadAdministratorStatus()`` resolves - see
     /// `HomesViewModel`'s equivalent; `SetHomeView` only shows its
     /// visibility notice once this is known (see ADR-0019).
     private(set) var isAdministrator: Bool?
@@ -43,7 +43,7 @@ final class SetHomeViewModel {
     }
 
     /// Defaults the pin to the owner's current location, but only before
-    /// there's anything else to show it at — never overrides an existing
+    /// there's anything else to show it at - never overrides an existing
     /// home or a position the owner already dragged the pin to.
     func useCurrentLocationIfUnset() {
         guard homeCoordinate == nil, let coordinate = locationService.coordinate else { return }

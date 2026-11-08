@@ -16,7 +16,7 @@ struct PetAnnotationView: View {
     var size: CGFloat = 44
     /// Shows this instead of fetching, when set. Traccar always names an
     /// uploaded photo "device.jpg", so `pet.photoURL` stays byte-identical
-    /// across photo changes — the screen that just saved a new one can't
+    /// across photo changes - the screen that just saved a new one can't
     /// rely on the URL-keyed fetch below to notice anything changed, so it
     /// passes the freshly-saved image straight through here instead.
     var overrideImage: UIImage?

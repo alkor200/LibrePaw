@@ -14,7 +14,7 @@ which would require `CoreLocation` and the
 
 ## Decision
 
-The MVP requests **no device permissions at all** — no location, no
+The MVP requests **no device permissions at all** - no location, no
 notifications, no camera/photo library. The map shows pet positions only.
 
 ## Consequences

@@ -2,9 +2,9 @@ import Foundation
 import ScentrailKit
 
 /// Lists a pet's home geofences and lets the owner delete one (adding and
-/// editing happen in ``SetHomeView``, pushed from here — see ADR-0016).
+/// editing happen in ``SetHomeView``, pushed from here - see ADR-0016).
 ///
-/// Reachable by any account, admin or not (see ADR-0019) — a non-admin's
+/// Reachable by any account, admin or not (see ADR-0019) - a non-admin's
 /// home is only ever visible to themselves, which `HomesView` explains via
 /// ``isAdministrator`` rather than hiding the screen over that limitation.
 @Observable
@@ -14,7 +14,7 @@ final class HomesViewModel {
     private(set) var homes: [HomeGeofence] = []
     private(set) var isLoading = true
     private(set) var errorMessage: String?
-    /// `nil` until ``loadAdministratorStatus()`` resolves — `HomesView` only
+    /// `nil` until ``loadAdministratorStatus()`` resolves - `HomesView` only
     /// shows its visibility notice once this is known, rather than flashing
     /// the non-admin wording at an admin for a moment.
     private(set) var isAdministrator: Bool?
@@ -30,12 +30,12 @@ final class HomesViewModel {
     }
 
     /// `HomesView` calls this from `.onAppear` (fires every time the view is
-    /// revisited — e.g. after editing a home — see its doc comment) as well
+    /// revisited - e.g. after editing a home - see its doc comment) as well
     /// as `.refreshable`, so two loads can legitimately overlap: editing a
     /// home and popping back can retrigger a load while a slightly earlier
     /// one is still in flight. Cancelling the previous one here, rather than
     /// letting both run, avoids a race where the loser finishes later and
-    /// clobbers the winner's result — and `performLoad` below treats
+    /// clobbers the winner's result - and `performLoad` below treats
     /// cancellation as "superseded," not a failure, so the loser never
     /// flashes a spurious "cancelled" error over a load that actually
     /// succeeded.

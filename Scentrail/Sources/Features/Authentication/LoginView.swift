@@ -44,11 +44,11 @@ struct LoginView: View {
 
                     if viewModel.usesInsecureConnection {
                         // iOS blocks plain-http connections outright (App
-                        // Transport Security) — there's no insecure-but-
+                        // Transport Security) - there's no insecure-but-
                         // working path, so say so plainly rather than
                         // implying the login will proceed unprotected.
                         Label(
-                            "http addresses aren't supported — iOS blocks unencrypted connections. Use https instead.",
+                            "http addresses aren't supported - iOS blocks unencrypted connections. Use https instead.",
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .font(.footnote)

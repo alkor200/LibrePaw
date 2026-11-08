@@ -19,7 +19,7 @@ enum PetMapping {
     /// Traccar stores an uploaded device photo as a filename in the
     /// `deviceImage` attribute, served back at
     /// `/api/media/<uniqueId>/<filename>` (verified against the Traccar web
-    /// client's own source — see ADR-0011).
+    /// client's own source - see ADR-0011).
     private static func photoURL(for device: TraccarDevice, serverURL: URL) -> URL? {
         guard let filename = device.attributes["deviceImage"]?.stringValue, !filename.isEmpty else {
             return nil

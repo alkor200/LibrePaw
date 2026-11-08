@@ -101,7 +101,7 @@ private struct ExcursionRow: View {
         .padding(.vertical, 4)
     }
 
-    /// `nil` unless both ends resolve to a known home *and* they differ —
+    /// `nil` unless both ends resolve to a known home *and* they differ -
     /// an ordinary round trip to the same home says nothing new here.
     private var routeText: String? {
         guard let start = homeName(excursion.startHomeID), let end = homeName(excursion.endHomeID), start != end else { return nil }

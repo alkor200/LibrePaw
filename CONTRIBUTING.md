@@ -6,7 +6,7 @@ contributions, big or small.
 ## Before you start
 
 - For anything beyond a small fix, please open an issue first to discuss the
-  approach — especially if it touches an existing
+  approach - especially if it touches an existing
   [Architecture Decision Record](docs/adr). This avoids wasted work on a pull
   request that conflicts with a settled decision.
 - If your change *does* reverse or supersede an existing ADR, say so in the
@@ -28,7 +28,7 @@ See [README.md](README.md#getting-started).
 - Prefer Apple's native UI components and interaction patterns (`List`,
   `Form`, `NavigationStack`, system colors/SF Symbols) over custom-built
   equivalents.
-- No third-party dependencies without discussion first — part of the appeal
+- No third-party dependencies without discussion first - part of the appeal
   of this project is a small, auditable dependency footprint.
 
 ## Tests
@@ -41,6 +41,6 @@ See [README.md](README.md#getting-started).
 ## Pull requests
 
 - Keep PRs focused on one change.
-- Describe *why*, not just *what* — the same spirit as our ADRs.
+- Describe *why*, not just *what* - the same spirit as our ADRs.
 - Make sure `xcodegen generate` still produces a project that builds, and
   that `swift test` passes in both packages.

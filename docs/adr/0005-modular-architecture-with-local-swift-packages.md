@@ -24,17 +24,17 @@ that is premature for the current app size and would slow down iteration.
 
 Two local Swift packages, consumed by the `Scentrail` app target:
 
-1. **`TraccarKit`** — a standalone, Scentrail-agnostic Swift client for the
+1. **`TraccarKit`** - a standalone, Scentrail-agnostic Swift client for the
    Traccar REST API. Knows about Traccar's wire format (devices, positions,
    sessions) and HTTP authentication. Has zero dependency on SwiftUI, zero
    knowledge of "pets". Could be extracted into its own repository later
    with no code changes.
 
-2. **`ScentrailKit`** — the app's domain and data layer. Defines the app's
+2. **`ScentrailKit`** - the app's domain and data layer. Defines the app's
    own vocabulary (`Pet`, `PetPosition`, `PetStatus`), repository protocols,
    the authentication/session service, and Keychain-backed credential
    storage. Depends on `TraccarKit` to implement those repositories, but
-   exposes only its own domain types — `TraccarKit`'s DTOs never leak past
+   exposes only its own domain types - `TraccarKit`'s DTOs never leak past
    this layer.
 
 The `Scentrail` app target contains only SwiftUI views and view models
@@ -55,8 +55,8 @@ Scentrail (app, SwiftUI + view models)
 
 - Business logic in `ScentrailKit` is testable with plain `swift test`, no
   simulator required.
-- `TraccarKit` has no reason to ever import SwiftUI/UIKit/Combine — if it
+- `TraccarKit` has no reason to ever import SwiftUI/UIKit/Combine - if it
   does, that is a sign of a layering mistake.
 - As the app grows, a feature folder that outgrows the main target can be
-  promoted to its own local package without changing this layering — that
+  promoted to its own local package without changing this layering - that
   is a mechanical refactor we explicitly defer rather than doing upfront.

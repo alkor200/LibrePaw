@@ -18,7 +18,7 @@ struct LifetimeStatsMergeTests {
     @Test("First-ever run folds in every completed excursion, not just the newest")
     func firstRunCountsAllCompletedExcursions() {
         let now = Date.now
-        // fetchExcursions returns most-recent-first — the exact order that
+        // fetchExcursions returns most-recent-first - the exact order that
         // broke this before: a newer excursion's end time must not make an
         // older one in the same batch look "already counted".
         let excursions = [
@@ -42,7 +42,7 @@ struct LifetimeStatsMergeTests {
 
         // The server returns the already-counted excursion again (its exit
         // event still falls inside the query window) alongside one genuinely
-        // new one — the old one must not be double-counted.
+        // new one - the old one must not be double-counted.
         let excursions = [
             excursion(id: 4, startTime: now.addingTimeInterval(-500), endTime: now.addingTimeInterval(-100), distanceMeters: 300),
             excursion(id: 2, startTime: now.addingTimeInterval(-10_000), endTime: watermark, distanceMeters: 629)
@@ -58,7 +58,7 @@ struct LifetimeStatsMergeTests {
     func vehicleTripIsExcludedButStillAdvancesWatermark() {
         let now = Date.now
         let excursions = [
-            // 10km in 12 minutes ≈ 50 km/h — unmistakably a car, not a walk.
+            // 10km in 12 minutes ≈ 50 km/h - unmistakably a car, not a walk.
             excursion(id: 1, startTime: now.addingTimeInterval(-1_200), endTime: now, distanceMeters: 10_000),
             // A genuine walk right before it.
             excursion(id: 2, startTime: now.addingTimeInterval(-10_000), endTime: now.addingTimeInterval(-9_000), distanceMeters: 629)

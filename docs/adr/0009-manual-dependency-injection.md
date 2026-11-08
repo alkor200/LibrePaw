@@ -16,7 +16,7 @@ A single plain struct, `AppDependencies`, constructed once in
 `ScentrailApp.swift`, holds the concrete service instances and is passed
 explicitly down the view hierarchy as an initializer parameter. View models
 are plain `@Observable` classes constructed by their parent view, receiving
-dependencies as initializer parameters (protocol types, not concretes) —
+dependencies as initializer parameters (protocol types, not concretes) -
 not via `@Environment`, property wrappers, or a service locator.
 
 ```swift
@@ -33,7 +33,7 @@ struct ScentrailApp: App {
 ```
 
 Tests construct view models directly with fake/mock implementations of the
-`ScentrailKit` protocols — no container, no framework, no reflection-based
+`ScentrailKit` protocols - no container, no framework, no reflection-based
 resolution.
 
 ## Consequences

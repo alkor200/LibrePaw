@@ -8,7 +8,7 @@ import ScentrailKit
 /// closure form: `PetDetailView.body` re-evaluates frequently (live WebSocket
 /// position updates), and an eager destination closure gets re-invoked on every
 /// such re-render, which tears down and rebuilds anything already pushed on top
-/// of it — the push visually "snaps back" to this screen. Routing through a
+/// of it - the push visually "snaps back" to this screen. Routing through a
 /// `Hashable` value keeps the pushed destination stable across those re-renders.
 private enum PetDetailRoute: Hashable {
     case findPet
@@ -25,7 +25,7 @@ struct PetDetailView: View {
     @State private var viewModel: PetDetailViewModel
     @State private var isShowingPhotoEditor = false
     /// Shown in place of whatever `PetAnnotationView` would otherwise fetch,
-    /// right after a successful edit — see its doc comment for why the fetch
+    /// right after a successful edit - see its doc comment for why the fetch
     /// alone can't be relied on to notice the change.
     @State private var justSavedPhoto: UIImage?
 
@@ -167,7 +167,7 @@ struct PetDetailView: View {
             Divider().padding(.leading, 44).overlay(Color.appBorder)
 
             // Anyone can manage homes now (see ADR-0017/ADR-0018's
-            // follow-up) — a non-admin's home is only ever visible to
+            // follow-up) - a non-admin's home is only ever visible to
             // themselves, which `HomesView` explains, but there's no
             // reason to hide the screen entirely over that limitation.
             NavigationLink(value: PetDetailRoute.homes) {
@@ -176,7 +176,7 @@ struct PetDetailView: View {
 
             // Sharing stays admin-only: granting another Traccar account
             // access to a device requires an administrator server-side,
-            // confirmed against a live server — there's no non-admin path
+            // confirmed against a live server - there's no non-admin path
             // to make this work at all, so the entry point is hidden
             // rather than leading somewhere useless.
             if viewModel.isAdministrator {
@@ -266,7 +266,7 @@ struct PetDetailView: View {
                 .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         } else if let coordinate = viewModel.pet.lastPosition?.coordinate {
             // Traccar only reports an address when a geocoder is configured
-            // server-side — fall back to coordinates so this row is never empty.
+            // server-side - fall back to coordinates so this row is never empty.
             Label(formattedCoordinate(coordinate), systemImage: "mappin.and.ellipse")
                 .font(.subheadline)
                 .foregroundStyle(.appSecondaryText)

@@ -4,7 +4,7 @@ import TraccarKit
 /// Errors surfaced by `ScentrailKit`'s services and repositories.
 ///
 /// `TraccarKit`'s own ``TraccarError`` never crosses this boundary (see
-/// ADR-0005) — it is always mapped to one of these cases instead.
+/// ADR-0005) - it is always mapped to one of these cases instead.
 public enum ScentrailError: Error, Sendable, Equatable {
     case invalidCredentials
     case network(String)

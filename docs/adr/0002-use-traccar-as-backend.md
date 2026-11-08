@@ -32,7 +32,7 @@ language is reused directly:
 - A Traccar **position** represents one GPS fix.
 
 The app's domain layer (`ScentrailKit`) renames "device" to **Pet** at the
-boundary, since that is the concept the end user cares about — but the
+boundary, since that is the concept the end user cares about - but the
 underlying wire format and REST semantics are Traccar's, unmodified.
 
 ## Consequences
@@ -44,7 +44,7 @@ underlying wire format and REST semantics are Traccar's, unmodified.
   a standalone Traccar Swift client package later (see
   [0005](0005-modular-architecture-with-local-swift-packages.md)).
 - We inherit Traccar's data model and limitations (e.g. no built-in concept
-  of "species" or "pet photo" — those would need to be layered on top in a
+  of "species" or "pet photo" - those would need to be layered on top in a
   future iteration, e.g. via Traccar's free-form device attributes).
 - We depend on Traccar's API stability. We target the stable, documented
   REST endpoints (`/api/session`, `/api/devices`, `/api/positions`) which

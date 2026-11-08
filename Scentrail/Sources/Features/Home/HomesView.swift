@@ -1,7 +1,7 @@
 import SwiftUI
 import ScentrailKit
 
-/// Lists a pet's home geofences (see ADR-0016) — tap one to move/rename it,
+/// Lists a pet's home geofences (see ADR-0016) - tap one to move/rename it,
 /// swipe to delete, or add a new one. Replaces the single-home `SetHomeView`
 /// as the destination from `PetDetailView`; `SetHomeView` itself is now
 /// reached from here, either to add or to edit one specific home.
@@ -37,7 +37,7 @@ struct HomesView: View {
             // `onDismiss` rather than relying on `.onAppear` alone: verified
             // live that `.onAppear` does *not* reliably re-fire when a sheet
             // dismisses over the presenting view the way it does when a
-            // pushed destination pops (the edit path below) — without this,
+            // pushed destination pops (the edit path below) - without this,
             // a newly added home was saved correctly server-side but never
             // showed up in the list until the next unrelated reload.
             .sheet(isPresented: $isAddingHome, onDismiss: { Task { await viewModel.load() } }) {
@@ -47,7 +47,7 @@ struct HomesView: View {
             }
             // `.onAppear` rather than `.task`: this view stays mounted (just
             // covered) while editing a home pushes `SetHomeView` on top of
-            // it — reloading here picks up whatever was just saved once the
+            // it - reloading here picks up whatever was just saved once the
             // owner pops back, the same way it does after returning from
             // `HomeGeofence`'s navigationDestination above.
             .onAppear { Task { await viewModel.load() } }
@@ -100,7 +100,7 @@ struct HomesView: View {
         }
     }
 
-    /// Explains who can actually see what's set up here — the one thing
+    /// Explains who can actually see what's set up here - the one thing
     /// ADR-0019 asks for in exchange for showing this screen to everyone:
     /// a non-admin's home (and the excursions it generates) is only ever
     /// visible to themselves, while an admin's applies to the whole
@@ -112,7 +112,7 @@ struct HomesView: View {
             Label {
                 Text(isAdministrator
                     ? "As an admin, homes you add here are visible to everyone with access to \(viewModel.pet.name)."
-                    : "Homes you add here — and the excursions they create — are only visible to you. Ask an admin to add a home if it should apply to everyone.")
+                    : "Homes you add here - and the excursions they create - are only visible to you. Ask an admin to add a home if it should apply to everyone.")
             } icon: {
                 Image(systemName: isAdministrator ? "person.3.fill" : "eye.slash.fill")
             }

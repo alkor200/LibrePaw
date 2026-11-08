@@ -62,7 +62,7 @@ struct FindPetView: View {
                     .contentTransition(.numericText())
                     .animation(.default, value: viewModel.distanceMeters)
                 if let recordedAt = viewModel.pet.lastPosition?.recordedAt {
-                    // `Text(_:style:)` ticks on its own every second — unlike a
+                    // `Text(_:style:)` ticks on its own every second - unlike a
                     // formatted string, it doesn't need the view to re-render.
                     (Text("Last position ") + Text(recordedAt, style: .relative))
                         .font(.subheadline)
@@ -71,7 +71,7 @@ struct FindPetView: View {
             }
 
             if !viewModel.locationService.isHeadingAvailable {
-                Label("Compass unavailable — pointing from true north instead.", systemImage: "exclamationmark.triangle")
+                Label("Compass unavailable - pointing from true north instead.", systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.appSecondaryText)
                     .multilineTextAlignment(.center)
@@ -99,7 +99,7 @@ struct FindPetView: View {
     }
 
     private var distanceText: String {
-        guard let meters = viewModel.distanceMeters else { return "—" }
+        guard let meters = viewModel.distanceMeters else { return "-" }
         if meters < 1000 {
             return meters.formatted(.number.precision(.fractionLength(0))) + " m"
         } else {

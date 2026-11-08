@@ -12,7 +12,7 @@ greenfield iOS app with no legacy constraints.
 ## Decision
 
 - **Minimum deployment target: iOS 17.**
-- **UI framework: SwiftUI exclusively** — no UIKit view controllers, no
+- **UI framework: SwiftUI exclusively** - no UIKit view controllers, no
   Storyboards/XIBs.
 - **State management: the Observation framework** (`@Observable`,
   `@Bindable`) introduced in iOS 17, instead of the older

@@ -1,11 +1,11 @@
 import SwiftUI
 import ScentrailKit
 
-/// Grants another Traccar account access to this pet — the in-app
+/// Grants another Traccar account access to this pet - the in-app
 /// equivalent of an admin doing it via Settings > Users in Traccar's own
 /// web UI. Only reachable from an admin account (see `PetDetailView`):
 /// `POST /api/permissions {userId, deviceId}` requires one server-side,
-/// confirmed against a live server — see ADR-0018.
+/// confirmed against a live server - see ADR-0018.
 struct SharePetView: View {
     @State private var viewModel: SharePetViewModel
     @Environment(\.dismiss) private var dismiss

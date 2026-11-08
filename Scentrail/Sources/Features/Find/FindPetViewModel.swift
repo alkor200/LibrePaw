@@ -24,7 +24,7 @@ final class FindPetViewModel {
     }
 
     /// Degrees to rotate the on-screen arrow so it points toward the pet,
-    /// relative to the top of the screen — i.e. already corrected for the
+    /// relative to the top of the screen - i.e. already corrected for the
     /// device's own compass heading when one is available.
     var arrowRotationDegrees: Double? {
         guard let userCoordinate = locationService.coordinate, let petCoordinate = pet.lastPosition?.coordinate else {
@@ -48,7 +48,7 @@ final class FindPetViewModel {
     }
 
     /// Subscribes to Traccar's live feed (see ADR-0013) so the pet's position
-    /// — and therefore the arrow and distance — update in near real time.
+    /// - and therefore the arrow and distance - update in near real time.
     private func startLiveUpdates() {
         guard liveUpdatesTask == nil else { return }
         liveUpdatesTask = Task { [weak self] in
