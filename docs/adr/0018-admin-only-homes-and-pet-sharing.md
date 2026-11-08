@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted — builds on [ADR-0017](0017-geofence-user-permissions-for-multi-user-households.md)
+Accepted — builds on [ADR-0017](0017-geofence-user-permissions-for-multi-user-households.md).
+The "Homes management is hidden from non-admins entirely" decision below is
+superseded by [ADR-0019](0019-reenable-non-admin-homes-with-a-visibility-notice.md),
+which shows the screen to everyone again with an in-app notice instead.
+**Share `<Pet>` staying admin-only is unaffected** and still stands — see
+ADR-0019's Status for why.
 
 ## Context
 
@@ -52,6 +57,8 @@ admin shared devices with.
   would invite confusion a hidden one doesn't. `HomesView`/`HomesViewModel`
   accordingly carry no admin check of their own; being unreachable for a
   non-admin makes one unnecessary.
+  **(Reversed by ADR-0019 — the screen is shown to everyone again, with an
+  in-app notice instead of being hidden.)**
 - New **"Share `<Pet>`"** action on `PetDetailView`, admin-only, opening
   `SharePetView` — a single email field that resolves to a Traccar user via
   `GET /api/users?keyword=` (admin-only, but reliable for an admin — see
@@ -71,6 +78,7 @@ admin shared devices with.
   editing). Consistent with the household model from the Context above:
   Scentrail's non-admin accounts are there to *see* what the admin set up,
   not manage it.
+  **(Reversed by ADR-0019 — see this ADR's Status.)**
 - `isCurrentUserAdministrator()` and `loadAdministratorStatus()` are called
   once per screen visit (`HomesView`, `PetDetailView`), not cached across
   the app — consistent with Scentrail's "thin client" scope (ADR-0002) and

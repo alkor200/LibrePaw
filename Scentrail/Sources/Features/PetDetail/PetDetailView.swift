@@ -164,19 +164,22 @@ struct PetDetailView: View {
                 actionRow(systemImage: "figure.walk", title: "Excursions")
             }
 
-            // Homes and sharing are both admin-only (see ADR-0017,
-            // ADR-0018) — a non-admin has nothing to do on either screen,
-            // since they can't make a home visible to anyone but
-            // themselves or share the pet at all, so neither entry point
-            // is shown to them at all rather than leading somewhere
-            // useless.
+            Divider().padding(.leading, 44).overlay(Color.appBorder)
+
+            // Anyone can manage homes now (see ADR-0017/ADR-0018's
+            // follow-up) — a non-admin's home is only ever visible to
+            // themselves, which `HomesView` explains, but there's no
+            // reason to hide the screen entirely over that limitation.
+            NavigationLink(value: PetDetailRoute.homes) {
+                actionRow(systemImage: "house.fill", title: "\(viewModel.pet.name)'s Homes")
+            }
+
+            // Sharing stays admin-only: granting another Traccar account
+            // access to a device requires an administrator server-side,
+            // confirmed against a live server — there's no non-admin path
+            // to make this work at all, so the entry point is hidden
+            // rather than leading somewhere useless.
             if viewModel.isAdministrator {
-                Divider().padding(.leading, 44).overlay(Color.appBorder)
-
-                NavigationLink(value: PetDetailRoute.homes) {
-                    actionRow(systemImage: "house.fill", title: "\(viewModel.pet.name)'s Homes")
-                }
-
                 Divider().padding(.leading, 44).overlay(Color.appBorder)
 
                 NavigationLink(value: PetDetailRoute.sharePet) {

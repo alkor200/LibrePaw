@@ -4,11 +4,14 @@
 
 Accepted — amends [ADR-0016](0016-multiple-home-geofences-per-pet.md).
 The "a non-admin can still create/edit a home, just only visible to
-themselves" behavior described below was superseded by
-[ADR-0018](0018-admin-only-homes-and-pet-sharing.md), which hides home
-management from non-admins entirely rather than let them use a feature
-that only partially works. The permission findings themselves (what
-Traccar's API actually does) still stand.
+themselves" behavior described below was briefly superseded by
+[ADR-0018](0018-admin-only-homes-and-pet-sharing.md) (hide home management
+from non-admins entirely) and then restored by
+[ADR-0019](0019-reenable-non-admin-homes-with-a-visibility-notice.md),
+which shows the screen to everyone again with the limitation stated
+in-app instead of hidden — this ADR's original behavior is back in effect.
+The permission findings themselves (what Traccar's API actually does)
+still stand throughout.
 
 ## Context
 

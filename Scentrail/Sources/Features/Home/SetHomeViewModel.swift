@@ -23,6 +23,10 @@ final class SetHomeViewModel {
     private(set) var isShowingDeleteConfirmation = false
     private(set) var isDeleting = false
     private(set) var didDelete = false
+    /// `nil` until ``loadAdministratorStatus()`` resolves — see
+    /// `HomesViewModel`'s equivalent; `SetHomeView` only shows its
+    /// visibility notice once this is known (see ADR-0019).
+    private(set) var isAdministrator: Bool?
 
     private let existingHomeID: Int?
     private let petRepository: PetRepository
@@ -44,6 +48,13 @@ final class SetHomeViewModel {
     func useCurrentLocationIfUnset() {
         guard homeCoordinate == nil, let coordinate = locationService.coordinate else { return }
         homeCoordinate = coordinate
+    }
+
+    /// Best-effort, same reasoning as `HomesViewModel`'s equivalent: this
+    /// just gates the visibility notice, not something worth surfacing an
+    /// error for.
+    func loadAdministratorStatus() async {
+        isAdministrator = try? await petRepository.isCurrentUserAdministrator()
     }
 
     func save() async {

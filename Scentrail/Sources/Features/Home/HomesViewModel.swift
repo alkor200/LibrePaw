@@ -4,9 +4,9 @@ import ScentrailKit
 /// Lists a pet's home geofences and lets the owner delete one (adding and
 /// editing happen in ``SetHomeView``, pushed from here — see ADR-0016).
 ///
-/// Only reachable from an admin account at all — `PetDetailView` hides the
-/// entry point to this screen entirely for a non-admin (see ADR-0018), so
-/// nothing here needs its own admin check.
+/// Reachable by any account, admin or not (see ADR-0019) — a non-admin's
+/// home is only ever visible to themselves, which `HomesView` explains via
+/// ``isAdministrator`` rather than hiding the screen over that limitation.
 @Observable
 @MainActor
 final class HomesViewModel {
@@ -14,6 +14,10 @@ final class HomesViewModel {
     private(set) var homes: [HomeGeofence] = []
     private(set) var isLoading = true
     private(set) var errorMessage: String?
+    /// `nil` until ``loadAdministratorStatus()`` resolves — `HomesView` only
+    /// shows its visibility notice once this is known, rather than flashing
+    /// the non-admin wording at an admin for a moment.
+    private(set) var isAdministrator: Bool?
 
     private let petRepository: PetRepository
     /// The most recently started load, so a newer one can cancel a stale one
@@ -53,6 +57,13 @@ final class HomesViewModel {
             guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Best-effort, same reasoning as `PetDetailViewModel`'s equivalent:
+    /// this just gates the visibility notice, not something worth
+    /// surfacing an error for.
+    func loadAdministratorStatus() async {
+        isAdministrator = try? await petRepository.isCurrentUserAdministrator()
     }
 
     func delete(_ home: HomeGeofence) async {

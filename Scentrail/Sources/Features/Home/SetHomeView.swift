@@ -76,6 +76,7 @@ struct SetHomeView: View {
                 viewModel.useCurrentLocationIfUnset()
                 centerCameraIfNeeded()
             }
+            .task { await viewModel.loadAdministratorStatus() }
             .onChange(of: viewModel.locationService.coordinate) {
                 viewModel.useCurrentLocationIfUnset()
                 centerCameraIfNeeded()
@@ -133,6 +134,8 @@ struct SetHomeView: View {
                     .foregroundStyle(.appSecondaryText)
             }
 
+            visibilityNotice
+
             if let errorMessage = viewModel.errorMessage {
                 Label(errorMessage, systemImage: "xmark.octagon.fill")
                     .font(.footnote)
@@ -162,6 +165,24 @@ struct SetHomeView: View {
         }
         .padding()
         .background(.regularMaterial)
+    }
+
+    /// Same visibility explanation as `HomesView`'s, inline here too since
+    /// this is the actual point of action — see ADR-0019.
+    @ViewBuilder
+    private var visibilityNotice: some View {
+        if let isAdministrator = viewModel.isAdministrator {
+            Label {
+                Text(isAdministrator
+                    ? "Visible to everyone with access to \(viewModel.pet.name)."
+                    : "Only visible to you — ask an admin to add this if it should apply to everyone.")
+            } icon: {
+                Image(systemName: isAdministrator ? "person.3.fill" : "eye.slash.fill")
+            }
+            .font(.footnote)
+            .foregroundStyle(.appSecondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var deniedView: some View {

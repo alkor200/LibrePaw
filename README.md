@@ -75,12 +75,18 @@ device, visible in Traccar's own web UI too. Add as many as you like (e.g.
 "Home" and "Cabin"); swipe to delete one, or tap it to move/rename it.
 Excursions only start appearing once at least one home is set.
 
-This is only available to a Traccar **administrator** account — Traccar
-has no way for a non-admin to make a geofence visible to anyone besides
-themselves, so a home a non-admin set up would silently only work for
-them (see [ADR-0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md)).
-Non-admin accounts don't see the "Homes" entry at all; excursions still
-work for them once an admin has set a home up.
+Any account can do this, but **who else can see the result depends on
+whether you're a Traccar administrator** — Traccar has no way for a
+non-admin to make a geofence visible to anyone besides themselves (see
+[ADR-0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md)).
+Scentrail shows which case applies right on the Homes screen:
+
+- **Administrator**: a home you add is visible to everyone with access to
+  that pet, and so are the excursions it generates.
+- **Non-admin**: a home you add — and the excursions it generates — is
+  only ever visible to you. If a home should apply to the whole household,
+  have the admin account add it instead
+  (see [ADR-0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md)).
 
 ### Sharing a pet and multiple household accounts
 
@@ -92,6 +98,26 @@ enter the other person's Traccar account email, and they'll see the pet
 immediately. This is also admin-only, and for the same reason as above:
 Traccar requires admin rights to grant another account access to anything
 (see [ADR-0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md)).
+
+## Color scheme
+
+Scentrail uses a small set of brand color tokens, each a light/dark pair
+in `Assets.xcassets` and exposed in code via `Color.appX` (see
+`Scentrail/Sources/Common/Color+Theme.swift`) — `AccentColor` itself
+matches `Primary`, so most buttons, the tab bar tint, and similar
+`.tint`-driven controls follow this palette automatically.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| Background | `#F5F8F4` | `#171D1A` |
+| Surface | `#FFFFFF` | `#252E29` |
+| Primary | `#A8C5AE` | `#A8C5AE` |
+| Primary Dark | `#668B70` | `#85AA8D` |
+| Text | `#29352D` | `#EFF5EF` |
+| Secondary Text | `#78847B` | `#A9B7AC` |
+| Border | `#E2EAE2` | `#37423B` |
+
+The app icon's background uses `Primary` as well.
 
 ## Running tests
 
@@ -159,7 +185,8 @@ Key decisions, each recorded as an ADR:
 | [0015](docs/adr/0015-per-developer-signing-config.md) | Per-developer signing config via a gitignored xcconfig file |
 | [0016](docs/adr/0016-multiple-home-geofences-per-pet.md) | Support multiple home geofences per pet |
 | [0017](docs/adr/0017-geofence-user-permissions-for-multi-user-households.md) | Grant explicit user permissions when creating or editing a home geofence (non-admin editing superseded by 0018) |
-| [0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md) | Restrict adding homes and sharing a pet to administrator accounts |
+| [0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md) | Restrict adding homes and sharing a pet to administrator accounts (homes part superseded by 0019; pet sharing still admin-only) |
+| [0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md) | Re-enable home management for non-admin accounts, with an in-app visibility notice |
 
 ## Roadmap
 

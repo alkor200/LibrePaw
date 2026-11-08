@@ -52,6 +52,7 @@ struct HomesView: View {
             // `HomeGeofence`'s navigationDestination above.
             .onAppear { Task { await viewModel.load() } }
             .refreshable { await viewModel.load() }
+            .task { await viewModel.loadAdministratorStatus() }
     }
 
     @ViewBuilder
@@ -75,6 +76,7 @@ struct HomesView: View {
             } actions: {
                 Button("Add Home") { isAddingHome = true }
             }
+            .safeAreaInset(edge: .top) { visibilityNotice }
         } else {
             List {
                 ForEach(viewModel.homes) { home in
@@ -94,6 +96,33 @@ struct HomesView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            .safeAreaInset(edge: .top) { visibilityNotice }
+        }
+    }
+
+    /// Explains who can actually see what's set up here — the one thing
+    /// ADR-0019 asks for in exchange for showing this screen to everyone:
+    /// a non-admin's home (and the excursions it generates) is only ever
+    /// visible to themselves, while an admin's applies to the whole
+    /// household. Shown only once ``HomesViewModel/isAdministrator`` is
+    /// known, so it never flashes the wrong wording while loading.
+    @ViewBuilder
+    private var visibilityNotice: some View {
+        if let isAdministrator = viewModel.isAdministrator {
+            Label {
+                Text(isAdministrator
+                    ? "As an admin, homes you add here are visible to everyone with access to \(viewModel.pet.name)."
+                    : "Homes you add here — and the excursions they create — are only visible to you. Ask an admin to add a home if it should apply to everyone.")
+            } icon: {
+                Image(systemName: isAdministrator ? "person.3.fill" : "eye.slash.fill")
+            }
+            .font(.footnote)
+            .foregroundStyle(.appSecondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.horizontal)
+            .padding(.top, 8)
         }
     }
 }
