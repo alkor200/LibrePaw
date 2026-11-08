@@ -1053,7 +1053,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unterwegszeit heute"
+            "value": "Heute unterwegs"
           }
         }
       }
@@ -1075,7 +1075,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gesamtzeit unterwegs"
+            "value": "Gesamt unterwegs"
           }
         }
       }

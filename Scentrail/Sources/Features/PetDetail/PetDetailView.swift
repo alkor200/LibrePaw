@@ -231,9 +231,15 @@ struct PetDetailView: View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             if let position = viewModel.pet.lastPosition {
                 StatTile(systemImage: "gauge.with.dots.needle.67percent", title: "Speed", value: formattedSpeed(position.speedKilometersPerHour))
-                if let battery = position.batteryLevelPercent {
-                    StatTile(systemImage: batteryIcon(for: battery), title: "Battery", value: formattedPercent(battery))
-                }
+            }
+            // Grouped with Speed rather than at the end, so the two
+            // "right now" tiles share a row, then today's and lifetime's
+            // stats each get their own row as a pair.
+            if let lastSeenAt = viewModel.pet.lastSeenAt {
+                StatTile(systemImage: "clock", title: "Last Update", value: lastSeenAt.formatted(.relative(presentation: .named)))
+            }
+            if let position = viewModel.pet.lastPosition, let battery = position.batteryLevelPercent {
+                StatTile(systemImage: batteryIcon(for: battery), title: "Battery", value: formattedPercent(battery))
             }
             if let totalDistance = viewModel.totalTrailDistanceMeters {
                 StatTile(systemImage: "shoeprints.fill", title: "Distance Today", value: formattedDistance(totalDistance))
@@ -246,9 +252,6 @@ struct PetDetailView: View {
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDurationSeconds > 0 {
                 StatTile(systemImage: "figure.walk.motion", title: "Total Time Away", value: formattedDuration(lifetimeStats.totalDurationSeconds))
-            }
-            if let lastSeenAt = viewModel.pet.lastSeenAt {
-                StatTile(systemImage: "clock", title: "Last Update", value: lastSeenAt.formatted(.relative(presentation: .named)))
             }
         }
     }
