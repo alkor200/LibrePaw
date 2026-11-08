@@ -11,20 +11,11 @@ public struct HomeGeofence: Sendable, Hashable, Identifiable {
     public let name: String
     public let center: Coordinate
     public let radiusMeters: Double
-    /// The Traccar user id that created this home (see ADR-0021), `nil` for
-    /// one created before this was tracked. Traccar itself has no concept
-    /// of geofence ownership, a non-admin with view access to a geofence
-    /// can edit or even delete it outright, confirmed against a live
-    /// server, so `PetRepository` conformers that can determine this stamp
-    /// it at creation time and the app uses it client-side to decide who's
-    /// allowed to edit or delete a given home.
-    public let ownerUserID: Int?
 
-    public init(id: Int, name: String, center: Coordinate, radiusMeters: Double, ownerUserID: Int? = nil) {
+    public init(id: Int, name: String, center: Coordinate, radiusMeters: Double) {
         self.id = id
         self.name = name
         self.center = center
         self.radiusMeters = radiusMeters
-        self.ownerUserID = ownerUserID
     }
 }

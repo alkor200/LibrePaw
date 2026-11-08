@@ -6,7 +6,10 @@ import ScentrailKit
 ///
 /// Reachable by any account, admin or not (see ADR-0019), a non-admin's
 /// home is only ever visible to themselves, which `HomesView` explains via
-/// ``isAdministrator`` rather than hiding the screen over that limitation.
+/// ``permissions`` rather than hiding the screen over that limitation.
+/// Whether the account can actually add, edit, or delete anything here
+/// follows Traccar's own `readonly` flag, not who created a given home
+/// (see ADR-0023, which supersedes ADR-0021's client-side ownership).
 @Observable
 @MainActor
 final class HomesViewModel {
@@ -15,11 +18,10 @@ final class HomesViewModel {
     private(set) var isLoading = true
     private(set) var errorMessage: String?
     /// `nil` until ``loadPermissionContext()`` resolves, `HomesView` only
-    /// shows its visibility notice (and per-row edit/delete affordances)
+    /// shows its visibility notice (and the add/edit/delete affordances)
     /// once this is known, rather than flashing the wrong state for a
     /// moment.
-    private(set) var isAdministrator: Bool?
-    private(set) var currentUserID: Int?
+    private(set) var permissions: AccountPermissions?
 
     private let petRepository: PetRepository
     /// The most recently started load, so a newer one can cancel a stale one
@@ -62,32 +64,23 @@ final class HomesViewModel {
     }
 
     /// Best-effort, same reasoning as `PetDetailViewModel`'s equivalent:
-    /// this just gates the visibility notice and per-row affordances, not
-    /// something worth surfacing an error for.
+    /// this just gates the visibility notice and the add/edit/delete
+    /// affordances, not something worth surfacing an error for.
     func loadPermissionContext() async {
-        async let administrator = petRepository.isCurrentUserAdministrator()
-        async let userID = petRepository.currentUserID()
-        isAdministrator = try? await administrator
-        currentUserID = try? await userID
+        permissions = try? await petRepository.currentUserPermissions()
     }
 
-    /// Whether the signed-in account is allowed to edit or delete `home`:
-    /// an admin always can, otherwise only whoever created it (see
-    /// ``HomeGeofence/ownerUserID`` and ADR-0021). A home with no recorded
-    /// owner (created before this was tracked) is treated as not theirs,
-    /// Traccar itself puts no limit on who can edit or delete a geofence
-    /// they can merely see, so the safe default for an unknown owner is to
-    /// withhold management rather than risk a non-admin deleting a home
-    /// someone else (possibly the whole household) relies on.
-    func canManage(_ home: HomeGeofence) -> Bool {
-        if isAdministrator == true { return true }
-        guard let currentUserID, let ownerUserID = home.ownerUserID else { return false }
-        return ownerUserID == currentUserID
+    /// Whether the signed-in account can add, edit, or delete homes at all
+    /// (see ``AccountPermissions/canManageHomes`` and ADR-0023). `false`
+    /// while still loading, same as every other affordance gated on
+    /// ``permissions``.
+    var canManageHomes: Bool {
+        permissions?.canManageHomes ?? false
     }
 
     func delete(_ home: HomeGeofence) async {
-        guard canManage(home) else {
-            errorMessage = localized("Only an admin can delete a home you didn't create.")
+        guard canManageHomes else {
+            errorMessage = localized("You have read-only access and can't delete homes.")
             return
         }
         do {

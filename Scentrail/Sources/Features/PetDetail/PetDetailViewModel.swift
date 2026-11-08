@@ -9,11 +9,12 @@ final class PetDetailViewModel {
     private(set) var isLoadingTrail = false
     private(set) var trailErrorMessage: String?
     private(set) var lifetimeStats: LifetimeStats?
-    /// Gates the "Share `<Pet>`" action (see ADR-0018), sharing a device
-    /// with another Traccar user requires an administrator account
-    /// server-side, confirmed against a live server. Defaults to `false`
-    /// (hide the option) if admin status can't be determined.
-    private(set) var isAdministrator = false
+    /// Gates the "Share `<Pet>`" action, the avatar's edit-photo affordance,
+    /// and the Trail/Excursions rows, each straight off what Traccar's own
+    /// permission flags allow the signed-in account to do (see ADR-0018,
+    /// ADR-0023). `nil` until ``loadPermissions()`` resolves, every gated
+    /// affordance stays hidden until then.
+    private(set) var permissions: AccountPermissions?
 
     private let petRepository: PetRepository
 
@@ -44,9 +45,9 @@ final class PetDetailViewModel {
     }
 
     /// Best-effort, same reasoning as ``loadLifetimeStats()``: this just
-    /// gates a UI affordance, not something worth surfacing an error for.
-    func loadAdministratorStatus() async {
-        isAdministrator = (try? await petRepository.isCurrentUserAdministrator()) ?? false
+    /// gates UI affordances, not something worth surfacing an error for.
+    func loadPermissions() async {
+        permissions = try? await petRepository.currentUserPermissions()
     }
 
     func setPhoto(jpegData: Data) async throws {

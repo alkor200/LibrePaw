@@ -26,11 +26,13 @@ struct HomesView: View {
                 SetHomeView(viewModel: SetHomeViewModel(pet: viewModel.pet, existingHome: home, petRepository: petRepository, locationService: locationService))
             }
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        isAddingHome = true
-                    } label: {
-                        Label("Add Home", systemImage: "plus")
+                if viewModel.canManageHomes {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            isAddingHome = true
+                        } label: {
+                            Label("Add Home", systemImage: "plus")
+                        }
                     }
                 }
             }
@@ -72,18 +74,21 @@ struct HomesView: View {
             ContentUnavailableView {
                 Label("No Homes Yet", systemImage: "house")
             } description: {
-                Text("Add \(viewModel.pet.name)'s first home to start seeing excursions.")
+                Text(viewModel.canManageHomes
+                    ? "Add \(viewModel.pet.name)'s first home to start seeing excursions."
+                    : "\(viewModel.pet.name) has no homes set up yet.")
             } actions: {
-                Button("Add Home") { isAddingHome = true }
+                if viewModel.canManageHomes {
+                    Button("Add Home") { isAddingHome = true }
+                }
             }
             .safeAreaInset(edge: .top) { visibilityNotice }
         } else {
             List {
                 ForEach(viewModel.homes) { home in
                     NavigationLink(value: home) {
-                        HomeRow(home: home, isManageable: viewModel.canManage(home))
+                        HomeRow(home: home)
                     }
-                    .deleteDisabled(!viewModel.canManage(home))
                 }
                 .onDelete { offsets in
                     let homesToDelete = offsets.map { viewModel.homes[$0] }
@@ -93,6 +98,7 @@ struct HomesView: View {
                         }
                     }
                 }
+                .deleteDisabled(!viewModel.canManageHomes)
                 .listRowBackground(Color.appSurface)
             }
             .listStyle(.plain)
@@ -101,23 +107,21 @@ struct HomesView: View {
         }
     }
 
-    /// Explains who can actually see what's set up here, the one thing
-    /// ADR-0019 asks for in exchange for showing this screen to everyone:
-    /// a non-admin's home (and the excursions it generates) is only ever
-    /// visible to themselves, while an admin's applies to the whole
-    /// household. Shown only once ``HomesViewModel/isAdministrator`` is
-    /// known, so it never flashes the wrong wording while loading.
-    ///
-    /// `if`/`else` rather than a `Text(bool ? "a" : "b")` ternary, each
-    /// branch its own interpolated `LocalizedStringKey` literal, simply
-    /// because that reads clearer with two full sentences this long.
+    /// Explains who can actually see, and do anything with, what's set up
+    /// here: visibility follows admin status (the one thing ADR-0019 asks
+    /// for in exchange for showing this screen to everyone), while whether
+    /// the account can add/edit/delete at all follows Traccar's own
+    /// `readonly` flag (see ADR-0023). Shown only once ``HomesViewModel/permissions``
+    /// is known, so it never flashes the wrong wording while loading.
     @ViewBuilder
     private var visibilityNotice: some View {
-        if let isAdministrator = viewModel.isAdministrator {
-            if isAdministrator {
+        if let permissions = viewModel.permissions {
+            if permissions.isAdministrator {
                 visibilityNoticeLabel("As an admin, homes you add here are visible to everyone with access to \(viewModel.pet.name).", systemImage: "person.3.fill")
+            } else if !permissions.canManageHomes {
+                visibilityNoticeLabel("You have read-only access to this account. You can see homes here, but can't add, edit, or delete them.", systemImage: "lock.fill")
             } else {
-                visibilityNoticeLabel("Homes you add here, and the excursions they create, are only visible to you. Ask an admin to add a home if it should apply to everyone. A lock icon means a home someone else set up, you can view it but not edit or delete it.", systemImage: "eye.slash.fill")
+                visibilityNoticeLabel("Homes you add here, and the excursions they create, are only visible to you. Ask an admin to add a home if it should apply to everyone.", systemImage: "eye.slash.fill")
             }
         }
     }
@@ -140,12 +144,6 @@ struct HomesView: View {
 
 private struct HomeRow: View {
     let home: HomeGeofence
-    /// Whether the signed-in account can edit/delete this specific home
-    /// (see `HomesViewModel.canManage(_:)` and ADR-0021), shown here so a
-    /// non-admin can tell at a glance which of their visible homes they
-    /// don't have the swipe-to-delete affordance for, rather than
-    /// discovering it only by trying.
-    let isManageable: Bool
 
     var body: some View {
         HStack {
@@ -157,12 +155,6 @@ private struct HomeRow: View {
                     .font(.headline)
                 Text("\(Int(home.radiusMeters)) m radius")
                     .font(.subheadline)
-                    .foregroundStyle(.appSecondaryText)
-            }
-            if !isManageable {
-                Spacer()
-                Image(systemName: "lock.fill")
-                    .font(.footnote)
                     .foregroundStyle(.appSecondaryText)
             }
         }

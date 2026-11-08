@@ -58,17 +58,10 @@ public protocol PetRepository: Sendable {
     /// every call, only an ongoing excursion (if any) is recomputed fresh.
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats
 
-    /// Whether the signed-in Traccar account is an administrator. Scentrail
-    /// restricts a few actions (adding a home, sharing a pet) to admin
-    /// accounts, because Traccar's permission model only lets an admin make
-    /// either one work for anyone besides the account that performed it -
-    /// confirmed against a live server, see ADR-0017, ADR-0018.
-    func isCurrentUserAdministrator() async throws -> Bool
-
-    /// The signed-in Traccar account's own user id, used to tell whether the
-    /// current user created a given home (see ``HomeGeofence/ownerUserID``
-    /// and ADR-0021).
-    func currentUserID() async throws -> Int
+    /// What the signed-in Traccar account can actually do, read straight off
+    /// Traccar's own permission flags, not an app-level restriction (see
+    /// ADR-0023).
+    func currentUserPermissions() async throws -> AccountPermissions
 
     /// Shares a pet with another Traccar user, found by email, admin-only
     /// server-side, same as the rest of ADR-0018. Throws if no user with

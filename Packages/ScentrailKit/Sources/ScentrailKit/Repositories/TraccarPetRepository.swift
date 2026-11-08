@@ -110,10 +110,6 @@ struct TraccarPetRepository: PetRepository {
     /// Marks a geofence as one Scentrail manages as a "home", so it can be
     /// found again regardless of whether the owner renames it in Traccar.
     private static let homeAttributeKey = "scentrailHome"
-    /// The Traccar user id of whoever created this home (see ADR-0021).
-    /// Traccar itself tracks no such thing, so Scentrail stamps it as a
-    /// plain attribute at creation time and never changes it afterward.
-    private static let ownerAttributeKey = "scentrailOwnerId"
 
     func homeGeofences(forPetID petID: Int) async throws -> [HomeGeofence] {
         do {
@@ -131,11 +127,7 @@ struct TraccarPetRepository: PetRepository {
                 centerLongitude: center.longitude,
                 radiusMeters: radiusMeters
             )
-            let ownerID = try? await client.fetchCurrentUser().id
-            var attributes: [String: JSONValue] = [Self.homeAttributeKey: .bool(true)]
-            if let ownerID {
-                attributes[Self.ownerAttributeKey] = .double(Double(ownerID))
-            }
+            let attributes: [String: JSONValue] = [Self.homeAttributeKey: .bool(true)]
             let created = try await client.createGeofence(name: name, area: area, attributes: attributes)
             try await client.linkGeofence(geofenceId: created.id, toDeviceId: petID)
             await syncGeofenceVisibility(geofenceId: created.id, petID: petID)
@@ -151,15 +143,7 @@ struct TraccarPetRepository: PetRepository {
                 centerLongitude: center.longitude,
                 radiusMeters: radiusMeters
             )
-            // `updateGeofence` replaces `attributes` wholesale, so the
-            // existing owner stamp (if any) has to be read back and carried
-            // forward explicitly, otherwise editing a home would silently
-            // erase who created it (see ADR-0021).
-            let existingGeofence = try? await client.fetchGeofence(id: homeID)
-            var attributes: [String: JSONValue] = [Self.homeAttributeKey: .bool(true)]
-            if let existingOwner = existingGeofence?.attributes[Self.ownerAttributeKey] {
-                attributes[Self.ownerAttributeKey] = existingOwner
-            }
+            let attributes: [String: JSONValue] = [Self.homeAttributeKey: .bool(true)]
             try await client.updateGeofence(id: homeID, name: name, area: area, attributes: attributes)
             await syncGeofenceVisibility(geofenceId: homeID, petID: petID)
         } catch let error as TraccarError {
@@ -218,19 +202,17 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
-    // MARK: - Admin status and pet sharing (see ADR-0017, ADR-0018)
+    // MARK: - Permissions and pet sharing (see ADR-0017, ADR-0018, ADR-0023)
 
-    func isCurrentUserAdministrator() async throws -> Bool {
+    func currentUserPermissions() async throws -> AccountPermissions {
         do {
-            return try await client.fetchCurrentUser().administrator
-        } catch let error as TraccarError {
-            throw error.asScentrailError
-        }
-    }
-
-    func currentUserID() async throws -> Int {
-        do {
-            return try await client.fetchCurrentUser().id
+            let user = try await client.fetchCurrentUser()
+            return AccountPermissions(
+                isAdministrator: user.administrator,
+                canManageHomes: user.administrator || !user.readonly,
+                canManageDevicePhoto: user.administrator || (!user.readonly && !user.deviceReadonly),
+                canViewExcursions: user.administrator || !user.disableReports
+            )
         } catch let error as TraccarError {
             throw error.asScentrailError
         }
@@ -413,13 +395,11 @@ struct TraccarPetRepository: PetRepository {
 
     private static func homeGeofence(from geofence: TraccarGeofence) -> HomeGeofence? {
         guard let parsed = TraccarGeofenceArea.parseCircle(geofence.area) else { return nil }
-        let ownerUserID = geofence.attributes[Self.ownerAttributeKey]?.doubleValue.map(Int.init)
         return HomeGeofence(
             id: geofence.id,
             name: geofence.name,
             center: Coordinate(latitude: parsed.latitude, longitude: parsed.longitude),
-            radiusMeters: parsed.radiusMeters,
-            ownerUserID: ownerUserID
+            radiusMeters: parsed.radiusMeters
         )
     }
 

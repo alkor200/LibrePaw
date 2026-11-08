@@ -94,10 +94,13 @@ Scentrail shows which case applies right on the Homes screen:
   have the admin account add it instead
   (see [ADR-0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md)).
 
-As a non-admin, you can also view homes someone else (an admin) shared
-with you, but not edit or delete them, those show a lock icon in the list.
-Only the account that created a home, or an admin, can change it
-(see [ADR-0021](docs/adr/0021-client-side-home-ownership-for-non-admin-edit-delete.md)).
+Anyone who can see a home, admin or not, can also edit or delete it,
+Scentrail follows whatever Traccar's own permissions allow rather than
+adding a stricter rule of its own. The one exception is a Traccar account
+set to read-only (or with reports disabled): Scentrail then only shows
+what that account can actually do, adding/editing/deleting homes and
+viewing Trail/Excursions disappear accordingly
+(see [ADR-0023](docs/adr/0023-follow-traccars-own-permission-model.md)).
 
 ### Sharing a pet and multiple household accounts
 
@@ -199,8 +202,9 @@ Key decisions, each recorded as an ADR:
 | [0018](docs/adr/0018-admin-only-homes-and-pet-sharing.md) | Restrict adding homes and sharing a pet to administrator accounts (homes part superseded by 0019; pet sharing still admin-only) |
 | [0019](docs/adr/0019-reenable-non-admin-homes-with-a-visibility-notice.md) | Re-enable home management for non-admin accounts, with an in-app visibility notice |
 | [0020](docs/adr/0020-trail-aggregates-excursions-over-an-adjustable-window.md) | "Trail" aggregates excursions over an adjustable window, replacing "Today's Trail" |
-| [0021](docs/adr/0021-client-side-home-ownership-for-non-admin-edit-delete.md) | Track home ownership client-side, restrict non-admin edit/delete to the creator |
+| [0021](docs/adr/0021-client-side-home-ownership-for-non-admin-edit-delete.md) | Track home ownership client-side, restrict non-admin edit/delete to the creator (superseded by 0023) |
 | [0022](docs/adr/0022-german-language-option.md) | In-app German language option, defaulting to the device's own setting |
+| [0023](docs/adr/0023-follow-traccars-own-permission-model.md) | Follow Traccar's own permission model instead of a client-side one |
 
 ## Roadmap
 

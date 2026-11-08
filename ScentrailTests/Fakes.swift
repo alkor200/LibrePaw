@@ -50,7 +50,8 @@ struct FakePetRepository: PetRepository {
     func deleteHomeGeofence(_ homeID: Int) async throws {}
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats { .zero }
-    func isCurrentUserAdministrator() async throws -> Bool { false }
-    func currentUserID() async throws -> Int { 1 }
+    func currentUserPermissions() async throws -> AccountPermissions {
+        AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevicePhoto: true, canViewExcursions: true)
+    }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }

@@ -97,8 +97,9 @@ struct PreviewPetRepository: PetRepository {
         LifetimeStats(totalDistanceMeters: 42_300, totalDurationSeconds: 3600 * 11)
     }
 
-    func isCurrentUserAdministrator() async throws -> Bool { true }
-    func currentUserID() async throws -> Int { 1 }
+    func currentUserPermissions() async throws -> AccountPermissions {
+        AccountPermissions(isAdministrator: true, canManageHomes: true, canManageDevicePhoto: true, canViewExcursions: true)
+    }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }
 

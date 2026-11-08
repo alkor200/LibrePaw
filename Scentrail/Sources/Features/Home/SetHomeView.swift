@@ -178,17 +178,14 @@ struct SetHomeView: View {
     }
 
     /// Same visibility explanation as `HomesView`'s, inline here too since
-    /// this is the actual point of action, see ADR-0019. A third state,
-    /// not present in the list's own notice: viewing a home someone else
-    /// created (and that you aren't an admin), where editing is disabled
-    /// entirely rather than just a visibility caveat (see ADR-0021).
+    /// this is the actual point of action, see ADR-0019 and ADR-0023.
     @ViewBuilder
     private var visibilityNotice: some View {
-        if let isAdministrator = viewModel.isAdministrator {
-            if isAdministrator {
+        if let permissions = viewModel.permissions {
+            if permissions.isAdministrator {
                 noticeLabel("Visible to everyone with access to \(viewModel.pet.name).", systemImage: "person.3.fill")
-            } else if viewModel.canManage == false {
-                noticeLabel("Shared by an admin. You can view it, but only an admin can edit or delete it.", systemImage: "lock.fill")
+            } else if !permissions.canManageHomes {
+                noticeLabel("You have read-only access to this account. You can view this, but not edit or delete it.", systemImage: "lock.fill")
             } else {
                 noticeLabel("Only visible to you. Ask an admin to add this if it should apply to everyone.", systemImage: "eye.slash.fill")
             }

@@ -81,7 +81,7 @@ struct PetDetailView: View {
             await viewModel.loadLifetimeStats()
         }
         .task {
-            await viewModel.loadAdministratorStatus()
+            await viewModel.loadPermissions()
         }
         .sheet(isPresented: $isShowingPhotoEditor) {
             PhotoEditorView(petName: viewModel.pet.name) { jpegData in
@@ -95,20 +95,28 @@ struct PetDetailView: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            Button {
-                isShowingPhotoEditor = true
-            } label: {
-                ZStack(alignment: .bottomTrailing) {
-                    PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 26))
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, .tint)
-                        .background(Circle().fill(.appSurface))
+            // Editing a device (including its photo) needs Traccar's own
+            // `deviceReadonly`/`readonly` to both be clear, hidden rather
+            // than left tappable toward a save that would just fail (see
+            // ADR-0023).
+            if viewModel.permissions?.canManageDevicePhoto == true {
+                Button {
+                    isShowingPhotoEditor = true
+                } label: {
+                    ZStack(alignment: .bottomTrailing) {
+                        PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 26))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .tint)
+                            .background(Circle().fill(.appSurface))
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(localized("Change %@'s photo", viewModel.pet.name))
+            } else {
+                PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(localized("Change %@'s photo", viewModel.pet.name))
 
             Text(viewModel.pet.name)
                 .font(.title2.bold())
@@ -152,16 +160,22 @@ struct PetDetailView: View {
                 actionRow(systemImage: "map.fill", title: "View on Map")
             }
 
-            Divider().padding(.leading, 44).overlay(Color.appBorder)
+            // Trail and Excursions are both built from Traccar's reports
+            // endpoint, hidden together rather than leading somewhere that
+            // would just error, when the account has reports disabled (see
+            // ADR-0023).
+            if viewModel.permissions?.canViewExcursions == true {
+                Divider().padding(.leading, 44).overlay(Color.appBorder)
 
-            NavigationLink(value: PetDetailRoute.trail) {
-                actionRow(systemImage: "point.topleft.down.curvedto.point.bottomright.up", title: "Trail")
-            }
+                NavigationLink(value: PetDetailRoute.trail) {
+                    actionRow(systemImage: "point.topleft.down.curvedto.point.bottomright.up", title: "Trail")
+                }
 
-            Divider().padding(.leading, 44).overlay(Color.appBorder)
+                Divider().padding(.leading, 44).overlay(Color.appBorder)
 
-            NavigationLink(value: PetDetailRoute.excursions) {
-                actionRow(systemImage: "figure.walk", title: "Excursions")
+                NavigationLink(value: PetDetailRoute.excursions) {
+                    actionRow(systemImage: "figure.walk", title: "Excursions")
+                }
             }
 
             Divider().padding(.leading, 44).overlay(Color.appBorder)
@@ -169,7 +183,9 @@ struct PetDetailView: View {
             // Anyone can manage homes now (see ADR-0017/ADR-0018's
             // follow-up), a non-admin's home is only ever visible to
             // themselves, which `HomesView` explains, but there's no
-            // reason to hide the screen entirely over that limitation.
+            // reason to hide the screen entirely over that limitation:
+            // viewing works even with read-only access, `HomesView` itself
+            // hides the add/edit/delete affordances (see ADR-0023).
             NavigationLink(value: PetDetailRoute.homes) {
                 actionRow(systemImage: "house.fill", title: "\(viewModel.pet.name)'s Homes")
             }
@@ -179,7 +195,7 @@ struct PetDetailView: View {
             // confirmed against a live server, there's no non-admin path
             // to make this work at all, so the entry point is hidden
             // rather than leading somewhere useless.
-            if viewModel.isAdministrator {
+            if viewModel.permissions?.isAdministrator == true {
                 Divider().padding(.leading, 44).overlay(Color.appBorder)
 
                 NavigationLink(value: PetDetailRoute.sharePet) {

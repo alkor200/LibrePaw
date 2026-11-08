@@ -335,7 +335,7 @@ struct TraccarClientTests {
     @Test("fetchCurrentUser establishes a cookie session, then GETs /api/session for the User object")
     func fetchCurrentUserUsesCookieSession() async throws {
         let json = """
-        {"id": 4, "email": "owner@example.com", "administrator": true}
+        {"id": 4, "email": "owner@example.com", "administrator": true, "readonly": false, "deviceReadonly": false, "disableReports": false}
         """.data(using: .utf8)!
         let requestedPaths = LockedArray<String>()
 
@@ -363,7 +363,7 @@ struct TraccarClientTests {
     @Test("fetchUsers(keyword:) sends the keyword as a query parameter")
     func fetchUsersBuildsKeywordQuery() async throws {
         let json = """
-        [{"id": 5, "email": "family@example.com", "administrator": false}]
+        [{"id": 5, "email": "family@example.com", "administrator": false, "readonly": false, "deviceReadonly": false, "disableReports": false}]
         """.data(using: .utf8)!
 
         MockURLProtocol.requestHandler = { request in

@@ -26,19 +26,16 @@ final class SetHomeViewModel {
     /// `nil` until ``loadPermissionContext()`` resolves, see
     /// `HomesViewModel`'s equivalent; `SetHomeView` only shows its
     /// visibility notice (and decides whether editing is allowed at all)
-    /// once this is known (see ADR-0019, ADR-0021).
-    private(set) var isAdministrator: Bool?
-    private(set) var currentUserID: Int?
+    /// once this is known (see ADR-0019, ADR-0023).
+    private(set) var permissions: AccountPermissions?
 
     private let existingHomeID: Int?
-    private let existingHomeOwnerID: Int?
     private let petRepository: PetRepository
 
     init(pet: Pet, existingHome: HomeGeofence?, petRepository: PetRepository, locationService: LocationService) {
         self.pet = pet
         self.isEditingExistingHome = existingHome != nil
         self.existingHomeID = existingHome?.id
-        self.existingHomeOwnerID = existingHome?.ownerUserID
         self.name = existingHome?.name ?? localized("Home")
         self.homeCoordinate = existingHome?.center
         self.radiusMeters = existingHome?.radiusMeters ?? 50
@@ -47,17 +44,13 @@ final class SetHomeViewModel {
     }
 
     /// Whether the signed-in account is allowed to change anything here at
-    /// all: always true when adding a new home (the creator always manages
-    /// their own), for an existing one only an admin or whoever created it
-    /// can (see `HomesViewModel.canManage(_:)` and ADR-0021, including why
-    /// an untracked legacy owner defaults to "no"). `nil`, same as
-    /// ``isAdministrator``, until the permission context has loaded.
+    /// all, adding or editing alike: Traccar's `readonly` flag applies
+    /// uniformly, not who created a given home (see
+    /// ``AccountPermissions/canManageHomes`` and ADR-0023, which supersedes
+    /// ADR-0021's client-side ownership). `nil` until the permission
+    /// context has loaded.
     var canManage: Bool? {
-        guard isEditingExistingHome else { return true }
-        guard let isAdministrator else { return nil }
-        if isAdministrator { return true }
-        guard let currentUserID, let existingHomeOwnerID else { return false }
-        return existingHomeOwnerID == currentUserID
+        permissions?.canManageHomes
     }
 
     /// Defaults the pin to the owner's current location, but only before
@@ -72,15 +65,12 @@ final class SetHomeViewModel {
     /// just gates the visibility notice and (via ``canManage``) whether
     /// editing is allowed, not something worth surfacing an error for.
     func loadPermissionContext() async {
-        async let administrator = petRepository.isCurrentUserAdministrator()
-        async let userID = petRepository.currentUserID()
-        isAdministrator = try? await administrator
-        currentUserID = try? await userID
+        permissions = try? await petRepository.currentUserPermissions()
     }
 
     func save() async {
         guard canManage == true else {
-            errorMessage = localized("Only an admin can edit a home you didn't create.")
+            errorMessage = localized("You have read-only access and can't make changes here.")
             return
         }
         guard let coordinate = homeCoordinate else {
