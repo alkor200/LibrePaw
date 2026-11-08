@@ -19,6 +19,7 @@ struct HomesView: View {
 
     var body: some View {
         content
+            .background(Color.appBackground)
             .navigationTitle("\(viewModel.pet.name)'s Homes")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: HomeGeofence.self) { home in
@@ -89,8 +90,10 @@ struct HomesView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.appSurface)
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
     }
 }
@@ -108,7 +111,7 @@ private struct HomeRow: View {
                     .font(.headline)
                 Text("\(Int(home.radiusMeters)) m radius")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondaryText)
             }
         }
         .padding(.vertical, 4)

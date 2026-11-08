@@ -15,6 +15,7 @@ struct FindPetView: View {
 
     var body: some View {
         content
+            .background(Color.appBackground)
             .navigationTitle("Find \(viewModel.pet.name)")
             .navigationBarTitleDisplayMode(.inline)
             .task { viewModel.start() }
@@ -45,7 +46,7 @@ struct FindPetView: View {
 
             ZStack {
                 Circle()
-                    .stroke(.quaternary, lineWidth: 2)
+                    .stroke(Color.appBorder, lineWidth: 2)
                     .frame(width: 260, height: 260)
 
                 Image(systemName: "location.north.fill")
@@ -65,14 +66,14 @@ struct FindPetView: View {
                     // formatted string, it doesn't need the view to re-render.
                     (Text("Last position ") + Text(recordedAt, style: .relative))
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondaryText)
                 }
             }
 
             if !viewModel.locationService.isHeadingAvailable {
                 Label("Compass unavailable — pointing from true north instead.", systemImage: "exclamationmark.triangle")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondaryText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }

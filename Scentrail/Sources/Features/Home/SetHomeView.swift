@@ -40,6 +40,7 @@ struct SetHomeView: View {
 
     var body: some View {
         content
+            .background(Color.appBackground)
             .navigationTitle(viewModel.isEditingExistingHome ? "Edit Home" : "Add Home")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -122,14 +123,14 @@ struct SetHomeView: View {
 
             Text("Drag the map to place \(viewModel.name.trimmed.isEmpty ? "it" : viewModel.name).")
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(spacing: 4) {
                 Slider(value: $viewModel.radiusMeters, in: 20...100, step: 5)
                 Text("\(Int(viewModel.radiusMeters)) meters radius")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondaryText)
             }
 
             if let errorMessage = viewModel.errorMessage {

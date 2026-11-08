@@ -27,12 +27,14 @@ struct SharePetView: View {
             } footer: {
                 Text("The Traccar account with this email will be able to see \(viewModel.pet.name) in their own copy of Scentrail, the same as you.")
             }
+            .listRowBackground(Color.appSurface)
 
             if let errorMessage = viewModel.errorMessage {
                 Section {
                     Label(errorMessage, systemImage: "xmark.octagon.fill")
                         .foregroundStyle(.red)
                 }
+                .listRowBackground(Color.appSurface)
             }
 
             Section {
@@ -54,7 +56,10 @@ struct SharePetView: View {
                 }
                 .disabled(viewModel.isSharing)
             }
+            .listRowBackground(Color.appSurface)
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.appBackground)
         .navigationTitle("Share \(viewModel.pet.name)")
         .navigationBarTitleDisplayMode(.inline)
         .task { isEmailFieldFocused = true }

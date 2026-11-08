@@ -14,19 +14,24 @@ struct SettingsView: View {
                 LabeledContent("Server", value: viewModel.session.serverURL.host ?? viewModel.session.serverURL.absoluteString)
                 LabeledContent("Email", value: viewModel.session.email)
             }
+            .listRowBackground(Color.appSurface)
 
             Section {
                 Button("Log Out", role: .destructive) {
                     viewModel.requestLogOut()
                 }
             }
+            .listRowBackground(Color.appSurface)
 
             Section {
                 LabeledContent("Version", value: appVersion)
             } footer: {
                 Text("Scentrail is open source software and is not affiliated with Traccar.")
             }
+            .listRowBackground(Color.appSurface)
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.appBackground)
         .navigationTitle("Settings")
         .confirmationDialog(
             "Log Out?",

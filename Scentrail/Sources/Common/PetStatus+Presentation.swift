@@ -15,7 +15,7 @@ extension Pet.Status {
     var tintColor: Color {
         switch self {
         case .online: .green
-        case .offline: .secondary
+        case .offline: .appSecondaryText
         case .unknown: .orange
         }
     }

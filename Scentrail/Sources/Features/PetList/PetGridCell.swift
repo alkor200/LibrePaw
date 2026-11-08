@@ -15,7 +15,7 @@ struct PetGridCell: View {
                 if let battery = pet.lastPosition?.batteryLevelPercent {
                     Image(systemName: batteryIcon(for: battery))
                         .font(.caption2)
-                        .foregroundStyle(battery < 20 ? .red : .secondary)
+                        .foregroundStyle(battery < 20 ? .red : .appSecondaryText)
                         .padding(5)
                         .background(.regularMaterial, in: Circle())
                         .offset(x: 4, y: 4)
@@ -25,11 +25,11 @@ struct PetGridCell: View {
             VStack(spacing: 2) {
                 Text(pet.name)
                     .font(.subheadline.bold())
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.appText)
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondaryText)
                     .lineLimit(1)
             }
         }

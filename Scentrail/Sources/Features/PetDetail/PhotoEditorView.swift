@@ -44,6 +44,7 @@ struct PhotoEditorView: View {
                 Spacer()
             }
             .padding()
+            .background(Color.appBackground)
             .navigationTitle("\(petName)'s Photo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -125,7 +126,7 @@ struct PhotoEditorView: View {
 
             Text("Pinch to zoom, drag to reposition")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondaryText)
         }
     }
 

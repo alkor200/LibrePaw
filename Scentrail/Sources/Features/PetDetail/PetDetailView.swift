@@ -48,7 +48,7 @@ struct PetDetailView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.appBackground)
         .navigationTitle(viewModel.pet.name)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: PetDetailRoute.self) { route in
@@ -104,7 +104,7 @@ struct PetDetailView: View {
                         .font(.system(size: 26))
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(.white, .tint)
-                        .background(Circle().fill(.background))
+                        .background(Circle().fill(.appSurface))
                 }
             }
             .buttonStyle(.plain)
@@ -152,13 +152,13 @@ struct PetDetailView: View {
                 actionRow(systemImage: "map.fill", title: "View on Map")
             }
 
-            Divider().padding(.leading, 44)
+            Divider().padding(.leading, 44).overlay(Color.appBorder)
 
             NavigationLink(value: PetDetailRoute.trail) {
                 actionRow(systemImage: "point.topleft.down.curvedto.point.bottomright.up", title: "Today's Trail")
             }
 
-            Divider().padding(.leading, 44)
+            Divider().padding(.leading, 44).overlay(Color.appBorder)
 
             NavigationLink(value: PetDetailRoute.excursions) {
                 actionRow(systemImage: "figure.walk", title: "Excursions")
@@ -171,20 +171,20 @@ struct PetDetailView: View {
             // is shown to them at all rather than leading somewhere
             // useless.
             if viewModel.isAdministrator {
-                Divider().padding(.leading, 44)
+                Divider().padding(.leading, 44).overlay(Color.appBorder)
 
                 NavigationLink(value: PetDetailRoute.homes) {
                     actionRow(systemImage: "house.fill", title: "\(viewModel.pet.name)'s Homes")
                 }
 
-                Divider().padding(.leading, 44)
+                Divider().padding(.leading, 44).overlay(Color.appBorder)
 
                 NavigationLink(value: PetDetailRoute.sharePet) {
                     actionRow(systemImage: "person.badge.plus", title: "Share \(viewModel.pet.name)")
                 }
             }
         }
-        .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func actionRow(systemImage: String, title: String) -> some View {
@@ -193,11 +193,11 @@ struct PetDetailView: View {
                 .foregroundStyle(.tint)
                 .frame(width: 28)
             Text(title)
-                .foregroundStyle(.primary)
+                .foregroundStyle(.appText)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.appSecondaryText)
         }
         .padding()
         .contentShape(Rectangle())
@@ -243,11 +243,11 @@ struct PetDetailView: View {
                     .minimumScaleFactor(0.8)
                 Text(title)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
@@ -260,16 +260,16 @@ struct PetDetailView: View {
                 .font(.subheadline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         } else if let coordinate = viewModel.pet.lastPosition?.coordinate {
             // Traccar only reports an address when a geocoder is configured
             // server-side — fall back to coordinates so this row is never empty.
             Label(formattedCoordinate(coordinate), systemImage: "mappin.and.ellipse")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 

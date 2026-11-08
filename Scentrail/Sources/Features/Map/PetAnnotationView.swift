@@ -27,7 +27,7 @@ struct PetAnnotationView: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(.background)
+                .fill(.appSurface)
                 .shadow(radius: 2)
 
             Group {

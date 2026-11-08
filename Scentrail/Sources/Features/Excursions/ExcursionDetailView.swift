@@ -22,7 +22,7 @@ struct ExcursionDetailView: View {
             mapCard
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Color.appBackground)
         .navigationTitle(viewModel.excursion.startTime.formatted(date: .abbreviated, time: .omitted))
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -58,19 +58,19 @@ struct ExcursionDetailView: View {
     private var vehicleTripBanner: some View {
         Label("This looks like a car or train ride, it isn't counted in your totals.", systemImage: "car.fill")
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.appSecondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
-            .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func routeBanner(_ text: String) -> some View {
         Label(text, systemImage: "arrow.triangle.swap")
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.appSecondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
-            .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func statTile(systemImage: String, title: String, value: String) -> some View {
@@ -84,11 +84,11 @@ struct ExcursionDetailView: View {
                 .minimumScaleFactor(0.8)
             Text(title)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     /// Takes whatever vertical space the stat tiles above leave over, so the
@@ -97,7 +97,7 @@ struct ExcursionDetailView: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Route", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
                 .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondaryText)
 
             Map(position: $cameraPosition) {
                 if viewModel.trail.count > 1 {
@@ -121,12 +121,12 @@ struct ExcursionDetailView: View {
             } else if viewModel.trail.count <= 1 {
                 Text("No route recorded for this excursion.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondaryText)
             }
         }
         .padding()
         .frame(maxHeight: .infinity)
-        .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(.appSurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func fitCameraToTrail() {

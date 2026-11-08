@@ -14,6 +14,7 @@ struct PetListView: View {
 
     var body: some View {
         content
+            .background(Color.appBackground)
             .navigationTitle("Pets")
             .navigationDestination(for: Pet.self) { pet in
                 PetDetailView(

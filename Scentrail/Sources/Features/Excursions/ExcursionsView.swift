@@ -12,6 +12,7 @@ struct ExcursionsView: View {
 
     var body: some View {
         content
+            .background(Color.appBackground)
             .navigationTitle("Excursions")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Excursion.self) { excursion in
@@ -49,8 +50,10 @@ struct ExcursionsView: View {
                 NavigationLink(value: excursion) {
                     ExcursionRow(excursion: excursion, homeName: viewModel.homeName)
                 }
+                .listRowBackground(Color.appSurface)
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
     }
 }
@@ -74,14 +77,14 @@ private struct ExcursionRow: View {
                 } else if excursion.isLikelyVehicleTrip {
                     Label("Car ride?", systemImage: "car.fill")
                         .font(.caption.bold())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondaryText)
                 }
             }
 
             if let routeText {
                 Label(routeText, systemImage: "arrow.triangle.swap")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondaryText)
             }
 
             HStack(spacing: 16) {
@@ -93,7 +96,7 @@ private struct ExcursionRow: View {
                 }
             }
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.appSecondaryText)
         }
         .padding(.vertical, 4)
     }

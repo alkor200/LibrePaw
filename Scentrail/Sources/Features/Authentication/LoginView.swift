@@ -24,7 +24,7 @@ struct LoginView: View {
                             .font(.title2.bold())
                         Text("Sign in with your Traccar account to see where your pets are.")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.appSecondaryText)
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
@@ -55,6 +55,7 @@ struct LoginView: View {
                         .foregroundStyle(.orange)
                     }
                 }
+                .listRowBackground(Color.appSurface)
 
                 Section("Account") {
                     TextField("Email", text: $viewModel.email)
@@ -72,12 +73,14 @@ struct LoginView: View {
                         .submitLabel(.go)
                         .onSubmit { Task { await viewModel.logIn() } }
                 }
+                .listRowBackground(Color.appSurface)
 
                 if let errorMessage = viewModel.errorMessage {
                     Section {
                         Label(errorMessage, systemImage: "xmark.octagon.fill")
                             .foregroundStyle(.red)
                     }
+                    .listRowBackground(Color.appSurface)
                 }
 
                 Section {
@@ -97,7 +100,10 @@ struct LoginView: View {
                     }
                     .disabled(!viewModel.canSubmit)
                 }
+                .listRowBackground(Color.appSurface)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground)
             .navigationTitle("Welcome")
             .navigationBarTitleDisplayMode(.inline)
             .scrollDismissesKeyboard(.interactively)
