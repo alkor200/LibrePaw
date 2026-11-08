@@ -117,6 +117,57 @@ a real failure.
   starting a new one, and treats a cancelled load as "superseded," not a
   failure — it no longer sets `errorMessage` when `Task.isCancelled`.
 
+## Follow-up: two more bugs, found only once an admin account was actually tested
+
+Everything above was verified with non-admin accounts, where
+`fetchPermittedUserIDs(deviceId:)` fails immediately (`checkAdmin()`) and
+never reaches its own query logic. The first time this was exercised with
+a real administrator account, the broader "share with everyone who can see
+the device" step *still* didn't work — `claude@...` saw the pet but not
+its home, with no account anywhere short of admin-only restrictions to
+blame. Two separate, previously-invisible bugs, both in `TraccarClient`,
+both confirmed directly against the live server by isolating one variable
+at a time:
+
+- **Query parameter *order* determines which SQL table Traccar's own query
+  builder resolves, independent of admin status or the values involved.**
+  `GET /api/permissions?deviceId=X&userId=0` throws
+  `org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "TC_DEVICE_USER" not
+  found`; swapping to `?userId=0&deviceId=X` — same account, same values,
+  only the order changed — returns the data correctly. The real table is
+  evidently always addressed `tc_user_<other>`, and Traccar's resource only
+  builds that name correctly when `userId` is the first parameter in the
+  URL. `fetchPermittedUserIDs(deviceId:)`'s `queryItems` array order was
+  fixed to put `userId` first.
+- **`/api/permissions` returns UPPERCASE JSON keys** (`{"USERID":4,
+  "DEVICEID":3}`), unlike every other Traccar endpoint seen in this
+  codebase (camelCase, e.g. `TraccarDevice`'s `groupId`) — evidently raw SQL
+  column names leaking through instead of going through normal POJO
+  serialization. `TraccarPermission`'s `Int?` properties, decoded with the
+  usual camelCase assumption, silently became `nil` for every field instead
+  of throwing a decode error — there is no such thing as a required field
+  on an all-optional struct, so this was a *successful* decode into an
+  empty, useless result, the worst kind of failure to diagnose from outside.
+  Explicit `CodingKeys` now map to the real uppercase names, and the
+  regression test's JSON fixture uses uppercase keys specifically so a
+  reversion back to the default mapping fails loudly.
+
+Both bugs independently produced the exact same symptom externally (no
+grant happens, no error surfaces) as the already-documented "non-admin
+can't call this endpoint" limitation above — which is exactly why they
+went unnoticed for as long as they did: every observation looked
+consistent with the already-known, already-explained cause. Only
+isolating each variable one at a time against the live server (admin vs.
+non-admin; parameter order; raw response bytes) told them apart.
+
+**End-to-end re-verified after both fixes**, with a live device sending
+real TLT-2H position reports through a home geofence and generating real
+`geofenceExit`/`geofenceEnter` events: an admin edited the home once (no
+content change, purely to re-run the sync), and a non-admin account that
+had never been granted anything directly — only given ordinary device
+access — then saw the identical geofence and the identical events as the
+admin, with no manual permission grant in between.
+
 ## Consequences
 
 - No more "diff existing permissions first" complexity: `POST

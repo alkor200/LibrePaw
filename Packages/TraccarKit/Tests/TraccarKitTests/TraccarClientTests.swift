@@ -302,12 +302,25 @@ struct TraccarClientTests {
 
     @Test("fetchPermittedUserIDs(deviceId:) queries with userId=0 and returns the userId of each permission")
     func fetchPermittedUserIDsForDeviceBuildsQueryAndParses() async throws {
+        // Uppercase keys deliberately, not a typo: confirmed against a live
+        // server that /api/permissions returns raw SQL column names
+        // (USERID/DEVICEID), unlike every other camelCase Traccar response —
+        // see the doc comment on TraccarPermission. A lowercase fixture here
+        // would pass even if TraccarPermission's CodingKeys regressed back
+        // to the default (wrong) mapping, since unmatched Int? fields decode
+        // as nil instead of throwing.
         let json = """
-        [{"userId": 7, "deviceId": 3}, {"userId": 9, "deviceId": 3}]
+        [{"USERID": 7, "DEVICEID": 3}, {"USERID": 9, "DEVICEID": 3}]
         """.data(using: .utf8)!
 
         MockURLProtocol.requestHandler = { request in
             let components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
+            let queryNames = (components.queryItems ?? []).map(\.name)
+            // Order matters here, not just presence: confirmed against a
+            // live server that `userId` must come *before* `deviceId` in the
+            // URL or Traccar's query builder resolves the wrong (nonexistent)
+            // table — see the doc comment on fetchPermittedUserIDs.
+            #expect(queryNames == ["userId", "deviceId"])
             let queryValues = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value) })
             #expect(queryValues["deviceId"] == "3")
             #expect(queryValues["userId"] == "0")

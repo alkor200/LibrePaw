@@ -53,10 +53,26 @@ struct UserGeofencePermission: Encodable, Sendable {
 /// `Permission` object can carry many different `*Id` fields depending on
 /// which two were queried (userId+deviceId, userId+geofenceId, etc.) — only
 /// the ones Scentrail reads are modeled here, the rest decode as absent.
+///
+/// Unlike every other Traccar JSON response (camelCase, e.g. `TraccarDevice`'s
+/// `groupId`), confirmed against a live server that `/api/permissions`
+/// specifically returns this object's keys in **UPPERCASE**
+/// (`{"USERID":4,"DEVICEID":3}`) — evidently raw SQL column names leaking
+/// through rather than going through normal POJO serialization. Decoding
+/// with the usual camelCase keys doesn't throw — `Int?` properties that
+/// don't match just decode as `nil` — so this silently returned an empty
+/// result from every caller instead of an error, which is a much nastier
+/// failure mode to catch. Explicit `CodingKeys` below map to the real keys.
 public struct TraccarPermission: Decodable, Sendable, Equatable {
     public let userId: Int?
     public let deviceId: Int?
     public let geofenceId: Int?
+
+    private enum CodingKeys: String, CodingKey {
+        case userId = "USERID"
+        case deviceId = "DEVICEID"
+        case geofenceId = "GEOFENCEID"
+    }
 
     public init(userId: Int?, deviceId: Int?, geofenceId: Int?) {
         self.userId = userId

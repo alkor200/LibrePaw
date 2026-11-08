@@ -175,12 +175,18 @@ struct TraccarPetRepository: PetRepository {
     ///   home once (even without changing anything) is what extends it to
     ///   the rest of the household — see ADR-0017.
     private func syncGeofenceVisibility(geofenceId: Int, petID: Int) async {
-        if let currentUser = try? await client.fetchCurrentUser() {
-            try? await client.linkGeofence(geofenceId: geofenceId, toUserId: currentUser.id)
+        let selfID = try? await client.fetchCurrentUser().id
+        if let selfID {
+            try? await client.linkGeofence(geofenceId: geofenceId, toUserId: selfID)
         }
 
         if let deviceUserIDs = try? await client.fetchPermittedUserIDs(deviceId: petID) {
-            for userID in deviceUserIDs {
+            // Skip re-granting whoever we just granted above — confirmed
+            // live that immediately re-POSTing the *same* permission can
+            // fail with a 400 rather than the idempotent 204 the standalone
+            // case returns, so this avoids a pointless, occasionally-noisy
+            // duplicate request rather than relying on it being harmless.
+            for userID in deviceUserIDs where userID != selfID {
                 try? await client.linkGeofence(geofenceId: geofenceId, toUserId: userID)
             }
         }

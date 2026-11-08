@@ -106,20 +106,28 @@ public actor TraccarClient {
     }
 
     /// The ids of every user with an explicit permission link to `deviceId`
-    /// (`GET /api/permissions?deviceId=<id>&userId=0` — `0` on one side
-    /// means "any", per Traccar's own API reference).
+    /// (`GET /api/permissions?userId=0&deviceId=<id>` — `0` means "any").
     ///
-    /// **Confirmed against a live server: this endpoint requires an
-    /// administrator account for *any* query shape** — `PermissionsService
-    /// .checkAdmin()` runs unconditionally before even looking at the query
-    /// parameters, so a non-admin gets a `400` (a raw Java stack trace as
-    /// the body, not a JSON error) even asking only about their own
-    /// permissions. Callers must treat this as best-effort/admin-only, never
-    /// as something every account can rely on — see ADR-0017.
+    /// Two separate things confirmed against a live server, both of which
+    /// callers must treat this as best-effort for:
+    /// - **Requires an administrator account for *any* query shape** —
+    ///   `PermissionsService.checkAdmin()` runs unconditionally before even
+    ///   looking at the query parameters, so a non-admin gets a `400` (a raw
+    ///   Java stack trace as the body, not a JSON error) even asking only
+    ///   about their own permissions — see ADR-0017.
+    /// - **`userId` must be the *first* query parameter in the URL, even as
+    ///   admin.** `?deviceId=<id>&userId=0` throws `Table "TC_DEVICE_USER"
+    ///   not found` — a genuine server-side bug on at least one tested
+    ///   Traccar version, not a permissions issue (confirmed: same account,
+    ///   same query values, only the parameter *order* changed, and the
+    ///   failing shape fails identically for an admin). The working table is
+    ///   evidently always addressed as `tc_user_<other>`, so Traccar's own
+    ///   query builder only resolves it correctly when `userId` precedes the
+    ///   other id in the URL — see ADR-0017.
     public func fetchPermittedUserIDs(deviceId: Int) async throws -> [Int] {
         let permissions: [TraccarPermission] = try await getJSON("/api/permissions", queryItems: [
-            URLQueryItem(name: "deviceId", value: String(deviceId)),
-            URLQueryItem(name: "userId", value: "0")
+            URLQueryItem(name: "userId", value: "0"),
+            URLQueryItem(name: "deviceId", value: String(deviceId))
         ])
         return permissions.compactMap(\.userId)
     }
