@@ -4,6 +4,7 @@ import ScentrailKit
 struct SettingsView: View {
     @State private var viewModel: SettingsViewModel
     @Environment(LanguageSettings.self) private var languageSettings
+    @Environment(AppearanceSettings.self) private var appearanceSettings
 
     init(session: StoredSession, onLogOut: @escaping () -> Void) {
         _viewModel = State(initialValue: SettingsViewModel(session: session, onLogOut: onLogOut))
@@ -28,6 +29,20 @@ struct SettingsView: View {
                 }
             } footer: {
                 Text("Automatic follows your iPhone's own language setting.")
+            }
+            .listRowBackground(Color.appSurface)
+
+            Section {
+                Picker("Appearance", selection: Binding(
+                    get: { appearanceSettings.appearance },
+                    set: { appearanceSettings.appearance = $0 }
+                )) {
+                    ForEach(AppAppearance.allCases) { appearance in
+                        Text(appearance.label).tag(appearance)
+                    }
+                }
+            } footer: {
+                Text("Automatic follows your iPhone's own appearance setting.")
             }
             .listRowBackground(Color.appSurface)
 
@@ -73,4 +88,5 @@ struct SettingsView: View {
         )
     }
     .environment(LanguageSettings())
+    .environment(AppearanceSettings())
 }

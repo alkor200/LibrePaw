@@ -163,6 +163,17 @@
         }
       }
     },
+    "Appearance": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erscheinungsbild"
+          }
+        }
+      }
+    },
     "As an admin, homes you add here are visible to everyone with access to %@.": {
       "extractionState": "manual",
       "localizations": {
@@ -181,6 +192,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Automatisch"
+          }
+        }
+      }
+    },
+    "Automatic follows your iPhone's own appearance setting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch folgt der Darstellungseinstellung deines iPhones."
           }
         }
       }
@@ -346,6 +368,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieses Foto konnte nicht verarbeitet werden, versuche ein anderes."
+          }
+        }
+      }
+    },
+    "Dark": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dunkel"
           }
         }
       }
@@ -588,6 +621,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Letzte Position "
+          }
+        }
+      }
+    },
+    "Light": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hell"
           }
         }
       }

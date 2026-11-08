@@ -5,6 +5,7 @@ import SwiftUI
 struct RootView: View {
     @State private var appSession: AppSession
     @State private var languageSettings = LanguageSettings()
+    @State private var appearanceSettings = AppearanceSettings()
     private let locationService: LocationService
 
     init(dependencies: AppDependencies) {
@@ -30,5 +31,7 @@ struct RootView: View {
         .environment(languageSettings)
         .environment(\.locale, languageSettings.language.locale ?? Locale.autoupdatingCurrent)
         .id(languageSettings.language)
+        .environment(appearanceSettings)
+        .preferredColorScheme(appearanceSettings.appearance.colorScheme)
     }
 }

@@ -58,7 +58,10 @@ struct PetMapView: View {
             MapScaleView()
             MapUserLocationButton()
         }
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .topLeading) {
+            // Not `.bottomLeading`: MapKit reserves that corner for its own
+            // required Apple Maps attribution logo, which this used to sit
+            // on top of.
             MapLayerPicker(selection: $mapLayer)
                 .padding()
         }
