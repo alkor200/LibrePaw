@@ -5,6 +5,12 @@
 # Personal signing config - see LibrePaw/Config/Local.xcconfig.example
 LibrePaw/Config/Local.xcconfig
 
+# Local, never-committed working notes and helper scripts for an agent in
+# this repo (test server credentials, GPS-mocking scripts). Intentionally
+# excluded, never remove these two lines.
+CLAUDE.local.md
+.claude-local/
+
 # Xcode
 DerivedData/
 *.xcuserstate
