@@ -69,6 +69,70 @@ extension PetPosition {
             )
         }
     }()
+
+    /// Three more made-up, differently-shaped walks through Tempelhofer
+    /// Feld, each home-to-home, matching `PreviewPetRepository`'s other
+    /// three (completed) mock excursions, so `TrailView` draws genuinely
+    /// distinct routes instead of the same one three times over in
+    /// different colors.
+    private static func previewRoute(_ points: [(lat: Double, lon: Double)], idOffset: Int, endingAt end: Date, durationSeconds: TimeInterval) -> [PetPosition] {
+        let lastIndex = points.count - 1
+        return points.enumerated().map { index, point in
+            let secondsBeforeEnd = durationSeconds * Double(lastIndex - index) / Double(max(lastIndex, 1))
+            return PetPosition(
+                id: idOffset + index,
+                petID: 1,
+                coordinate: Coordinate(latitude: point.lat, longitude: point.lon),
+                recordedAt: end.addingTimeInterval(-secondsBeforeEnd),
+                speedKilometersPerHour: 3.6,
+                address: "Tempelhofer Feld, Berlin",
+                batteryLevelPercent: 71
+            )
+        }
+    }
+
+    /// Matches `fetchExcursions`' second mock excursion (23h ago, 1050m).
+    static func previewRouteB(endingAt end: Date) -> [PetPosition] {
+        previewRoute([
+            (52.4720, 13.3978), (52.4713, 13.3995), (52.4705, 13.4015), (52.4698, 13.4035),
+            (52.4702, 13.4055), (52.4712, 13.4060), (52.4720, 13.4040), (52.4722, 13.4010),
+            (52.4720, 13.3978)
+        ], idOffset: 100, endingAt: end, durationSeconds: 36 * 60)
+    }
+
+    /// Matches `fetchExcursions`' third mock excursion (32h ago, 680m).
+    static func previewRouteC(endingAt end: Date) -> [PetPosition] {
+        previewRoute([
+            (52.4720, 13.3978), (52.4728, 13.3990), (52.4735, 13.4000),
+            (52.4730, 13.4012), (52.4722, 13.4005), (52.4718, 13.3992), (52.4720, 13.3978)
+        ], idOffset: 200, endingAt: end, durationSeconds: 24 * 60)
+    }
+
+    /// Matches `fetchExcursions`' fourth mock excursion (56h ago, 2100m).
+    static func previewRouteD(endingAt end: Date) -> [PetPosition] {
+        previewRoute([
+            (52.4720, 13.3978), (52.4735, 13.3995), (52.4750, 13.4015), (52.4762, 13.4040),
+            (52.4768, 13.4065), (52.4760, 13.4085), (52.4745, 13.4090), (52.4730, 13.4075),
+            (52.4720, 13.4050), (52.4715, 13.4020), (52.4718, 13.3995), (52.4720, 13.3978)
+        ], idOffset: 300, endingAt: end, durationSeconds: 61.8 * 60)
+    }
+
+    /// Matches `fetchExcursions`' fifth mock excursion (10h ago, 1480m), a
+    /// denser, more meandering half-hour loop (28 fixes rather than the
+    /// handful above) starting and ending a short way inside the field from
+    /// its own entrance, same as every other route here, used for the
+    /// website's hero screenshot.
+    static func previewRouteE(endingAt end: Date) -> [PetPosition] {
+        previewRoute([
+            (52.4720, 13.3978), (52.4717, 13.3984), (52.4712, 13.3990), (52.4706, 13.3998),
+            (52.4700, 13.4006), (52.4694, 13.4014), (52.4688, 13.4022), (52.4683, 13.4030),
+            (52.4679, 13.4040), (52.4676, 13.4050), (52.4680, 13.4058), (52.4685, 13.4052),
+            (52.4680, 13.4046), (52.4675, 13.4055), (52.4678, 13.4064), (52.4684, 13.4060),
+            (52.4690, 13.4052), (52.4696, 13.4044), (52.4702, 13.4050), (52.4698, 13.4058),
+            (52.4704, 13.4062), (52.4710, 13.4055), (52.4706, 13.4044), (52.4712, 13.4036),
+            (52.4718, 13.4024), (52.4712, 13.4012), (52.4718, 13.4000), (52.4720, 13.3978)
+        ], idOffset: 400, endingAt: end, durationSeconds: 30 * 60)
+    }
 }
 
 struct PreviewPetRepository: PetRepository {
@@ -77,7 +141,25 @@ struct PreviewPetRepository: PetRepository {
     }
 
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] {
-        PetPosition.previewTrail
+        // Matches `from` against each mock excursion's own start time (see
+        // `fetchExcursions` below) so `TrailView`, which fetches one trail
+        // per excursion using its own start/end, draws a genuinely
+        // different-shaped route per excursion instead of the same one
+        // three times over in different colors. Falls back to the
+        // original loop for anything else (e.g. `loadTodaysExcursions`'s
+        // `startOfDay` window, which matches none of these).
+        let referenceNow = Date.now
+        let tolerance: TimeInterval = 60
+        if abs(from.timeIntervalSince(referenceNow.addingTimeInterval(-3600 * 23))) < tolerance {
+            return PetPosition.previewRouteB(endingAt: to)
+        } else if abs(from.timeIntervalSince(referenceNow.addingTimeInterval(-3600 * 32))) < tolerance {
+            return PetPosition.previewRouteC(endingAt: to)
+        } else if abs(from.timeIntervalSince(referenceNow.addingTimeInterval(-3600 * 56))) < tolerance {
+            return PetPosition.previewRouteD(endingAt: to)
+        } else if abs(from.timeIntervalSince(referenceNow.addingTimeInterval(-3600 * 10))) < tolerance {
+            return PetPosition.previewRouteE(endingAt: to)
+        }
+        return PetPosition.previewTrail
     }
 
     func fetchPhoto(for pet: Pet) async throws -> Data? {
@@ -141,6 +223,16 @@ struct PreviewPetRepository: PetRepository {
                 startCoordinate: .previewHome,
                 endCoordinate: .previewHome,
                 distanceMeters: 2100,
+                startHomeID: 1,
+                endHomeID: 1
+            ),
+            Excursion(
+                id: 5,
+                startTime: .now.addingTimeInterval(-3600 * 10),
+                endTime: .now.addingTimeInterval(-3600 * 9.5),
+                startCoordinate: .previewHome,
+                endCoordinate: .previewHome,
+                distanceMeters: 1480,
                 startHomeID: 1,
                 endHomeID: 1
             )
