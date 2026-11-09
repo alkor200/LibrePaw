@@ -8,21 +8,13 @@ struct PetMapView: View {
     @State private var viewModel: PetMapViewModel
     @State private var cameraPosition: MapCameraPosition
     @State private var mapLayer: MapLayer = .standard
+    @Environment(AppTabNavigation.self) private var tabNavigation
 
-    /// - Parameter initialFocus: when provided (e.g. opened from a pet's
-    ///   detail screen via "View on Map"), the camera starts centered on
-    ///   that pet's last known position instead of fitting all pets.
-    init(petRepository: PetRepository, locationService: LocationService, initialFocus: Pet? = nil) {
+    init(petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
         self.locationService = locationService
         _viewModel = State(initialValue: PetMapViewModel(petRepository: petRepository))
-        if let coordinate = initialFocus?.lastPosition?.coordinate.clLocationCoordinate2D {
-            _cameraPosition = State(initialValue: .region(
-                MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
-            ))
-        } else {
-            _cameraPosition = State(initialValue: .automatic)
-        }
+        _cameraPosition = State(initialValue: .automatic)
     }
 
     var body: some View {
@@ -33,19 +25,23 @@ struct PetMapView: View {
             ForEach(viewModel.petsWithPosition) { pet in
                 if let position = pet.lastPosition {
                     Annotation(pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
-                        // A plain NavigationLink, same as every list row in
-                        // this app, rather than Map's own `selection`
-                        // binding driving `.navigationDestination(item:)`.
-                        // That combination was fragile: the live position
-                        // feed keeps reassigning `selection` to fresh `Pet`
-                        // values as pets move, and tying navigation to that
-                        // same binding let an unrelated re-render of this
-                        // view re-resolve the destination while pet detail
-                        // was already pushed, racing with navigation
-                        // happening deeper in the stack and leaving pet
-                        // detail's buttons unresponsive (and, eventually,
-                        // this map unable to render at all).
-                        NavigationLink(value: pet) {
+                        // A plain Button driving `tabNavigation`, rather
+                        // than Map's own `selection` binding driving
+                        // `.navigationDestination(item:)`. That combination
+                        // was fragile: the live position feed keeps
+                        // reassigning `selection` to fresh `Pet` values as
+                        // pets move, and tying navigation to that same
+                        // binding let an unrelated re-render of this view
+                        // re-resolve the destination while pet detail was
+                        // already pushed, racing with navigation happening
+                        // deeper in the stack and leaving pet detail's
+                        // buttons unresponsive (and, eventually, this map
+                        // unable to render at all). This switches to the
+                        // Pets tab and pushes that pet's detail there,
+                        // rather than pushing within this tab's own stack.
+                        Button {
+                            tabNavigation.showPetDetail(pet)
+                        } label: {
                             PetAnnotationView(pet: pet, petRepository: petRepository)
                         }
                     }
@@ -85,12 +81,19 @@ struct PetMapView: View {
         }
         .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Pet.self) { pet in
-            PetDetailView(
-                viewModel: PetDetailViewModel(pet: pet, petRepository: petRepository),
-                petRepository: petRepository,
-                locationService: locationService
-            )
+        .onChange(of: tabNavigation.mapFocusPet) { _, pet in
+            // `PetMapView` is a single, long-lived instance (owned by
+            // `MainTabView`), not re-created per visit, so the
+            // `initialFocus` init parameter only ever applies once at
+            // launch; this is what reacts to "View on Map"/the pet's photo
+            // in Pet Detail afterward.
+            guard let pet, let coordinate = pet.lastPosition?.coordinate.clLocationCoordinate2D else { return }
+            withAnimation {
+                cameraPosition = .region(
+                    MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
+                )
+            }
+            tabNavigation.mapFocusPet = nil
         }
         .overlay(alignment: .top) {
             if let errorMessage = viewModel.errorMessage {

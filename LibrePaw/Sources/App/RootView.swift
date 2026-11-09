@@ -6,6 +6,7 @@ struct RootView: View {
     @State private var appSession: AppSession
     @State private var languageSettings = LanguageSettings()
     @State private var appearanceSettings = AppearanceSettings()
+    @State private var tabNavigation = AppTabNavigation()
     private let locationService: LocationService
 
     init(dependencies: AppDependencies) {
@@ -33,5 +34,6 @@ struct RootView: View {
         .id(languageSettings.language)
         .environment(appearanceSettings)
         .preferredColorScheme(appearanceSettings.appearance.colorScheme)
+        .environment(tabNavigation)
     }
 }

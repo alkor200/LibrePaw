@@ -12,7 +12,6 @@ import LibrePawKit
 /// `Hashable` value keeps the pushed destination stable across those re-renders.
 private enum PetDetailRoute: Hashable {
     case findPet
-    case map
     case trail
     case excursions
     case homes
@@ -24,6 +23,7 @@ struct PetDetailView: View {
     let locationService: LocationService
     @State private var viewModel: PetDetailViewModel
     @State private var isShowingEditPet = false
+    @Environment(AppTabNavigation.self) private var tabNavigation
     /// Shown in place of whatever `PetAnnotationView` would otherwise fetch,
     /// right after a successful edit, see its doc comment for why the fetch
     /// alone can't be relied on to notice the change.
@@ -55,8 +55,6 @@ struct PetDetailView: View {
             switch route {
             case .findPet:
                 FindPetView(viewModel: FindPetViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
-            case .map:
-                PetMapView(petRepository: petRepository, locationService: locationService, initialFocus: viewModel.pet)
             case .trail:
                 TrailView(viewModel: TrailViewModel(pet: viewModel.pet, petRepository: petRepository), petRepository: petRepository)
             case .excursions:
@@ -100,7 +98,9 @@ struct PetDetailView: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            NavigationLink(value: PetDetailRoute.map) {
+            Button {
+                tabNavigation.showPetOnMap(viewModel.pet)
+            } label: {
                 PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
             }
             .buttonStyle(.plain)
@@ -157,9 +157,12 @@ struct PetDetailView: View {
                 Divider().padding(.leading, 44).overlay(Color.appBorder)
             }
 
-            NavigationLink(value: PetDetailRoute.map) {
+            Button {
+                tabNavigation.showPetOnMap(viewModel.pet)
+            } label: {
                 actionRow(systemImage: "map.fill", title: "View on Map")
             }
+            .buttonStyle(.plain)
 
             // Trail and Excursions are both built from Traccar's reports
             // endpoint, hidden together rather than leading somewhere that
@@ -363,4 +366,5 @@ struct PetDetailView: View {
             locationService: LocationService()
         )
     }
+    .environment(AppTabNavigation())
 }

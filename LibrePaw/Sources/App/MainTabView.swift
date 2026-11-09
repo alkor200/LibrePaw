@@ -8,23 +8,27 @@ struct MainTabView: View {
     let petRepository: PetRepository
     let locationService: LocationService
     let onLogOut: () -> Void
+    @Environment(AppTabNavigation.self) private var tabNavigation
 
     var body: some View {
+        @Bindable var tabNavigation = tabNavigation
         // Map is listed first so it's the default tab on launch.
-        TabView {
+        TabView(selection: $tabNavigation.selectedTab) {
             NavigationStack {
                 PetMapView(petRepository: petRepository, locationService: locationService)
             }
             .tabItem {
                 Label("Map", systemImage: "map.fill")
             }
+            .tag(AppTab.map)
 
-            NavigationStack {
+            NavigationStack(path: $tabNavigation.petsPath) {
                 PetListView(petRepository: petRepository, locationService: locationService)
             }
             .tabItem {
                 Label("Pets", systemImage: "pawprint.fill")
             }
+            .tag(AppTab.pets)
 
             NavigationStack {
                 SettingsView(session: session, onLogOut: onLogOut)
@@ -32,6 +36,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Settings", systemImage: "gearshape.fill")
             }
+            .tag(AppTab.settings)
         }
     }
 }
