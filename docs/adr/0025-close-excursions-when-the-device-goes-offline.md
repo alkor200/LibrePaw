@@ -1,4 +1,4 @@
-# 25. Close an ongoing excursion once the device goes offline
+# 25. Close an excursion once the trail pauses back near home
 
 ## Status
 
@@ -19,59 +19,109 @@ This is a gap in Traccar's own event model, not something LibrePaw's
 existing exit/enter pairing (`pairHomeExitsWithEnters`) could fix on its
 own: there is no enter event to pair against, by definition.
 
+### Two approaches tried and ruled out first
+
+**The device's live online/offline status.** The first version of this
+fix checked, for the one still-open excursion, whether the device had
+since gone offline, and if so treated its last known update time as the
+end. This worked for the reported case, but has a real flaw: the
+device's status is a live value, re-read fresh on every call. If the
+device comes back online later, e.g. a second walk starts before
+Traccar ever logs a real enter event for the first one, the closing
+condition no longer holds, and the next `fetchExcursions` call would
+show the *original* excursion as "ongoing" again, silently merging the
+first walk, the time at home, and the start of the second walk into one
+excursion.
+
+**A `deviceOffline` event.** Traccar does have a `deviceOffline`/
+`deviceOnline` event pair in its notification catalog, which, unlike
+live status, would be a permanent historical record immune to the
+reopening problem above. Tested directly against this project's own
+Traccar server: confirmed `deviceOffline` is only ever logged when a
+device's network *connection* is explicitly closed, which several
+common tracker protocols (including, evidently, both devices used for
+testing this project) never do, they just stop sending without closing
+anything a server can detect that way. Confirmed live: zero
+`deviceOffline` events in 30 days for either test device, despite both
+genuinely having gone offline, while `deviceMoving`/`deviceStopped`
+(unrelated event types) logged normally in the same window, ruling out
+a broader "events aren't being recorded at all" explanation. This isn't
+a configuration problem to fix, it's inherent to how several tracker
+protocols report, including (most relevantly) exactly the kind of
+battery-conscious device this whole feature exists for.
+
 ## Decision
 
-- `TraccarClient` gains `fetchDevice(id:)`, confirmed against a live
-  server that `GET /api/devices` accepts `?id=` the same way
-  `/api/geofences`/`/api/positions` accept `?deviceId=` elsewhere in this
-  client.
-- `TraccarPetRepository.fetchExcursions(forPetID:from:to:)` now runs one
-  more step after pairing exits/enters: if the newest excursion is still
-  ongoing, it fetches that device and, if its status is `offline` and its
-  `lastUpdate` is after the excursion's start, treats `lastUpdate` as the
-  excursion's end, the same outcome as if a `geofenceEnter` event had
-  arrived at that moment. `endHomeID` stays `nil`, there's no real event
-  to say which home it was.
-- Split into two pieces, mirroring how `pairHomeExitsWithEnters` sits
-  next to the client-dependent `makeExcursion`: a pure, static
-  `closingAbandonedExcursion(in:deviceStatus:deviceLastUpdate:)` holding
-  the actual decision/rewrite, unit tested directly (seven cases:
-  closes when offline, stays open while online, stays open with no
-  `lastUpdate`, ignores a `lastUpdate` older than the excursion itself,
-  leaves completed excursions and older excursions untouched, handles an
-  empty list), and a thin instance method that fetches the device and
-  delegates to it. The `fetchDevice` call is best-effort, same as the
-  rest of this feature's error handling, a failure just leaves the
-  excursion as it was rather than surfacing an error for what's already
-  a secondary correction on top of the real event data.
-- Since this lives inside `fetchExcursions` itself, every caller gets it
-  for free: `ExcursionsView`'s "Away now" label, the pet detail page's
-  "Time Away Today" stat, and `lifetimeExcursionStats` (which now also
-  correctly folds a closed-this-way excursion into its persisted total
-  instead of leaving it uncounted forever).
+Close the excursion using only data already fetched for it: the home
+geofence's own geometry, and the position trail `makeExcursion` already
+retrieves to compute distance. No device status, no new event type, no
+locally persisted state.
+
+- `TraccarPetRepository.firstHomecomingPause(in:homes:proximitySlackMeters:minimumQuietGap:)`,
+  a pure, static, unit-tested function (eight cases: closes on a
+  near-home position followed by silence, honors the proximity slack
+  beyond a home's own radius, ignores positions genuinely far from any
+  home, doesn't trigger on a brief pass near home followed by continued
+  movement, picks the earliest qualifying pause, matches against
+  whichever configured home is nearest, and handles an empty trail or no
+  homes at all). Walks a device's position trail chronologically and
+  returns the first position that both:
+  - falls within `homeProximitySlackMeters` (100m) of a home, beyond its
+    own configured radius, and
+  - is followed by at least `quietGapAfterHomeProximity` (20 minutes) of
+    silence, or is simply the last position in the trail.
+- `makeExcursion`, for the still-open case only (`enter == nil`), calls
+  this against the trail it already fetched; if a homecoming pause is
+  found, that position's time and home become the excursion's `endTime`/
+  `endHomeID`, the same outcome as a real enter event, and the
+  distance/end-coordinate are recomputed over just the trail up to that
+  point rather than whatever the device reported afterward (e.g. a
+  second walk).
+- `fetchExcursions` now also maps the home geofences it already fetches
+  into `[HomeGeofence]` and passes them through to `makeExcursion`.
+
+The 100m slack and 20-minute quiet threshold are both flat constants
+(`TraccarPetRepository.homeProximitySlackMeters`/
+`quietGapAfterHomeProximity`): a flat margin rather than a multiple of
+the home's own radius, since homes are deliberately small (20-100m, see
+`SetHomeView`'s slider), generous enough to cover "a few meters short of
+the boundary" plus ordinary GPS jitter, without reaching into unrelated
+nearby places.
+
+### Why this doesn't reopen
+
+Unlike live device status, a quiet gap that has already happened in the
+historical trail is a fixed fact. Re-running `fetchExcursions` later,
+even with a second walk's positions now appended after that gap, finds
+the exact same near-home position followed by the exact same gap in the
+exact same place, and reaches the same answer every time. No local
+state has to remember the decision between calls, the trail itself is
+the record.
 
 ## Consequences
 
 - Could not be reproduced end-to-end against the live test server: there
-  is no way to inject a GPS position (the device protocol ports are
-  firewalled from this environment, and `/api/positions`/events have no
-  write endpoint), so a live "exit, then device standby with no enter"
-  scenario can't be fabricated on demand. Verified instead by: the seven
-  unit tests covering the decision logic directly, a `fetchDevice(id:)`
-  test confirming the `?id=` query shape and 401/empty-result handling,
-  and a live regression pass confirming `fetchExcursions` still behaves
-  correctly (empty result, no crash, no extra network error) for both
-  test pets, one with no home set and one with no exit events in its
-  window, the two paths most likely to be disturbed by this change.
-- One extra `GET /api/devices?id=` request per `fetchExcursions` call,
-  but only when the result actually contains an ongoing excursion, every
-  other call (no home set, no excursions, every excursion already
-  closed) is unaffected.
-- If a device goes offline mid-walk for an unrelated reason (dead
-  battery, lost signal somewhere away from home) rather than because the
-  pet is back, this will still close the excursion at that offline time,
-  there's no way to distinguish "went quiet because it's home" from
-  "went quiet because something's wrong" from Traccar's device status
-  alone. Judged an acceptable trade: an excursion stuck open forever is
-  a worse, guaranteed failure mode than an occasional early close on a
-  genuinely interrupted walk.
+  is no way to inject a GPS position from here (the device protocol
+  ports are firewalled, and `/api/positions`/events have no write
+  endpoint), so a live "exit, then standby a few meters short of the
+  boundary" scenario can't be fabricated on demand. Verified instead by
+  the eight unit tests covering the decision logic directly (including
+  the specific "near home, then quiet" vs. "near home, still moving"
+  distinction the live scenario depends on), and a live regression pass
+  confirming `fetchExcursions` still behaves correctly (no crash, same
+  empty-state result as before) for both test pets.
+- A real gap remains, inherent to the underlying event model, not
+  something fixable client-side: if the pet leaves again before the
+  device ever reports a position genuinely inside a home geofence (not
+  just within the slack), Traccar's own exit/enter state never properly
+  resets, so that second walk won't appear as its own distinct
+  excursion, it'll simply never generate a new exit event to pair
+  against. This fix only prevents the *first* walk's entry from reading
+  "Away now" forever once it's actually over, it doesn't give the
+  second walk a tracked excursion of its own.
+- If the device's trail happens to show it lingering near a home for
+  other reasons (a long stop just outside the fence that isn't actually
+  the pet coming inside, e.g. tied up on the porch), this will still
+  close the excursion there. Judged an acceptable trade: an excursion
+  stuck open forever is a worse, guaranteed failure mode than an
+  occasional early close on a stop that merely looks like coming home.

@@ -38,20 +38,6 @@ public actor TraccarClient {
         try await getJSON("/api/devices")
     }
 
-    /// One device by id, confirmed against a live server that
-    /// `GET /api/devices` accepts `?id=` the same way `/api/geofences` and
-    /// `/api/positions` accept `?deviceId=` elsewhere in this client.
-    /// Throws ``TraccarError/decoding(_:)`` if the server returns no match
-    /// (an empty array), since callers only ever ask for an id they already
-    /// know exists.
-    public func fetchDevice(id: Int) async throws -> TraccarDevice {
-        let devices: [TraccarDevice] = try await getJSON("/api/devices", queryItems: [URLQueryItem(name: "id", value: String(id))])
-        guard let device = devices.first else {
-            throw TraccarError.decoding("No device found for id \(id).")
-        }
-        return device
-    }
-
     /// The latest known position for each device, optionally filtered to a
     /// specific set of device ids. Passing `nil` returns the latest position
     /// for every device the user can see.
