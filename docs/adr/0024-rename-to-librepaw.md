@@ -14,15 +14,19 @@ Xcode project/scheme/target names, the bundle identifier, the Keychain
 service string credentials are stored under, every ADR and doc file, and
 the German/English string catalog.
 
-Two things were deliberately kept unrenamed, both to avoid breaking
+Two things were initially kept unrenamed, both to avoid breaking
 something external to this rename:
 
 - The GitHub repository (`alkor200/Scentrail`) and this local working
-  directory stay named `Scentrail`. Only the code, the Xcode project
-  structure, and the documentation were renamed. Renaming the repository
-  itself was considered and declined, to avoid moving the local checkout
-  mid-session and to avoid touching a shared, external resource as part
-  of what is otherwise a self-contained code change.
+  directory stayed named `Scentrail`. Only the code, the Xcode project
+  structure, and the documentation were renamed at first. Renaming the
+  repository itself was considered and declined for that initial pass,
+  to avoid moving the local checkout mid-session and to avoid touching a
+  shared, external resource as part of what was otherwise a
+  self-contained code change. The repository side of this was completed
+  in a follow-up step once a fresh `alkor200/LibrePaw` repository
+  existed to migrate to, see Decision below; the local working directory
+  remains `Scentrail` by choice, see Consequences.
 - The Traccar geofence attribute key that marks a geofence as an
   app-managed "home" stayed `"scentrailHome"` rather than becoming
   `"librepawHome"`. This key is already written on every home geofence
@@ -58,10 +62,17 @@ something external to this rename:
   `.github/workflows/ci.yml`, the string catalog's English keys and
   German values) renamed to `LibrePaw`/`librepaw`, with the two
   exceptions above.
-- `README.md`'s `git clone` instructions still point at
-  `.../Scentrail.git` and `cd Scentrail`, matching the repository's own
-  (unrenamed) name, the one place in the document that isn't describing
-  the product.
+- **Repository migration (follow-up):** `git@github.com:alkor200/LibrePaw.git`
+  is a newly created, empty repository, not a GitHub-side rename of the
+  old one (GitHub does support renaming a repository in place, with
+  automatic redirects from the old URL, but a genuinely new repository
+  was created instead here, a choice made outside this codebase).
+  `origin` was repointed at it with `git remote set-url`, confirmed
+  empty first (`git ls-remote`) so the first `git push origin main`
+  would be a plain, conflict-free push rather than needing to reconcile
+  unrelated history. `README.md`'s `git clone`/`cd` instructions were
+  updated from `Scentrail.git`/`cd Scentrail` to `LibrePaw.git`/
+  `cd LibrePaw` to match.
 
 ## Consequences
 
@@ -75,6 +86,13 @@ something external to this rename:
 - Already-existing Traccar geofences tagged `scentrailHome` continue to
   be recognized by the app without any migration, confirmed live against
   the test server's existing home geofence after the rename.
-- The GitHub repository and the local directory both remain named
-  `Scentrail`, a deliberate, visible inconsistency with the renamed
-  product, documented here rather than silently left unexplained.
+- The local working directory remains named `Scentrail`, the one
+  deliberate, visible inconsistency left after the repository migration
+  above, kept for the same reason it was kept in the first pass
+  (avoiding a mid-session move of the active checkout), documented here
+  rather than silently left unexplained.
+- Since `alkor200/LibrePaw` is a new repository rather than a GitHub-side
+  rename, it starts with no stars, no issues, no PR history, and no
+  automatic redirect from the old `alkor200/Scentrail` URL, anyone with
+  the old repository URL bookmarked or linked elsewhere won't be
+  forwarded to the new one.

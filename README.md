@@ -45,8 +45,8 @@ its own backend, and is not affiliated with the Traccar project.
 ## Getting started
 
 ```sh
-git clone https://github.com/<your-fork>/Scentrail.git
-cd Scentrail
+git clone https://github.com/<your-fork>/LibrePaw.git
+cd LibrePaw
 cp LibrePaw/Config/Local.xcconfig.example LibrePaw/Config/Local.xcconfig
 # edit Local.xcconfig and fill in your own DEVELOPMENT_TEAM (see ADR-0015)
 xcodegen generate
