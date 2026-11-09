@@ -35,6 +35,25 @@ enum MapLayer: String, CaseIterable, Identifiable {
     }
 }
 
+/// Chrome for a custom floating map control, sized to match
+/// `MapUserLocationButton`'s own fixed 44x44pt frame exactly (measured live
+/// via a `GeometryReader`, since that size isn't documented anywhere), so
+/// custom controls placed alongside it read as one consistent set.
+struct MapControlButtonStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 18))
+            .frame(width: 44, height: 44)
+            .background(.thinMaterial, in: Circle())
+    }
+}
+
+extension View {
+    func mapControlButtonStyle() -> some View {
+        modifier(MapControlButtonStyle())
+    }
+}
+
 /// A layers menu button matching Apple Maps' own control for switching map
 /// type, for use inside a `Map`'s `.mapControls`.
 struct MapLayerPicker: View {
@@ -49,8 +68,7 @@ struct MapLayerPicker: View {
             }
         } label: {
             Image(systemName: "square.3.layers.3d")
-                .padding(8)
-                .background(.thinMaterial, in: Circle())
+                .mapControlButtonStyle()
         }
         .menuStyle(.borderlessButton)
     }

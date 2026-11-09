@@ -56,14 +56,32 @@ struct PetMapView: View {
         .mapControls {
             MapCompass()
             MapScaleView()
-            MapUserLocationButton()
         }
-        .overlay(alignment: .topLeading) {
-            // Not `.bottomLeading`: MapKit reserves that corner for its own
-            // required Apple Maps attribution logo, which this used to sit
-            // on top of.
+        .overlay(alignment: .topTrailing) {
             MapLayerPicker(selection: $mapLayer)
                 .padding()
+        }
+        .overlay(alignment: .bottomTrailing) {
+            // A custom button rather than `MapUserLocationButton`: that
+            // control only ever draws itself when placed inside
+            // `.mapControls`, which pins it to its own fixed corner
+            // (confirmed live: moved into a plain `.overlay`, it still
+            // occupies layout space but renders nothing). This one matches
+            // its look via `mapControlButtonStyle()` instead.
+            Button {
+                locationService.requestAuthorizationIfNeeded()
+                if let coordinate = locationService.coordinate?.clLocationCoordinate2D {
+                    withAnimation {
+                        cameraPosition = .region(
+                            MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
+                        )
+                    }
+                }
+            } label: {
+                Image(systemName: "location.fill")
+                    .mapControlButtonStyle()
+            }
+            .padding()
         }
         .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
