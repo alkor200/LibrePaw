@@ -22,8 +22,20 @@ enum TraccarDateFormatting {
         withFractionalSeconds.date(from: string) ?? withoutFractionalSeconds.date(from: string)
     }
 
+    /// Used to format `from`/`to` query parameters sent back to Traccar
+    /// (`fetchPositionHistory`, `fetchEvents`). Must retain fractional
+    /// seconds: a date decoded from one of Traccar's own timestamps (e.g. a
+    /// `geofenceEnter` event's `eventTime`) can carry a sub-second
+    /// component, and formatting it back out with that dropped makes the
+    /// resulting `to` bound strictly earlier than the real value whenever
+    /// there is one, silently excluding the exact position that triggered
+    /// the event from the response (confirmed live: this made
+    /// `TraccarPetRepository.firstHomecomingPause`'s "last position in the
+    /// bounded trail" always be the report *before* a real, on-time
+    /// `geofenceEnter`, not the matching one, on effectively every
+    /// excursion, not just the slow-device case ADR-0025 was written for).
     static func string(from date: Date) -> String {
-        withoutFractionalSeconds.string(from: date)
+        withFractionalSeconds.string(from: date)
     }
 
     /// A `JSONDecoder.DateDecodingStrategy` that understands both formats above.

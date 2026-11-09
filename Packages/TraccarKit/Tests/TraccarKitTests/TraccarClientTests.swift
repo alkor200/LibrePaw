@@ -325,6 +325,29 @@ struct TraccarClientTests {
         #expect(positions.isEmpty)
     }
 
+    @Test("fetchPositionHistory sends a `to` query item with fractional seconds preserved")
+    func fetchPositionHistoryPreservesFractionalSecondsInToQuery() async throws {
+        let json = "[]".data(using: .utf8)!
+        // A real Traccar `geofenceEnter` event's `eventTime` can carry a
+        // sub-second component (confirmed live). Flooring it away when
+        // formatting the `to` bound back out would make this query's upper
+        // bound strictly earlier than the real value, silently excluding
+        // the exact position that triggered the event from the response.
+        let from = TraccarDateFormatting.date(from: "2026-01-15T09:00:00.000Z")!
+        let to = TraccarDateFormatting.date(from: "2026-01-15T10:30:00.123Z")!
+
+        MockURLProtocol.requestHandler = { request in
+            let components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
+            let toValue = components.queryItems?.first { $0.name == "to" }?.value
+            #expect(toValue == "2026-01-15T10:30:00.123Z")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json)
+        }
+
+        let positions = try await makeClient().fetchPositionHistory(deviceId: 1, from: from, to: to)
+        #expect(positions.isEmpty)
+    }
+
     @Test("deleteGeofence sends a DELETE to the geofence's own path with Basic Auth and no body")
     func deleteGeofenceSendsDeleteRequest() async throws {
         MockURLProtocol.requestHandler = { request in

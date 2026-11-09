@@ -105,6 +105,45 @@ excursion promptly once sleep mode actually fires, rather than keep the
 more conservative 10-minute value an earlier draft of this revision
 had settled on while the reporting cadence was still unconfirmed.
 
+### Revision: a query-formatting bug made this fire on nearly every excursion, not just the slow-device case
+
+A real-world report: excursions kept ending visibly short of home on the
+map, consistently, not just in the rare "device went to sleep" case this
+whole mechanism exists for. Traced to `TraccarDateFormatting.string(from:)`
+(used to format the `to` bound of the `fetchPositionHistory` call
+`makeExcursion` makes): it always floored dates to whole seconds when
+formatting them back out as a query parameter, while decoding a real
+Traccar timestamp (e.g. a `geofenceEnter` event's own `eventTime`)
+preserves whatever fractional-second precision Traccar actually sent.
+Passing `to: fetchedEndTime` (that decoded, fractional event time) back
+out therefore silently floored the query's upper bound to *before* the
+real value whenever there was a fractional part, excluding the exact
+position matching the real enter event from the response. The last
+position that *did* come back was then always the report just before
+it, which always has an "infinite" gap to the next position (it's the
+trail's last element, see `firstHomecomingPause`'s own fallback for
+that), and always resolves earlier than `fetchedEndTime` since the
+query itself shifted it earlier, defeating `shouldPreferHomecoming`'s
+tie-protection on essentially every excursion with a real, on-time
+enter event, not just the slow, hours-late one this file was written
+for.
+
+Fixed in `TraccarDateFormatting.string(from:)`: format outgoing `to`/
+`from` query parameters with fractional seconds retained, matching how
+incoming timestamps are decoded, rather than the whole-second-only
+formatter. Decoding is unaffected (it already tried the
+fractional-seconds format first). The design decisions below (running
+`firstHomecomingPause` unconditionally, `shouldPreferHomecoming`'s
+tie-protection) were correct all along; this was a lower-level
+round-tripping bug that kept the tie-protection from ever actually
+seeing a tie.
+
+Already-cached, wrongly-closed excursions aren't retroactively fixed by
+this change on their own, same as any other fix to this heuristic (see
+ADR-0026): use "Recalculate Lifetime Stats" (long-press/context-menu on
+either lifetime `StatTile` in Pet Detail) to clear both caches and
+re-derive that pet's excursions from scratch.
+
 ## Decision
 
 Close the excursion using only data already fetched for it: the home
