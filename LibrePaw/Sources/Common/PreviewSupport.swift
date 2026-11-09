@@ -151,6 +151,8 @@ struct PreviewPetRepository: PetRepository {
         LifetimeStats(totalDistanceMeters: 46_800, totalDurationSeconds: 3600 * 15.5)
     }
 
+    func resetLifetimeStats(forPetID petID: Int) async throws {}
+
     func currentUserPermissions() async throws -> AccountPermissions {
         AccountPermissions(isAdministrator: true, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
     }

@@ -62,6 +62,15 @@ public protocol PetRepository: Sendable {
     /// every call, only an ongoing excursion (if any) is recomputed fresh.
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats
 
+    /// Discards any cached lifetime stats for this pet, so the next
+    /// ``lifetimeExcursionStats(forPetID:)`` call recomputes the totals
+    /// from the pet's entire excursion history instead of trusting what
+    /// was cached before. For recovering from a bad cached total, e.g. one
+    /// that folded in an excursion a since-fixed bug had closed wrong,
+    /// fixing the bug alone doesn't retroactively correct an already-cached
+    /// number.
+    func resetLifetimeStats(forPetID petID: Int) async throws
+
     /// What the signed-in Traccar account can actually do, read straight off
     /// Traccar's own permission flags, not an app-level restriction (see
     /// ADR-0023).

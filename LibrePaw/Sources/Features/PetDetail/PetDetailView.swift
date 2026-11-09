@@ -244,11 +244,27 @@ struct PetDetailView: View {
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDistanceMeters > 0 {
                 StatTile(systemImage: "map.fill", title: "Total Distance", value: formattedDistance(lifetimeStats.totalDistanceMeters))
+                    .contextMenu { recalculateLifetimeStatsButton }
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDurationSeconds > 0 {
                 StatTile(systemImage: "figure.walk.motion", title: "Total Time Away", value: formattedDuration(lifetimeStats.totalDurationSeconds))
+                    .contextMenu { recalculateLifetimeStatsButton }
             }
         }
+    }
+
+    /// Discards and recomputes the cached lifetime totals from scratch (see
+    /// `PetDetailViewModel.resetLifetimeStats()`), tucked away behind a
+    /// context menu rather than a prominent button since this is a recovery
+    /// action for a bad cached total, not something an ordinary user needs
+    /// day to day.
+    private var recalculateLifetimeStatsButton: some View {
+        Button {
+            Task { await viewModel.resetLifetimeStats() }
+        } label: {
+            Label("Recalculate Lifetime Stats", systemImage: "arrow.clockwise")
+        }
+        .disabled(viewModel.isResettingLifetimeStats)
     }
 
     private struct StatTile: View {

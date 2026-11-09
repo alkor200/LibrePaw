@@ -50,6 +50,22 @@ final class PetDetailViewModel {
         lifetimeStats = try? await petRepository.lifetimeExcursionStats(forPetID: pet.id)
     }
 
+    private(set) var isResettingLifetimeStats = false
+
+    /// Discards the cached lifetime totals and recomputes them from the
+    /// pet's entire excursion history (see
+    /// `PetRepository.resetLifetimeStats(forPetID:)`), for recovering from
+    /// a bad cached total, e.g. one that folded in an excursion a
+    /// since-fixed bug had closed wrong. Not something an ordinary user
+    /// needs day to day, reached from a context menu on the lifetime stat
+    /// tiles rather than a prominent button.
+    func resetLifetimeStats() async {
+        isResettingLifetimeStats = true
+        defer { isResettingLifetimeStats = false }
+        try? await petRepository.resetLifetimeStats(forPetID: pet.id)
+        await loadLifetimeStats()
+    }
+
     /// Today's excursions, for ``totalTimeAwayTodaySeconds``. Best-effort,
     /// same reasoning as ``loadLifetimeStats()``, and naturally empty (not
     /// an error) when the account has reports disabled, same as everything

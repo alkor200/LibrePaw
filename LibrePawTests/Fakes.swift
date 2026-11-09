@@ -51,6 +51,7 @@ struct FakePetRepository: PetRepository {
     func deleteHomeGeofence(_ homeID: Int) async throws {}
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats { .zero }
+    func resetLifetimeStats(forPetID petID: Int) async throws {}
     func currentUserPermissions() async throws -> AccountPermissions {
         AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
     }

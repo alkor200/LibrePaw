@@ -14,6 +14,15 @@ struct CachedLifetimeStats: Codable, Sendable, Equatable {
 protocol LifetimeStatsStore: Sendable {
     func load(forPetID petID: Int, serverHost: String) -> CachedLifetimeStats?
     func save(_ stats: CachedLifetimeStats, forPetID petID: Int, serverHost: String)
+    /// Discards the cached totals and watermark entirely, so the next
+    /// ``TraccarPetRepository/lifetimeExcursionStats(forPetID:)`` call walks
+    /// the pet's whole excursion history again from scratch rather than
+    /// only what's new since `cachedThroughEndTime`. Needed to recover from
+    /// a bad cached total, e.g. one that folded in an excursion closed
+    /// wrong by an earlier version of the homecoming-pause heuristic (see
+    /// ADR-0025), fixing that heuristic going forward doesn't retroactively
+    /// correct a total already baked into the cache.
+    func clear(forPetID petID: Int, serverHost: String)
 }
 
 /// `UserDefaults` is a reasonable home for this: it's a small, non-sensitive
@@ -40,6 +49,10 @@ struct UserDefaultsLifetimeStatsStore: LifetimeStatsStore, @unchecked Sendable {
     func save(_ stats: CachedLifetimeStats, forPetID petID: Int, serverHost: String) {
         guard let data = try? JSONEncoder().encode(stats) else { return }
         defaults.set(data, forKey: key(forPetID: petID, serverHost: serverHost))
+    }
+
+    func clear(forPetID petID: Int, serverHost: String) {
+        defaults.removeObject(forKey: key(forPetID: petID, serverHost: serverHost))
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {

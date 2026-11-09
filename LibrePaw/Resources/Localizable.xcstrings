@@ -937,6 +937,17 @@
         }
       }
     },
+    "Recalculate Lifetime Stats": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesamtwerte neu berechnen"
+          }
+        }
+      }
+    },
     "Route": {
       "extractionState": "manual",
       "localizations": {

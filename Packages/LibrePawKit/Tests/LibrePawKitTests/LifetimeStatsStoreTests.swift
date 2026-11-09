@@ -50,4 +50,28 @@ struct LifetimeStatsStoreTests {
         #expect(store.load(forPetID: 1, serverHost: "traccar.example.com")?.totalDistanceMeters == 100)
         #expect(store.load(forPetID: 1, serverHost: "other.example.com")?.totalDistanceMeters == 999)
     }
+
+    @Test("clear discards a cached entry, load then returns nil again")
+    func clearDiscardsCachedStats() {
+        let store = makeStore()
+        store.save(CachedLifetimeStats(totalDistanceMeters: 100, totalDurationSeconds: 60, cachedThroughEndTime: .now), forPetID: 1, serverHost: "traccar.example.com")
+
+        store.clear(forPetID: 1, serverHost: "traccar.example.com")
+
+        #expect(store.load(forPetID: 1, serverHost: "traccar.example.com") == nil)
+    }
+
+    @Test("clear only affects the given pet and server, not others")
+    func clearIsScopedToPetAndServer() {
+        let store = makeStore()
+        store.save(CachedLifetimeStats(totalDistanceMeters: 100, totalDurationSeconds: 60, cachedThroughEndTime: nil), forPetID: 1, serverHost: "traccar.example.com")
+        store.save(CachedLifetimeStats(totalDistanceMeters: 200, totalDurationSeconds: 120, cachedThroughEndTime: nil), forPetID: 2, serverHost: "traccar.example.com")
+        store.save(CachedLifetimeStats(totalDistanceMeters: 999, totalDurationSeconds: 999, cachedThroughEndTime: nil), forPetID: 1, serverHost: "other.example.com")
+
+        store.clear(forPetID: 1, serverHost: "traccar.example.com")
+
+        #expect(store.load(forPetID: 1, serverHost: "traccar.example.com") == nil)
+        #expect(store.load(forPetID: 2, serverHost: "traccar.example.com")?.totalDistanceMeters == 200)
+        #expect(store.load(forPetID: 1, serverHost: "other.example.com")?.totalDistanceMeters == 999)
+    }
 }

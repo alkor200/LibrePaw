@@ -356,6 +356,11 @@ struct TraccarPetRepository: PetRepository {
         return stats
     }
 
+    func resetLifetimeStats(forPetID petID: Int) async throws {
+        let serverHost = client.serverURL.host ?? ""
+        lifetimeStatsStore.clear(forPetID: petID, serverHost: serverHost)
+    }
+
     /// Pure accumulation logic, pulled out of `lifetimeExcursionStats` so it
     /// can be unit tested directly with hand-built excursions instead of a
     /// live/mocked server.
