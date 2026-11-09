@@ -69,14 +69,16 @@ re-run `xcodegen generate` before building.
 
 ### Setting a pet photo
 
-Use Traccar's own device image upload: open the device in Traccar's web UI →
-**Edit Device** → upload an image. LibrePaw reads it back via Traccar's
-`deviceImage` attribute and `/api/media/...` endpoint, no LibrePaw-specific
-setup needed. Devices without a photo show a paw icon instead.
+Tap a pet's avatar on its detail screen to pick a photo from your library
+and position it inside a circular crop, right from LibrePaw. This uploads
+through Traccar's own device image endpoint (the `deviceImage` attribute),
+the same thing editing the device in Traccar's web UI → **Edit Device** →
+upload an image would do, so either path works and both stay in sync.
+Devices without a photo show a paw icon instead.
 
-The pet's **name**, unlike its photo, can be changed directly in LibrePaw:
-tap it on the pet's detail screen. Both are really just editing the
-underlying Traccar device, so the same permission gates both (see
+The pet's **name** can be changed the same way: tap it on the detail
+screen. Both are really just editing the underlying Traccar device, so
+the same permission gates both (see
 [ADR-0023](docs/adr/0023-follow-traccars-own-permission-model.md)).
 
 ### Setting a pet's home locations
