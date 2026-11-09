@@ -158,6 +158,25 @@ Revisit with a guard (e.g. only override an existing `enter` event if no
 unrelated exit from the chosen home follows the pause before it) if this
 turns out to matter in practice.
 
+A second, related risk from the same code review: `firstHomecomingPause`
+picks `homes.first(where:)` for a qualifying position, the first match in
+whatever order `homes` happens to be in (API response order, not
+distance-sorted, despite the misleading `nearestHome` local variable
+name), not necessarily the true nearest home. The last position in the
+bounded trail always qualifies as a homecoming (its gap-to-next is
+`.infinity`), so for an ordinary, already-correct quick return, this
+branch can still run and pick a *different* home than the real event's
+own `enter.geofenceId` if two configured homes' proximity-slack zones
+overlap (easily possible, homes can be as little as ~40m apart edge to
+edge and still each have their own 100m slack). Before this diff this
+couldn't happen, since the branch never ran when a real `enter` event
+already existed. Also accepted as part of the same risk, for the same
+reasons (homes with overlapping zones are expected to be rare), rather
+than fixed with the straightforward guard this would call for (only
+apply the override when `homecoming.fixTime` is strictly earlier than
+`fetchedEndTime`, never on a tie, so a correctly-closed excursion's home
+attribution is never second-guessed).
+
 ## Consequences
 
 - **Correction:** this originally claimed there was no way to inject a
