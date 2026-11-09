@@ -5,9 +5,6 @@ trackers. It is a native SwiftUI client for [Traccar](https://www.traccar.org/),
 a self-hostable, open source GPS tracking platform. LibrePaw does not run
 its own backend, and is not affiliated with the Traccar project.
 
-> **Status:** early MVP. See [Roadmap](#roadmap) for what's deliberately out
-> of scope today.
-
 ## Features
 
 - Sign in to your own Traccar server.
@@ -217,17 +214,6 @@ Key decisions, each recorded as an ADR:
 | [0024](docs/adr/0024-rename-to-librepaw.md) | Rename the app from Scentrail to LibrePaw |
 | [0025](docs/adr/0025-close-excursions-when-the-device-goes-offline.md) | Close an excursion once the trail pauses back near home |
 | [0026](docs/adr/0026-cache-closed-excursions-indefinitely.md) | Cache closed excursions indefinitely, never invalidated by a later home change |
-
-## Roadmap
-
-Deliberately out of scope for the current MVP (see the ADRs above for why):
-
-- Geofences and push notifications.
-- In-app photo upload (today, use Traccar's own "Edit Device" image upload).
-- Breed info, vet records, and other pet-care data unrelated to tracking.
-
-Contributions toward any of these are welcome, please open an issue to
-discuss the approach first, especially if it touches an existing ADR.
 
 ## Contributing
 

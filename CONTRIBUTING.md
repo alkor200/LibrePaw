@@ -1,7 +1,7 @@
 # Contributing to LibrePaw
 
-Thanks for your interest in LibrePaw! This project is an MVP and welcomes
-contributions, big or small.
+Thanks for your interest in LibrePaw! Contributions are welcome, big or
+small.
 
 ## Before you start
 
