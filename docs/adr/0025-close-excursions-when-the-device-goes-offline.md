@@ -50,6 +50,35 @@ a configuration problem to fix, it's inherent to how several tracker
 protocols report, including (most relevantly) exactly the kind of
 battery-conscious device this whole feature exists for.
 
+### Revision: a real enter event can itself arrive hours late
+
+Confirmed against a real walk: the device went quiet in standby a short
+distance outside the home geofence, same situation as above, except this
+time a real `geofenceEnter` event eventually did arrive, about four hours
+later, once the device woke back up and actually crossed the boundary.
+The original version of this fix only ran `firstHomecomingPause` for the
+still-open case (`enter == nil`), so a real, if very late, enter event
+always won outright, and the excursion was recorded as roughly four hours
+long rather than ending at the near-home pause shortly after it actually
+started.
+
+Fixed by running `firstHomecomingPause` unconditionally, whether or not a
+real enter event exists, and preferring whichever end is earlier. This
+needs no extra guard against overriding a *good* enter event with a worse
+one: `firstHomecomingPause` only ever searches the trail already bounded
+by `[exit, fetchedEndTime]`, so any pause it finds is always at or before
+the real enter event's own time, never after it. For an ordinary quick
+return, the only "pause" in that bounded window ends up being the enter
+position itself (nothing to find a gap against beyond it), so the result
+doesn't change. For the four-hour case, the near-home position before the
+quiet gap is now found and wins.
+
+Also lowered `quietGapAfterHomeProximity` from 20 to 5 minutes: confirmed
+live that a real Mictrack reports every one to two minutes while moving,
+so a 5-minute gap is already a reliable signal that the device stopped
+reporting, and 20 minutes was needlessly slow to close an excursion that
+clearly already ended.
+
 ## Decision
 
 Close the excursion using only data already fetched for it: the home
@@ -58,29 +87,31 @@ retrieves to compute distance. No device status, no new event type, no
 locally persisted state.
 
 - `TraccarPetRepository.firstHomecomingPause(in:homes:proximitySlackMeters:minimumQuietGap:)`,
-  a pure, static, unit-tested function (eight cases: closes on a
-  near-home position followed by silence, honors the proximity slack
-  beyond a home's own radius, ignores positions genuinely far from any
-  home, doesn't trigger on a brief pass near home followed by continued
+  a pure, static, unit-tested function (ten cases: closes on a near-home
+  position followed by silence, honors the proximity slack beyond a
+  home's own radius, ignores positions genuinely far from any home,
+  doesn't trigger on a brief pass near home followed by continued
   movement, picks the earliest qualifying pause, matches against
-  whichever configured home is nearest, and handles an empty trail or no
-  homes at all). Walks a device's position trail chronologically and
-  returns the first position that both:
+  whichever configured home is nearest, the 5-minute threshold boundary
+  both just under and at/over, and handles an empty trail or no homes at
+  all). Walks a device's position trail chronologically and returns the
+  first position that both:
   - falls within `homeProximitySlackMeters` (100m) of a home, beyond its
     own configured radius, and
-  - is followed by at least `quietGapAfterHomeProximity` (20 minutes) of
+  - is followed by at least `quietGapAfterHomeProximity` (5 minutes) of
     silence, or is simply the last position in the trail.
-- `makeExcursion`, for the still-open case only (`enter == nil`), calls
-  this against the trail it already fetched; if a homecoming pause is
-  found, that position's time and home become the excursion's `endTime`/
-  `endHomeID`, the same outcome as a real enter event, and the
-  distance/end-coordinate are recomputed over just the trail up to that
-  point rather than whatever the device reported afterward (e.g. a
-  second walk).
+- `makeExcursion` calls this unconditionally, whether or not a real enter
+  event already exists (see "Revision" above), against the trail it
+  already fetched; if a homecoming pause is found, that position's time
+  and home become the excursion's `endTime`/`endHomeID`, the same outcome
+  as a real enter event, and the distance/end-coordinate are recomputed
+  over just the trail up to that point rather than whatever the device
+  reported afterward (e.g. a second walk, or the same device waking back
+  up hours later).
 - `fetchExcursions` now also maps the home geofences it already fetches
   into `[HomeGeofence]` and passes them through to `makeExcursion`.
 
-The 100m slack and 20-minute quiet threshold are both flat constants
+The 100m slack and 5-minute quiet threshold are both flat constants
 (`TraccarPetRepository.homeProximitySlackMeters`/
 `quietGapAfterHomeProximity`): a flat margin rather than a multiple of
 the home's own radius, since homes are deliberately small (20-100m, see
@@ -100,16 +131,25 @@ the record.
 
 ## Consequences
 
-- Could not be reproduced end-to-end against the live test server: there
-  is no way to inject a GPS position from here (the device protocol
-  ports are firewalled, and `/api/positions`/events have no write
-  endpoint), so a live "exit, then standby a few meters short of the
-  boundary" scenario can't be fabricated on demand. Verified instead by
+- **Correction:** this originally claimed there was no way to inject a
+  GPS position from here, that was wrong, not just outdated. A simulated
+  device already sent real TLT-2H position reports to inject geofence
+  events for ADR-0017/ADR-0018's own testing, before this ADR was
+  written, so the capability already existed and was simply
+  overlooked when writing this one down. The device-ingestion ports
+  (confirmed open: port 5030, TLT-2H/Mictrack) are separate from the
+  REST API (which is indeed read-only for positions/events) and need no
+  credentials; the working script lives outside this repository (see the
+  gitignored local agent notes), not committed here since it embeds test
+  server specifics. Original text, kept for history: verified instead by
   the eight unit tests covering the decision logic directly (including
   the specific "near home, then quiet" vs. "near home, still moving"
   distinction the live scenario depends on), and a live regression pass
   confirming `fetchExcursions` still behaves correctly (no crash, same
-  empty-state result as before) for both test pets.
+  empty-state result as before) for both test pets. A live end-to-end
+  reproduction of the four-hour-late-enter-event case from the Revision
+  above is possible with that script and worth doing as a follow-up,
+  not yet done as of this revision.
 - A real gap remains, inherent to the underlying event model, not
   something fixable client-side: if the pet leaves again before the
   device ever reports a position genuinely inside a home geofence (not

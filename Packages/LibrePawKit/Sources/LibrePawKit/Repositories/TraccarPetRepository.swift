@@ -320,8 +320,11 @@ struct TraccarPetRepository: PetRepository {
     /// before `firstHomecomingPause` trusts it as "the device actually
     /// stopped there" rather than a single jittery fix passed through
     /// while still moving (e.g. walking past the house without going in).
-    /// Comfortably above ordinary GPS reporting intervals.
-    static let quietGapAfterHomeProximity: TimeInterval = 20 * 60
+    /// Above ordinary GPS reporting intervals (confirmed live: a real
+    /// Mictrack reports every one to two minutes while moving), so a gap
+    /// this long already means the device stopped reporting, whether
+    /// because it went into standby or simply lost signal.
+    static let quietGapAfterHomeProximity: TimeInterval = 5 * 60
 
     /// Only re-fetches excursions that ended after the last cached run -
     /// completed excursions' distance/duration get folded into the persisted
@@ -388,9 +391,10 @@ struct TraccarPetRepository: PetRepository {
         return (LifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration), newCache)
     }
 
-    /// `homes` is only needed for the still-open (`enter == nil`) case, see
-    /// `firstHomecomingPause`, every caller already has it on hand from
-    /// `fetchExcursions` so there's no reason to re-derive it per excursion.
+    /// `homes` is needed for `firstHomecomingPause`, checked for every
+    /// excursion regardless of whether a real enter event exists, every
+    /// caller already has it on hand from `fetchExcursions` so there's no
+    /// reason to re-derive it per excursion.
     private func makeExcursion(petID: Int, exit: TraccarEvent, enter: TraccarEvent?, homes: [HomeGeofence]) async throws -> Excursion {
         let fetchedEndTime = enter?.eventTime
         let fullTrail = (try? await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: fetchedEndTime ?? Date())) ?? []
@@ -398,7 +402,15 @@ struct TraccarPetRepository: PetRepository {
         var endTime = fetchedEndTime
         var endHomeID = enter?.geofenceId
         var trail = fullTrail
-        if fetchedEndTime == nil, let homecoming = Self.firstHomecomingPause(in: fullTrail, homes: homes) {
+        // Checked unconditionally, not just while there's no real enter
+        // event yet: a real `geofenceEnter` can itself arrive hours late
+        // (confirmed live, see ADR-0025) if the device went quiet a short
+        // distance short of the boundary and only resumed reporting once
+        // it crossed it. `firstHomecomingPause` only ever finds a position
+        // at or before `fetchedEndTime` (it searches within this same
+        // bounded trail), so it can never push the end *later* than a real
+        // enter event, only catch an earlier, truer one.
+        if let homecoming = Self.firstHomecomingPause(in: fullTrail, homes: homes) {
             endTime = homecoming.fixTime
             endHomeID = homecoming.homeID
             // Bounds the distance/end-coordinate below to the walk-home
@@ -426,15 +438,16 @@ struct TraccarPetRepository: PetRepository {
         )
     }
 
-    /// An excursion stays "ongoing" (`endTime == nil`) until Traccar logs a
-    /// `geofenceEnter` event, which only happens when the device actually
-    /// transmits a position crossing the exact boundary. A tracker that
-    /// drops into a low-power standby mode a few meters short of it (the
-    /// gap this closes, confirmed live with a real Mictrack collar), or
-    /// one whose GPS fix simply lands just outside it from ordinary
-    /// jitter, never sends that crossing position, so the enter event
-    /// never fires and the excursion would otherwise read "Away now"
-    /// forever even once the pet is actually home.
+    /// An excursion otherwise ends only when Traccar logs a `geofenceEnter`
+    /// event, which only happens when the device actually transmits a
+    /// position crossing the exact boundary. A tracker that drops into a
+    /// low-power standby mode a few meters short of it (confirmed live
+    /// with a real Mictrack collar) only resumes reporting, and so only
+    /// logs that crossing, whenever it next wakes up, which can be hours
+    /// later; until then (or forever, if it never crosses the exact
+    /// boundary) the excursion would otherwise read as lasting that whole
+    /// time, or "Away now" forever, even though the pet was effectively
+    /// home the moment it went quiet nearby.
     ///
     /// Looks for the earliest position in the trail that both (a) falls
     /// within `homeProximitySlackMeters` of a home, beyond its own

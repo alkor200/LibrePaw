@@ -99,6 +99,30 @@ struct FirstHomecomingPauseTests {
         #expect(result?.homeID == 2)
     }
 
+    @Test("A gap just under the default 5 minute threshold doesn't count as quiet yet")
+    func gapJustUnderDefaultThresholdDoesNotQualify() {
+        let trail = [
+            position(id: 1, coordinate: homeCenter, minutesFromNow: -40),
+            position(id: 2, coordinate: farAway, minutesFromNow: -40 + 4.9)
+        ]
+
+        let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()])
+
+        #expect(result == nil)
+    }
+
+    @Test("A gap at or just over the default 5 minute threshold counts as quiet")
+    func gapAtDefaultThresholdQualifies() {
+        let trail = [
+            position(id: 1, coordinate: homeCenter, minutesFromNow: -40),
+            position(id: 2, coordinate: farAway, minutesFromNow: -40 + 5.0)
+        ]
+
+        let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()])
+
+        #expect(result?.fixTime == trail[0].fixTime)
+    }
+
     @Test("An empty trail has no homecoming pause")
     func handlesEmptyTrail() {
         let result = TraccarPetRepository.firstHomecomingPause(in: [], homes: [home()])
