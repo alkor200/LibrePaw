@@ -410,7 +410,8 @@ struct TraccarPetRepository: PetRepository {
         // at or before `fetchedEndTime` (it searches within this same
         // bounded trail), so it can never push the end *later* than a real
         // enter event, only catch an earlier, truer one.
-        if let homecoming = Self.firstHomecomingPause(in: fullTrail, homes: homes) {
+        if let homecoming = Self.firstHomecomingPause(in: fullTrail, homes: homes),
+           Self.shouldPreferHomecoming(homecoming, overFetchedEndTime: fetchedEndTime) {
             endTime = homecoming.fixTime
             endHomeID = homecoming.homeID
             // Bounds the distance/end-coordinate below to the walk-home
@@ -489,6 +490,26 @@ struct TraccarPetRepository: PetRepository {
             }
         }
         return nil
+    }
+
+    /// Whether a `firstHomecomingPause` finding should override an
+    /// excursion's already-known end. Never on a tie: if it resolves to
+    /// the same time as a real `enter` event already did (the common
+    /// case, the last position in the bounded trail always qualifies as
+    /// a homecoming pause), keep trusting the real event's own home
+    /// attribution rather than `firstHomecomingPause`'s "first matching
+    /// home in array order" picked via `homes.first(where:)`, which isn't
+    /// necessarily the true nearest home despite its `nearestHome` local
+    /// variable name, and so could otherwise silently swap in the wrong
+    /// home whenever two configured homes' proximity slack zones overlap
+    /// (see ADR-0025's revision history). Only a genuinely *earlier*
+    /// pause is worth preferring over an already-correct real event.
+    static func shouldPreferHomecoming(
+        _ homecoming: (fixTime: Date, homeID: Int),
+        overFetchedEndTime fetchedEndTime: Date?
+    ) -> Bool {
+        guard let fetchedEndTime else { return true }
+        return homecoming.fixTime < fetchedEndTime
     }
 
     private func homeTraccarGeofences(forPetID petID: Int) async throws -> [TraccarGeofence] {

@@ -135,4 +135,27 @@ struct FirstHomecomingPauseTests {
         let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [])
         #expect(result == nil)
     }
+
+    @Test("A homecoming pause earlier than a real enter event is preferred")
+    func prefersGenuinelyEarlierHomecoming() {
+        let homecoming = (fixTime: Date.now.addingTimeInterval(-60 * 60), homeID: 1)
+        let fetchedEndTime = Date.now
+
+        #expect(TraccarPetRepository.shouldPreferHomecoming(homecoming, overFetchedEndTime: fetchedEndTime))
+    }
+
+    @Test("A homecoming pause tied with a real enter event's own time is not preferred")
+    func doesNotOverrideOnATie() {
+        let fetchedEndTime = Date.now
+        let homecoming = (fixTime: fetchedEndTime, homeID: 2)
+
+        #expect(!TraccarPetRepository.shouldPreferHomecoming(homecoming, overFetchedEndTime: fetchedEndTime))
+    }
+
+    @Test("A homecoming pause is always preferred when there is no real enter event yet")
+    func prefersHomecomingWhenStillOpen() {
+        let homecoming = (fixTime: Date.now, homeID: 1)
+
+        #expect(TraccarPetRepository.shouldPreferHomecoming(homecoming, overFetchedEndTime: nil))
+    }
 }

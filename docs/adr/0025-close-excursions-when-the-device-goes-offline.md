@@ -105,12 +105,14 @@ locally persisted state.
     silence, or is simply the last position in the trail.
 - `makeExcursion` calls this unconditionally, whether or not a real enter
   event already exists (see "Revision" above), against the trail it
-  already fetched; if a homecoming pause is found, that position's time
-  and home become the excursion's `endTime`/`endHomeID`, the same outcome
-  as a real enter event, and the distance/end-coordinate are recomputed
-  over just the trail up to that point rather than whatever the device
-  reported afterward (e.g. a second walk, or the same device waking back
-  up hours later).
+  already fetched; if a homecoming pause is found **and**
+  `shouldPreferHomecoming` (see "A second, related risk, this one fixed"
+  below) agrees it's genuinely earlier than any real enter event, that
+  position's time and home become the excursion's `endTime`/`endHomeID`,
+  the same outcome as a real enter event, and the distance/end-coordinate
+  are recomputed over just the trail up to that point rather than
+  whatever the device reported afterward (e.g. a second walk, or the same
+  device waking back up hours later).
 - `fetchExcursions` now also maps the home geofences it already fetches
   into `[HomeGeofence]` and passes them through to `makeExcursion`.
 
@@ -158,24 +160,33 @@ Revisit with a guard (e.g. only override an existing `enter` event if no
 unrelated exit from the chosen home follows the pause before it) if this
 turns out to matter in practice.
 
-A second, related risk from the same code review: `firstHomecomingPause`
-picks `homes.first(where:)` for a qualifying position, the first match in
+### A second, related risk, this one fixed
+
+The same code review also flagged: `firstHomecomingPause` picks
+`homes.first(where:)` for a qualifying position, the first match in
 whatever order `homes` happens to be in (API response order, not
 distance-sorted, despite the misleading `nearestHome` local variable
 name), not necessarily the true nearest home. The last position in the
 bounded trail always qualifies as a homecoming (its gap-to-next is
 `.infinity`), so for an ordinary, already-correct quick return, this
-branch can still run and pick a *different* home than the real event's
+branch could still run and pick a *different* home than the real event's
 own `enter.geofenceId` if two configured homes' proximity-slack zones
 overlap (easily possible, homes can be as little as ~40m apart edge to
-edge and still each have their own 100m slack). Before this diff this
-couldn't happen, since the branch never ran when a real `enter` event
-already existed. Also accepted as part of the same risk, for the same
-reasons (homes with overlapping zones are expected to be rare), rather
-than fixed with the straightforward guard this would call for (only
-apply the override when `homecoming.fixTime` is strictly earlier than
-`fetchedEndTime`, never on a tie, so a correctly-closed excursion's home
-attribution is never second-guessed).
+edge and still each have their own 100m slack). Before the Revision above
+this couldn't happen, since the branch never ran when a real `enter`
+event already existed.
+
+Unlike the early-closing risk, this one was fixed rather than accepted:
+`TraccarPetRepository.shouldPreferHomecoming(_:overFetchedEndTime:)`, a
+small pure static function (unit tested directly, three cases: a
+genuinely earlier pause is preferred, a tie with a real event's own end
+time is not, and a still-open excursion with no real end always prefers
+the pause), gates the override in `makeExcursion` so a homecoming pause
+only replaces an already-known end when it resolves to a strictly
+*earlier* time, never on a tie. A correctly-closed excursion's home
+attribution is therefore never second-guessed, while a genuinely earlier
+pause (the four-hour-late case this ADR exists for) is still preferred
+exactly as before.
 
 ## Consequences
 
