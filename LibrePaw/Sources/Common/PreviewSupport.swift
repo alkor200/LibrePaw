@@ -147,6 +147,8 @@ struct PreviewPetRepository: PetRepository {
         ]
     }
 
+    func resetExcursionsCache(forPetID petID: Int) async throws {}
+
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
         LifetimeStats(totalDistanceMeters: 46_800, totalDurationSeconds: 3600 * 15.5)
     }

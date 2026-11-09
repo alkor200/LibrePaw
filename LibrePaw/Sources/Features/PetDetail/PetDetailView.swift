@@ -253,18 +253,18 @@ struct PetDetailView: View {
         }
     }
 
-    /// Discards and recomputes the cached lifetime totals from scratch (see
-    /// `PetDetailViewModel.resetLifetimeStats()`), tucked away behind a
-    /// context menu rather than a prominent button since this is a recovery
-    /// action for a bad cached total, not something an ordinary user needs
-    /// day to day.
+    /// Discards and recomputes both the cached excursions and the lifetime
+    /// totals built from them, from scratch (see
+    /// `PetDetailViewModel.recalculate()`), tucked away behind a context
+    /// menu rather than a prominent button since this is a recovery action
+    /// for bad cached data, not something an ordinary user needs day to day.
     private var recalculateLifetimeStatsButton: some View {
         Button {
-            Task { await viewModel.resetLifetimeStats() }
+            Task { await viewModel.recalculate() }
         } label: {
             Label("Recalculate Lifetime Stats", systemImage: "arrow.clockwise")
         }
-        .disabled(viewModel.isResettingLifetimeStats)
+        .disabled(viewModel.isRecalculating)
     }
 
     private struct StatTile: View {

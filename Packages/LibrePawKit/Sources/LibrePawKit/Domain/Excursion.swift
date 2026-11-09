@@ -4,7 +4,7 @@ import Foundation
 /// events rather than Traccar's generic motion-based trip detection, see
 /// ADR-0014 for why (the generic one is far too sensitive to a pet's
 /// movement pattern to be useful).
-public struct Excursion: Identifiable, Sendable, Hashable {
+public struct Excursion: Identifiable, Sendable, Hashable, Codable {
     public let id: Int
     public let startTime: Date
     /// `nil` while the pet is still away, the excursion is ongoing.

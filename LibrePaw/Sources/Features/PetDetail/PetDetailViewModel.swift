@@ -50,20 +50,27 @@ final class PetDetailViewModel {
         lifetimeStats = try? await petRepository.lifetimeExcursionStats(forPetID: pet.id)
     }
 
-    private(set) var isResettingLifetimeStats = false
+    private(set) var isRecalculating = false
 
-    /// Discards the cached lifetime totals and recomputes them from the
-    /// pet's entire excursion history (see
-    /// `PetRepository.resetLifetimeStats(forPetID:)`), for recovering from
-    /// a bad cached total, e.g. one that folded in an excursion a
-    /// since-fixed bug had closed wrong. Not something an ordinary user
-    /// needs day to day, reached from a context menu on the lifetime stat
-    /// tiles rather than a prominent button.
-    func resetLifetimeStats() async {
-        isResettingLifetimeStats = true
-        defer { isResettingLifetimeStats = false }
+    /// Discards both the cached excursions and the cached lifetime totals
+    /// built from them, then recomputes everything from the pet's entire
+    /// excursion history (see
+    /// `PetRepository.resetExcursionsCache(forPetID:)`/
+    /// `resetLifetimeStats(forPetID:)`), for recovering from bad cached
+    /// data, e.g. an excursion a since-fixed bug had closed wrong. Not
+    /// something an ordinary user needs day to day, reached from a context
+    /// menu on the lifetime stat tiles rather than a prominent button.
+    ///
+    /// Clears the excursions cache before the lifetime stats one: the
+    /// latter is itself built from `fetchExcursions`, clearing it first
+    /// would just re-read the still-bad cached excursions right back in.
+    func recalculate() async {
+        isRecalculating = true
+        defer { isRecalculating = false }
+        try? await petRepository.resetExcursionsCache(forPetID: pet.id)
         try? await petRepository.resetLifetimeStats(forPetID: pet.id)
         await loadLifetimeStats()
+        await loadTodaysExcursions()
     }
 
     /// Today's excursions, for ``totalTimeAwayTodaySeconds``. Best-effort,

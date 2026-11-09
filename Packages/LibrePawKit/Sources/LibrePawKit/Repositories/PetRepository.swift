@@ -54,7 +54,20 @@ public protocol PetRepository: Sendable {
     /// most recent first. Requires at least one home geofence to already be
     /// set; returns an empty array otherwise. With multiple homes, an
     /// excursion's start and end can be different homes (see ADR-0016).
+    /// Implementations are expected to cache closed excursions (never an
+    /// ongoing one) so this doesn't re-fetch position history and rerun
+    /// the homecoming-pause heuristic for one already fully computed, see
+    /// ADR-0026 for why that caching is never invalidated by a later home
+    /// change.
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion]
+
+    /// Discards any cached excursions for this pet, so the next
+    /// ``fetchExcursions(forPetID:from:to:)`` call recomputes every one of
+    /// them from scratch instead of trusting what was cached before. For
+    /// recovering from a bad cached excursion, e.g. one a since-fixed bug
+    /// had closed wrong, fixing the bug alone doesn't retroactively correct
+    /// an already-cached one.
+    func resetExcursionsCache(forPetID petID: Int) async throws
 
     /// Total distance and time away across every excursion the pet has ever
     /// taken. Implementations are expected to cache completed excursions'

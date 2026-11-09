@@ -5,6 +5,7 @@ import TraccarKit
 struct TraccarPetRepository: PetRepository {
     let client: TraccarClient
     var lifetimeStatsStore: LifetimeStatsStore = UserDefaultsLifetimeStatsStore()
+    var excursionCacheStore: ExcursionCacheStore = UserDefaultsExcursionCacheStore()
 
     func fetchPets() async throws -> [Pet] {
         do {
@@ -255,6 +256,12 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
+    /// Only the portion of `[from, to]` not already covered by a cached,
+    /// *closed* excursion is ever fetched/recomputed live, see
+    /// `CachedExcursions`' own doc comment for why a closed excursion is
+    /// never invalidated by a later home change (ADR-0026). The one
+    /// ongoing excursion (if any) is always recomputed fresh and never
+    /// persisted, its distance/end are still growing.
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] {
         do {
             let homeGeofences = try await homeTraccarGeofences(forPetID: petID)
@@ -262,26 +269,76 @@ struct TraccarPetRepository: PetRepository {
             let homeIDs = Set(homeGeofences.map(\.id))
             let homes = homeGeofences.compactMap(Self.homeGeofence(from:))
 
-            async let exitEvents = client.fetchEvents(deviceId: petID, from: from, to: to, type: TraccarEvent.EventType.geofenceExit)
-            async let enterEvents = client.fetchEvents(deviceId: petID, from: from, to: to, type: TraccarEvent.EventType.geofenceEnter)
+            let serverHost = client.serverURL.host ?? ""
+            let cached = excursionCacheStore.load(forPetID: petID, serverHost: serverHost)
+            let liveFrom = cached?.cachedThroughEndTime.map { max(from, $0) } ?? from
 
-            let exits = try await exitEvents.filter { homeIDs.contains($0.geofenceId ?? -1) }
-            let enters = try await enterEvents.filter { homeIDs.contains($0.geofenceId ?? -1) }
+            var freshExcursions: [Excursion] = []
+            if liveFrom < to {
+                async let exitEvents = client.fetchEvents(deviceId: petID, from: liveFrom, to: to, type: TraccarEvent.EventType.geofenceExit)
+                async let enterEvents = client.fetchEvents(deviceId: petID, from: liveFrom, to: to, type: TraccarEvent.EventType.geofenceEnter)
 
-            let pairs = Self.pairHomeExitsWithEnters(exits: exits, enters: enters)
+                let exits = try await exitEvents.filter { homeIDs.contains($0.geofenceId ?? -1) }
+                let enters = try await enterEvents.filter { homeIDs.contains($0.geofenceId ?? -1) }
 
-            // Bounded rather than fully unbounded: a pet with years of
-            // history backfilling lifetime stats for the first time could
-            // otherwise fire a network request per excursion all at once -
-            // fine for a handful, not for a thousand-plus against a small
-            // self-hosted server.
-            let excursions = try await Self.concurrentMap(pairs, maxConcurrent: 20) { pair in
-                try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter, homes: homes)
+                let pairs = Self.pairHomeExitsWithEnters(exits: exits, enters: enters)
+
+                // Bounded rather than fully unbounded: a pet with years of
+                // history backfilling the cache for the first time could
+                // otherwise fire a network request per excursion all at
+                // once - fine for a handful, not for a thousand-plus
+                // against a small self-hosted server.
+                freshExcursions = try await Self.concurrentMap(pairs, maxConcurrent: 20) { pair in
+                    try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter, homes: homes)
+                }
             }
-            return excursions.sorted { $0.startTime > $1.startTime }
+
+            let (all, newCache) = Self.mergeExcursions(cached: cached, freshExcursions: freshExcursions)
+            excursionCacheStore.save(newCache, forPetID: petID, serverHost: serverHost)
+
+            return all
+                .filter { $0.startTime >= from && $0.startTime <= to }
+                .sorted { $0.startTime > $1.startTime }
         } catch let error as TraccarError {
             throw error.asLibrePawError
         }
+    }
+
+    func resetExcursionsCache(forPetID petID: Int) async throws {
+        let serverHost = client.serverURL.host ?? ""
+        excursionCacheStore.clear(forPetID: petID, serverHost: serverHost)
+    }
+
+    /// Pure merge logic, pulled out of `fetchExcursions` so it can be unit
+    /// tested directly with hand-built excursions instead of a live/mocked
+    /// server, the same way `mergeLifetimeStats` is.
+    ///
+    /// `freshExcursions` is whatever this call's live fetch produced for
+    /// whatever portion of the requested range wasn't already covered by
+    /// the cache. Keyed by id (an excursion's own exit event id, stable and
+    /// unique within one server), so re-fetching one already cached, or an
+    /// id appearing in both, never duplicates it, a fresh copy simply wins.
+    /// Only closed excursions (`endTime != nil`) are folded into the
+    /// returned cache and advance `cachedThroughEndTime`, an ongoing one is
+    /// included in `all` (what the caller actually sees) but never
+    /// persisted.
+    static func mergeExcursions(
+        cached: CachedExcursions?,
+        freshExcursions: [Excursion]
+    ) -> (all: [Excursion], newCache: CachedExcursions) {
+        var byID = Dictionary(uniqueKeysWithValues: (cached?.excursions ?? []).map { ($0.id, $0) })
+        var watermark = cached?.cachedThroughEndTime
+
+        for excursion in freshExcursions {
+            byID[excursion.id] = excursion
+            if let endTime = excursion.endTime, watermark == nil || endTime > watermark! {
+                watermark = endTime
+            }
+        }
+
+        let closed = byID.values.filter { $0.endTime != nil }
+        let newCache = CachedExcursions(excursions: closed, cachedThroughEndTime: watermark)
+        return (Array(byID.values), newCache)
     }
 
     /// Pairs each home-geofence exit with the next home-geofence enter

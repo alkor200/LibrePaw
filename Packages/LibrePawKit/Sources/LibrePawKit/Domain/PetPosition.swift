@@ -2,7 +2,7 @@ import Foundation
 
 /// A geographic coordinate, independent of any mapping framework so that
 /// `LibrePawKit` does not need to import MapKit/CoreLocation.
-public struct Coordinate: Sendable, Hashable {
+public struct Coordinate: Sendable, Hashable, Codable {
     public let latitude: Double
     public let longitude: Double
 
