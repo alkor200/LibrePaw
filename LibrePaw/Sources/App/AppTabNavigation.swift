@@ -18,11 +18,16 @@ enum AppTab: Hashable {
 final class AppTabNavigation {
     var selectedTab: AppTab = .map
 
-    /// The Pets tab's own navigation path. Setting this from outside the
-    /// Pets tab (tapping a pet annotation on the map) pushes straight to
-    /// that pet's detail screen, replacing whatever was already pushed
-    /// there, the same way choosing a different pet from the list would.
-    var petsPath: [Pet] = []
+    /// The Pets tab's own navigation path. Type-erased rather than `[Pet]`:
+    /// `PetDetailView` pushes its own `PetDetailRoute` values (Find, Trail,
+    /// Excursions, Homes, Share) on top of a pushed `Pet`, and a strongly
+    /// typed array path can only ever hold one element type, which broke
+    /// all of those the moment anything but a `Pet` tried to push here
+    /// (confirmed live). Setting this from outside the Pets tab (tapping a
+    /// pet annotation on the map) pushes straight to that pet's detail
+    /// screen, replacing whatever was already pushed there, the same way
+    /// choosing a different pet from the list would.
+    var petsPath = NavigationPath()
 
     /// Set to focus the Map tab's camera on a specific pet (Pet Detail's
     /// "View on Map"/photo). `PetMapView` is a single, long-lived instance
@@ -32,7 +37,7 @@ final class AppTabNavigation {
     var mapFocusPet: Pet?
 
     func showPetDetail(_ pet: Pet) {
-        petsPath = [pet]
+        petsPath = NavigationPath([pet])
         selectedTab = .pets
     }
 
