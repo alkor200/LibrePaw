@@ -6,9 +6,9 @@ Accepted.
 
 ## Context
 
-A real-world report: a Mictrack collar dropped into its low-power standby
-mode a few meters before actually crossing back into its home geofence's
-boundary. Traccar's `geofenceEnter` event (the signal ADR-0014's whole
+A real-world report: a Mictrack collar entered its own firmware-level
+sleep mode a few meters before actually crossing back into its home
+geofence's boundary. Traccar's `geofenceEnter` event (the signal ADR-0014's whole
 excursion model is built on) only fires when the device transmits a
 position that crosses the boundary, so a device that goes quiet just
 short of it never sends that final position, the enter event never
@@ -52,7 +52,7 @@ battery-conscious device this whole feature exists for.
 
 ### Revision: a real enter event can itself arrive hours late
 
-Confirmed against a real walk: the device went quiet in standby a short
+Confirmed against a real walk: the device entered its sleep mode a short
 distance outside the home geofence, same situation as above, except this
 time a real `geofenceEnter` event eventually did arrive, about four hours
 later, once the device woke back up and actually crossed the boundary.
@@ -73,14 +73,36 @@ position itself (nothing to find a gap against beyond it), so the result
 doesn't change. For the four-hour case, the near-home position before the
 quiet gap is now found and wins.
 
-Also lowered `quietGapAfterHomeProximity` from 20 to 10 minutes: confirmed
-live that a real Mictrack reports every one to two minutes while moving,
-so a 10-minute gap is already a reliable signal that the device stopped
-reporting, and 20 minutes was needlessly slow to close an excursion that
-clearly already ended. A lower value closes excursions faster but makes an
-ordinary pause near home (not an actual return) likelier to read as one,
-see "Why running this unconditionally is an accepted risk" below; 10
-minutes was chosen as a middle ground over the originally proposed 5.
+Also lowered `quietGapAfterHomeProximity` from 20 to 10 minutes, see the
+next Revision for the corrected reasoning behind that number.
+
+### Revision: the device reports every 30 seconds unconditionally, not only while moving
+
+An earlier draft of this ADR (and the code comments) claimed "a real
+Mictrack reports every one to two minutes while moving," inferred rather
+than confirmed, and wrong: the device owner confirmed the tracker sends a
+position every 30 seconds unconditionally, moving or stationary, and only
+ever goes quiet by entering its own firmware-level sleep mode, triggered
+by an internal geofence of its own (built into the device, separate from
+and not necessarily identical to the Traccar geofence LibrePaw manages
+for the same home).
+
+This changes the risk profile of this whole mechanism for the better:
+an ordinary mid-walk pause (sniffing, resting near but not at home)
+cannot produce a quiet gap at all, the device keeps reporting every 30
+seconds regardless. Any gap this long reliably means the device entered
+its own sleep mode, not just "stopped moving," which in turn means the
+early-closing risk described below is considerably rarer in practice
+than originally assessed, since it would require the device's own
+internal sleep trigger (not an ordinary pause) to fire somewhere that
+also happens to read as "near home" to `firstHomecomingPause`, without
+that actually being the pet's real, final return. Kept as a 10-minute
+threshold (not lowered further) regardless, since the 30-second figure
+only constrains how small a safe margin against jitter needs to be, it
+says nothing about how quickly a real sleep-mode entry should be trusted
+as "actually home," and there's no live-confirmed data point for that
+beyond "a few meters short of the boundary," so a conservative value was
+kept here instead of tightening further on an unconfirmed assumption.
 
 ## Decision
 
@@ -140,25 +162,24 @@ Running `firstHomecomingPause` even when a real `enter` event already
 exists (the Revision above) means it can, in principle, pick an earlier,
 spurious pause over the correct, later one: `firstHomecomingPause` picks
 the *earliest* qualifying pause in the trail, by design (see its test
-coverage), so a pet that lingers within the proximity slack of a home
-(this one or a different configured one) for a whole
-`quietGapAfterHomeProximity` mid-excursion, then moves on and only
-genuinely returns later, would have its excursion cut short at that
-earlier pause instead of the real, later enter event, silently losing
-the distance/duration walked afterward (`mergeLifetimeStats`' watermark
-advances past it, so it's never recovered on a later fetch either).
+coverage), so if the device's own sleep mode (see "the device reports
+every 30 seconds unconditionally" above) ever fired mid-excursion near a
+home without that actually being the pet's final return, then resumed
+reporting and the pet continued on to genuinely return later, the
+excursion would be cut short at that earlier pause instead of the real,
+later enter event, silently losing the distance/duration walked
+afterward (`mergeLifetimeStats`' watermark advances past it, so it's
+never recovered on a later fetch either).
 
 Caught in code review, not fixed here: the repository owner reviewed
 this specific trade-off and chose to accept the risk rather than add a
-guard against it, given homes are few and small and such a mid-excursion
-lingering pause near one is expected to be rare in practice. Raising
-`quietGapAfterHomeProximity` from the originally proposed 5 minutes to
-10 (see above) was accepted as a partial mitigation, a shorter pause
-near home is less likely to be an actual stop either way, without
-reintroducing the original 20-minute delay this ADR exists to fix.
-Revisit with a guard (e.g. only override an existing `enter` event if no
-unrelated exit from the chosen home follows the pause before it) if this
-turns out to matter in practice.
+guard against it. Confirmed considerably rarer than first assessed once
+the device's actual reporting behavior was known (an ordinary pause
+can't trigger this at all, only a real sleep-mode entry can, and that's
+firmware-gated to near home by design), given homes are also few and
+small. Revisit with a guard (e.g. only override an existing `enter`
+event if no unrelated exit from the chosen home follows the pause before
+it) if this turns out to matter in practice.
 
 ### A second, related risk, this one fixed
 

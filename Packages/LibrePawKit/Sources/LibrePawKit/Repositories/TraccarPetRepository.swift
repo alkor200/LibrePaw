@@ -320,10 +320,14 @@ struct TraccarPetRepository: PetRepository {
     /// before `firstHomecomingPause` trusts it as "the device actually
     /// stopped there" rather than a single jittery fix passed through
     /// while still moving (e.g. walking past the house without going in).
-    /// Above ordinary GPS reporting intervals (confirmed live: a real
-    /// Mictrack reports every one to two minutes while moving), so a gap
-    /// this long already means the device stopped reporting, whether
-    /// because it went into standby or simply lost signal.
+    /// A real Mictrack reports every 30 seconds unconditionally, moving or
+    /// not, confirmed by the device owner, it only ever goes quiet by
+    /// entering its own firmware-level sleep mode, triggered by an
+    /// internal geofence of its own (separate from any Traccar geofence
+    /// LibrePaw manages), which normally only happens near home. An
+    /// ordinary pause mid-walk (sniffing, resting) does not produce a gap
+    /// at all, so any gap this long already means the device entered that
+    /// sleep mode, not just "stopped moving."
     static let quietGapAfterHomeProximity: TimeInterval = 10 * 60
 
     /// Only re-fetches excursions that ended after the last cached run -
@@ -441,9 +445,11 @@ struct TraccarPetRepository: PetRepository {
 
     /// An excursion otherwise ends only when Traccar logs a `geofenceEnter`
     /// event, which only happens when the device actually transmits a
-    /// position crossing the exact boundary. A tracker that drops into a
-    /// low-power standby mode a few meters short of it (confirmed live
-    /// with a real Mictrack collar) only resumes reporting, and so only
+    /// position crossing the exact boundary. A tracker that enters its
+    /// own firmware-level sleep mode a few meters short of it (triggered
+    /// by an internal geofence of its own, confirmed by the device owner,
+    /// separate from and not necessarily exactly aligned with the Traccar
+    /// geofence LibrePaw manages) only resumes reporting, and so only
     /// logs that crossing, whenever it next wakes up, which can be hours
     /// later; until then (or forever, if it never crosses the exact
     /// boundary) the excursion would otherwise read as lasting that whole
