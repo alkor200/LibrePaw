@@ -19,14 +19,14 @@ something external to this rename:
 
 - The GitHub repository (`alkor200/Scentrail`) and this local working
   directory stayed named `Scentrail`. Only the code, the Xcode project
-  structure, and the documentation were renamed at first. Renaming the
-  repository itself was considered and declined for that initial pass,
-  to avoid moving the local checkout mid-session and to avoid touching a
-  shared, external resource as part of what was otherwise a
-  self-contained code change. The repository side of this was completed
-  in a follow-up step once a fresh `alkor200/LibrePaw` repository
-  existed to migrate to, see Decision below; the local working directory
-  remains `Scentrail` by choice, see Consequences.
+  structure, and the documentation were renamed at first. Renaming
+  either was considered and declined for that initial pass, to avoid
+  moving the local checkout mid-session and to avoid touching a shared,
+  external resource as part of what was otherwise a self-contained code
+  change. Both were completed in a follow-up step: the repository once a
+  fresh `alkor200/LibrePaw` repository existed to migrate to, the local
+  directory with a plain `mv` once the repository side was done, see
+  Decision below.
 - The Traccar geofence attribute key that marks a geofence as an
   app-managed "home" stayed `"scentrailHome"` rather than becoming
   `"librepawHome"`. This key is already written on every home geofence
@@ -73,6 +73,15 @@ something external to this rename:
   unrelated history. `README.md`'s `git clone`/`cd` instructions were
   updated from `Scentrail.git`/`cd Scentrail` to `LibrePaw.git`/
   `cd LibrePaw` to match.
+- **Local directory migration (follow-up):** `~/Projects/Scentrail` →
+  `~/Projects/LibrePaw` via a plain `mv`, git history and the `origin`
+  remote untouched by it (both live inside `.git`, not tied to the
+  parent directory's name). Required regenerating `LibrePaw.xcodeproj`
+  (gitignored, its absolute `SRCROOT` baked in by XcodeGen at the old
+  path) and clearing each Swift package's `.build` directory (also
+  gitignored; Swift's own module cache embeds the absolute path it was
+  built under, confirmed live, stale ones fail with "missing required
+  module 'SwiftShims'" until cleared and rebuilt fresh).
 
 ## Consequences
 
@@ -86,11 +95,6 @@ something external to this rename:
 - Already-existing Traccar geofences tagged `scentrailHome` continue to
   be recognized by the app without any migration, confirmed live against
   the test server's existing home geofence after the rename.
-- The local working directory remains named `Scentrail`, the one
-  deliberate, visible inconsistency left after the repository migration
-  above, kept for the same reason it was kept in the first pass
-  (avoiding a mid-session move of the active checkout), documented here
-  rather than silently left unexplained.
 - Since `alkor200/LibrePaw` is a new repository rather than a GitHub-side
   rename, it starts with no stars, no issues, no PR history, and no
   automatic redirect from the old `alkor200/Scentrail` URL, anyone with
