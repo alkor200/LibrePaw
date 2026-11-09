@@ -206,6 +206,7 @@ Key decisions, each recorded as an ADR:
 | [0022](docs/adr/0022-german-language-option.md) | In-app German language option, defaulting to the device's own setting |
 | [0023](docs/adr/0023-follow-traccars-own-permission-model.md) | Follow Traccar's own permission model instead of a client-side one |
 | [0024](docs/adr/0024-rename-to-librepaw.md) | Rename the app from Scentrail to LibrePaw |
+| [0025](docs/adr/0025-close-excursions-when-the-device-goes-offline.md) | Close an ongoing excursion once the device goes offline |
 
 ## Roadmap
 

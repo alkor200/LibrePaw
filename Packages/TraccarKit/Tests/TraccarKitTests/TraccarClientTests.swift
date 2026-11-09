@@ -89,6 +89,49 @@ struct TraccarClientTests {
         #expect(devices[0].lastUpdate != nil)
     }
 
+    @Test("fetchDevice(id:) queries with ?id= and returns the one matching device")
+    func fetchDeviceQueriesByID() async throws {
+        let json = """
+        [
+            {
+                "id": 3,
+                "name": "Mock Test Pet",
+                "uniqueId": "collar-003",
+                "status": "offline",
+                "disabled": false,
+                "lastUpdate": "2026-01-15T10:30:00.123+0000",
+                "positionId": 42,
+                "category": "dog",
+                "attributes": {}
+            }
+        ]
+        """.data(using: .utf8)!
+
+        MockURLProtocol.requestHandler = { request in
+            #expect(request.url?.path == "/api/devices")
+            #expect(request.url?.query == "id=3")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, json)
+        }
+
+        let device = try await makeClient().fetchDevice(id: 3)
+
+        #expect(device.id == 3)
+        #expect(device.status == .offline)
+    }
+
+    @Test("fetchDevice(id:) throws a decoding error when the server returns no match")
+    func fetchDeviceThrowsWhenNotFound() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data("[]".utf8))
+        }
+
+        await #expect(throws: TraccarError.self) {
+            try await self.makeClient().fetchDevice(id: 999)
+        }
+    }
+
     @Test("A 401 response surfaces as invalidCredentials")
     func unauthorizedMapsToInvalidCredentials() async throws {
         MockURLProtocol.requestHandler = { request in

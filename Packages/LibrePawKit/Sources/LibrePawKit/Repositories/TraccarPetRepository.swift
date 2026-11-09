@@ -269,7 +269,8 @@ struct TraccarPetRepository: PetRepository {
             let excursions = try await Self.concurrentMap(pairs, maxConcurrent: 20) { pair in
                 try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter)
             }
-            return excursions.sorted { $0.startTime > $1.startTime }
+            let closed = await closingAbandonedExcursion(in: excursions, petID: petID)
+            return closed.sorted { $0.startTime > $1.startTime }
         } catch let error as TraccarError {
             throw error.asLibrePawError
         }
@@ -305,6 +306,65 @@ struct TraccarPetRepository: PetRepository {
             pairs.append((exit, matchingEnter))
         }
         return pairs
+    }
+
+    /// An excursion stays "ongoing" (`endTime == nil`) until Traccar logs a
+    /// `geofenceEnter` event, which only happens when the device actually
+    /// transmits a position crossing back into a home geofence. A tracker
+    /// that drops into a low-power standby mode just before doing that (the
+    /// gap this closes, confirmed live with a Mictrack collar that went to
+    /// standby a few meters short of the boundary) never sends that final
+    /// position, so the enter event never fires and the excursion would
+    /// otherwise read "Away now" forever even once the pet is actually
+    /// home.
+    ///
+    /// Fetches the device fresh (rather than accepting one as a parameter)
+    /// so every caller of `fetchExcursions` gets this correction without
+    /// needing to know it exists; best-effort, `fetchDevice` failing just
+    /// leaves the excursions as they were, the same as before this existed,
+    /// rather than surfacing an error for what is already a secondary
+    /// correction on top of the real event data.
+    private func closingAbandonedExcursion(in excursions: [Excursion], petID: Int) async -> [Excursion] {
+        guard excursions.contains(where: \.isOngoing), let device = try? await client.fetchDevice(id: petID) else {
+            return excursions
+        }
+        return Self.closingAbandonedExcursion(in: excursions, deviceStatus: device.status, deviceLastUpdate: device.lastUpdate)
+    }
+
+    /// The pure decision/rewrite behind the instance method above, pulled
+    /// out so it can be unit tested directly against hand-built excursions
+    /// and device state, the same way `pairHomeExitsWithEnters` is, rather
+    /// than only ever exercised against a live server.
+    ///
+    /// If the most recent excursion is still ongoing and the device has
+    /// since gone offline, this treats its last known update time as the
+    /// end, the same outcome as if an enter event had arrived right then.
+    /// Only `excursions`' newest entry is ever a candidate: only the last
+    /// (most recent) exit can lack a matching enter in the first place, see
+    /// `pairHomeExitsWithEnters`.
+    static func closingAbandonedExcursion(
+        in excursions: [Excursion],
+        deviceStatus: TraccarDevice.Status,
+        deviceLastUpdate: Date?
+    ) -> [Excursion] {
+        guard let newest = excursions.max(by: { $0.startTime < $1.startTime }), newest.isOngoing else {
+            return excursions
+        }
+        guard deviceStatus == .offline, let lastUpdate = deviceLastUpdate, lastUpdate > newest.startTime else {
+            return excursions
+        }
+
+        let closedExcursion = Excursion(
+            id: newest.id,
+            startTime: newest.startTime,
+            endTime: lastUpdate,
+            startCoordinate: newest.startCoordinate,
+            endCoordinate: newest.endCoordinate,
+            distanceMeters: newest.distanceMeters,
+            startHomeID: newest.startHomeID,
+            endHomeID: nil
+        )
+        return excursions.map { $0.id == newest.id ? closedExcursion : $0 }
     }
 
     /// Only re-fetches excursions that ended after the last cached run -
