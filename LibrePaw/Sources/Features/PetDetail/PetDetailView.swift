@@ -100,7 +100,10 @@ struct PetDetailView: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
+            NavigationLink(value: PetDetailRoute.map) {
+                PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
+            }
+            .buttonStyle(.plain)
             Text(viewModel.pet.name)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
@@ -172,7 +175,7 @@ struct PetDetailView: View {
                 Divider().padding(.leading, 44).overlay(Color.appBorder)
 
                 NavigationLink(value: PetDetailRoute.excursions) {
-                    actionRow(systemImage: "figure.walk", title: "Excursions")
+                    actionRow(systemImage: "pawprint.fill", title: "Excursions")
                 }
             }
 
@@ -237,17 +240,17 @@ struct PetDetailView: View {
                 StatTile(systemImage: batteryIcon(for: battery), title: "Battery", value: formattedPercent(battery))
             }
             if let totalDistance = viewModel.totalTrailDistanceMeters {
-                StatTile(systemImage: "shoeprints.fill", title: "Distance Today", value: formattedDistance(totalDistance))
+                StatTile(systemImage: "map.fill", title: "Distance Today", value: formattedDistance(totalDistance))
             }
             if let timeAwayToday = viewModel.totalTimeAwayTodaySeconds {
-                StatTile(systemImage: "figure.walk", title: "Time Away Today", value: formattedDuration(timeAwayToday))
+                StatTile(systemImage: "pawprint.fill", title: "Time Away Today", value: formattedDuration(timeAwayToday))
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDistanceMeters > 0 {
                 StatTile(systemImage: "map.fill", title: "Total Distance", value: formattedDistance(lifetimeStats.totalDistanceMeters))
                     .contextMenu { recalculateLifetimeStatsButton }
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDurationSeconds > 0 {
-                StatTile(systemImage: "figure.walk.motion", title: "Total Time Away", value: formattedDuration(lifetimeStats.totalDurationSeconds))
+                StatTile(systemImage: "pawprint.fill", title: "Total Time Away", value: formattedDuration(lifetimeStats.totalDurationSeconds))
                     .contextMenu { recalculateLifetimeStatsButton }
             }
         }

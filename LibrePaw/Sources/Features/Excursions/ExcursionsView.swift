@@ -41,7 +41,7 @@ struct ExcursionsView: View {
             }
         } else if viewModel.excursions.isEmpty {
             ContentUnavailableView {
-                Label("No Excursions Yet", systemImage: "figure.walk")
+                Label("No Excursions Yet", systemImage: "pawprint")
             } description: {
                 Text("Once \(viewModel.pet.name) leaves home and comes back, excursions will show up here. Make sure a home location is set first.")
             }
@@ -71,7 +71,7 @@ private struct ExcursionRow: View {
                     .font(.headline)
                 Spacer()
                 if excursion.isOngoing {
-                    Label("Away now", systemImage: "figure.walk.motion")
+                    Label("Away now", systemImage: "hare.fill")
                         .font(.caption.bold())
                         .foregroundStyle(.orange)
                 } else if excursion.isLikelyVehicleTrip {
@@ -92,7 +92,7 @@ private struct ExcursionRow: View {
                     Label(durationText(duration), systemImage: "clock")
                 }
                 if let distance = excursion.distanceMeters {
-                    Label(distanceText(distance), systemImage: "shoeprints.fill")
+                    Label(distanceText(distance), systemImage: "map.fill")
                 }
             }
             .font(.subheadline)

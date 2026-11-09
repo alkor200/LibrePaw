@@ -36,13 +36,13 @@ struct ExcursionDetailView: View {
             statTile(systemImage: "flag.fill", title: "Started", value: timeText(viewModel.excursion.startTime))
 
             if viewModel.excursion.isOngoing {
-                statTile(systemImage: "figure.walk.motion", title: "Status", value: localized("Away now"))
+                statTile(systemImage: "hare.fill", title: "Status", value: localized("Away now"))
             } else if let endTime = viewModel.excursion.endTime {
                 statTile(systemImage: "flag.checkered", title: "Ended", value: timeText(endTime))
             }
 
             if let distance = viewModel.excursion.distanceMeters {
-                statTile(systemImage: "shoeprints.fill", title: "Distance", value: distanceText(distance))
+                statTile(systemImage: "map.fill", title: "Distance", value: distanceText(distance))
             }
 
             if let duration = viewModel.excursion.duration {
