@@ -10,18 +10,19 @@ public struct AccountPermissions: Sendable, Equatable {
     /// Add, edit, or delete a home geofence. `false` only when the account
     /// is `readonly` (an admin always can).
     public let canManageHomes: Bool
-    /// Edit a device, including uploading a pet's photo. `false` when the
-    /// account is `readonly` or `deviceReadonly` (an admin always can).
-    public let canManageDevicePhoto: Bool
+    /// Edit a device, including renaming a pet and uploading its photo.
+    /// `false` when the account is `readonly` or `deviceReadonly` (an admin
+    /// always can).
+    public let canManageDevice: Bool
     /// View excursions and the trail, both built from
     /// `GET /api/reports/events`. `false` only when the account has
     /// `disableReports` set (an admin always can).
     public let canViewExcursions: Bool
 
-    public init(isAdministrator: Bool, canManageHomes: Bool, canManageDevicePhoto: Bool, canViewExcursions: Bool) {
+    public init(isAdministrator: Bool, canManageHomes: Bool, canManageDevice: Bool, canViewExcursions: Bool) {
         self.isAdministrator = isAdministrator
         self.canManageHomes = canManageHomes
-        self.canManageDevicePhoto = canManageDevicePhoto
+        self.canManageDevice = canManageDevice
         self.canViewExcursions = canViewExcursions
     }
 }

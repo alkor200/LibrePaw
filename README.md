@@ -18,6 +18,8 @@ its own backend, and is not affiliated with the Traccar project.
   a pet.
 - Pet avatars on the map: a photo if you set one (see
   [Setting a pet photo](#setting-a-pet-photo)), otherwise a paw icon.
+- Rename a pet right from its detail screen (tap its name), for accounts
+  with permission to edit the underlying device (see ADR-0023).
 - **Excursions**: set one or more of a pet's home locations (current
   location + a radius, right from the app) and see a list of trips away
   from home and back, with distance and duration. A trip can start at one
@@ -71,6 +73,11 @@ Use Traccar's own device image upload: open the device in Traccar's web UI →
 **Edit Device** → upload an image. LibrePaw reads it back via Traccar's
 `deviceImage` attribute and `/api/media/...` endpoint, no LibrePaw-specific
 setup needed. Devices without a photo show a paw icon instead.
+
+The pet's **name**, unlike its photo, can be changed directly in LibrePaw:
+tap it on the pet's detail screen. Both are really just editing the
+underlying Traccar device, so the same permission gates both (see
+[ADR-0023](docs/adr/0023-follow-traccars-own-permission-model.md)).
 
 ### Setting a pet's home locations
 

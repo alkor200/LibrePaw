@@ -24,6 +24,7 @@ struct PetDetailView: View {
     let locationService: LocationService
     @State private var viewModel: PetDetailViewModel
     @State private var isShowingPhotoEditor = false
+    @State private var isShowingRenameSheet = false
     /// Shown in place of whatever `PetAnnotationView` would otherwise fetch,
     /// right after a successful edit, see its doc comment for why the fetch
     /// alone can't be relied on to notice the change.
@@ -92,17 +93,22 @@ struct PetDetailView: View {
                 justSavedPhoto = UIImage(data: jpegData)
             }
         }
+        .sheet(isPresented: $isShowingRenameSheet) {
+            RenamePetView(currentName: viewModel.pet.name) { newName in
+                try await viewModel.rename(to: newName)
+            }
+        }
     }
 
     // MARK: - Header
 
     private var header: some View {
         VStack(spacing: 8) {
-            // Editing a device (including its photo) needs Traccar's own
+            // Editing a device (its photo or name) needs Traccar's own
             // `deviceReadonly`/`readonly` to both be clear, hidden rather
             // than left tappable toward a save that would just fail (see
             // ADR-0023).
-            if viewModel.permissions?.canManageDevicePhoto == true {
+            if viewModel.permissions?.canManageDevice == true {
                 Button {
                     isShowingPhotoEditor = true
                 } label: {
@@ -121,9 +127,26 @@ struct PetDetailView: View {
                 PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
             }
 
-            Text(viewModel.pet.name)
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
+            if viewModel.permissions?.canManageDevice == true {
+                Button {
+                    isShowingRenameSheet = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(viewModel.pet.name)
+                            .font(.title2.bold())
+                            .multilineTextAlignment(.center)
+                        Image(systemName: "pencil")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(localized("Rename %@", viewModel.pet.name))
+            } else {
+                Text(viewModel.pet.name)
+                    .font(.title2.bold())
+                    .multilineTextAlignment(.center)
+            }
             Text(statusCaption)
                 .font(.subheadline)
                 .foregroundStyle(viewModel.pet.status.tintColor)

@@ -37,6 +37,7 @@ struct FakePetRepository: PetRepository {
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] { [] }
     func fetchPhoto(for pet: Pet) async throws -> Data? { nil }
     func setPhoto(forPetID petID: Int, jpegData: Data) async throws {}
+    func renamePet(forPetID petID: Int, name: String) async throws {}
 
     func livePetUpdates() -> AsyncThrowingStream<[Pet], Error> {
         AsyncThrowingStream { continuation in
@@ -51,7 +52,7 @@ struct FakePetRepository: PetRepository {
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats { .zero }
     func currentUserPermissions() async throws -> AccountPermissions {
-        AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevicePhoto: true, canViewExcursions: true)
+        AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
     }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }

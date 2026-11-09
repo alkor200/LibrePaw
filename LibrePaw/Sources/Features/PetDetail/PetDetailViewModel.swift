@@ -4,17 +4,22 @@ import LibrePawKit
 @Observable
 @MainActor
 final class PetDetailViewModel {
-    let pet: Pet
+    /// `private(set)`, not `let`: ``rename(to:)`` updates it in place after a
+    /// successful save, so every reader (the header, `navigationTitle`, any
+    /// pushed destination constructed from it) immediately reflects the new
+    /// name without waiting for the next `fetchPets()`/`livePetUpdates()`
+    /// refresh elsewhere in the app.
+    private(set) var pet: Pet
     private(set) var trail: [PetPosition] = []
     private(set) var isLoadingTrail = false
     private(set) var trailErrorMessage: String?
     private(set) var lifetimeStats: LifetimeStats?
     private(set) var todaysExcursions: [Excursion] = []
-    /// Gates the "Share `<Pet>`" action, the avatar's edit-photo affordance,
-    /// and the Trail/Excursions rows, each straight off what Traccar's own
-    /// permission flags allow the signed-in account to do (see ADR-0018,
-    /// ADR-0023). `nil` until ``loadPermissions()`` resolves, every gated
-    /// affordance stays hidden until then.
+    /// Gates the "Share `<Pet>`" action, the avatar's edit-photo/rename
+    /// affordances, and the Trail/Excursions rows, each straight off what
+    /// Traccar's own permission flags allow the signed-in account to do (see
+    /// ADR-0018, ADR-0023). `nil` until ``loadPermissions()`` resolves, every
+    /// gated affordance stays hidden until then.
     private(set) var permissions: AccountPermissions?
 
     private let petRepository: PetRepository
@@ -63,6 +68,19 @@ final class PetDetailViewModel {
 
     func setPhoto(jpegData: Data) async throws {
         try await petRepository.setPhoto(forPetID: pet.id, jpegData: jpegData)
+    }
+
+    func rename(to name: String) async throws {
+        try await petRepository.renamePet(forPetID: pet.id, name: name)
+        pet = Pet(
+            id: pet.id,
+            name: name,
+            species: pet.species,
+            status: pet.status,
+            lastSeenAt: pet.lastSeenAt,
+            lastPosition: pet.lastPosition,
+            photoURL: pet.photoURL
+        )
     }
 
     /// Total distance covered along today's trail, summing consecutive fixes

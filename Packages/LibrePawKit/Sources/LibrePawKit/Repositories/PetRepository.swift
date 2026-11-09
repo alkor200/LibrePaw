@@ -19,6 +19,10 @@ public protocol PetRepository: Sendable {
     /// JPEG-encoded and under Traccar's upload size limit (500KB).
     func setPhoto(forPetID petID: Int, jpegData: Data) async throws
 
+    /// Renames the pet, i.e. its underlying Traccar device. `name` is used
+    /// as-is, callers are expected to have already trimmed/validated it.
+    func renamePet(forPetID petID: Int, name: String) async throws
+
     /// A continuous stream of the full, current pet list: one initial
     /// snapshot, then a fresh snapshot each time Traccar's live feed reports
     /// a changed device or position (see ADR-0013). Finishes only on an

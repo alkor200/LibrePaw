@@ -222,6 +222,15 @@ public actor TraccarClient {
         try await mergeDeviceAttribute(deviceId: deviceId, key: "deviceImage", stringValue: filename)
     }
 
+    /// Renames a device. Same round-trip reasoning as ``mergeDeviceAttribute``,
+    /// since `PUT /api/devices/{id}` replaces every column, `name` is set on
+    /// the untouched raw object fetched first rather than built from scratch.
+    public func updateDeviceName(deviceId: Int, name: String) async throws {
+        try await updateDeviceObject(deviceId: deviceId) { deviceObject in
+            deviceObject["name"] = name
+        }
+    }
+
     private func uploadDeviceImage(deviceId: Int, imageData: Data, contentType: String) async throws -> String {
         var request = URLRequest(url: try makeURL("/api/devices/\(deviceId)/image"))
         request.httpMethod = "POST"
@@ -238,6 +247,24 @@ public actor TraccarClient {
     }
 
     private func mergeDeviceAttribute(deviceId: Int, key: String, stringValue: String) async throws {
+        try await updateDeviceObject(deviceId: deviceId) { deviceObject in
+            var attributes = deviceObject["attributes"] as? [String: Any] ?? [:]
+            attributes[key] = stringValue
+            deviceObject["attributes"] = attributes
+        }
+    }
+
+    /// Fetches a device as its raw JSON object, applies `mutate` to it, and
+    /// `PUT`s the whole thing back. `PUT /api/devices/{id}` replaces every
+    /// column on the server (confirmed against Traccar's
+    /// `BaseObjectResource`, which deserializes the body and writes it with
+    /// `Columns.Exclude("id")`), so omitting a field Traccar stores, `phone`,
+    /// `model`, `contact`, `groupId`, `calendarId`, `expirationTime`, would
+    /// silently blank it out. Round-tripping the untouched raw object avoids
+    /// that regardless of which fields exist on a given server version, and
+    /// regardless of which single field a given caller actually wants to
+    /// change.
+    private func updateDeviceObject(deviceId: Int, mutate: (inout [String: Any]) -> Void) async throws {
         let url = try makeURL("/api/devices/\(deviceId)")
 
         var getRequest = URLRequest(url: url)
@@ -249,9 +276,7 @@ public actor TraccarClient {
         guard var deviceObject = try JSONSerialization.jsonObject(with: validDeviceData) as? [String: Any] else {
             throw TraccarError.decoding("Device JSON was not an object.")
         }
-        var attributes = deviceObject["attributes"] as? [String: Any] ?? [:]
-        attributes[key] = stringValue
-        deviceObject["attributes"] = attributes
+        mutate(&deviceObject)
 
         var putRequest = URLRequest(url: url)
         putRequest.httpMethod = "PUT"

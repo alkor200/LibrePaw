@@ -52,6 +52,14 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
+    func renamePet(forPetID petID: Int, name: String) async throws {
+        do {
+            try await client.updateDeviceName(deviceId: petID, name: name)
+        } catch let error as TraccarError {
+            throw error.asLibrePawError
+        }
+    }
+
     func livePetUpdates() -> AsyncThrowingStream<[Pet], Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
@@ -216,7 +224,7 @@ struct TraccarPetRepository: PetRepository {
             return AccountPermissions(
                 isAdministrator: user.administrator,
                 canManageHomes: user.administrator || !user.readonly,
-                canManageDevicePhoto: user.administrator || (!user.readonly && !user.deviceReadonly),
+                canManageDevice: user.administrator || (!user.readonly && !user.deviceReadonly),
                 canViewExcursions: user.administrator || !user.disableReports
             )
         } catch let error as TraccarError {

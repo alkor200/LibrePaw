@@ -223,6 +223,59 @@ struct TraccarClientTests {
         #expect(attributes?["scentrailHome"] as? Bool == true)
     }
 
+    @Test("updateDeviceName PUTs the device back whole with only name changed")
+    func updateDeviceNamePreservesEveryOtherField() async throws {
+        let requests = LockedArray<URLRequest>()
+
+        let existingDeviceJSON = """
+        {
+            "id": 1, "name": "Buddy", "uniqueId": "123456789012345",
+            "status": "online", "disabled": false, "lastUpdate": "2026-01-01T00:00:00.000+00:00",
+            "positionId": 42, "groupId": 7, "calendarId": 3,
+            "phone": "+15551234567", "model": "Mictrack MT710", "contact": "Jane Doe",
+            "category": "animal", "expirationTime": null,
+            "attributes": {"scentrailHome": true}
+        }
+        """
+
+        MockURLProtocol.requestHandler = { request in
+            requests.append(request)
+            guard let url = request.url else { throw TraccarError.invalidServerURL }
+
+            if url.path == "/api/devices/1", request.httpMethod == nil || request.httpMethod == "GET" {
+                let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, Data(existingDeviceJSON.utf8))
+            } else if url.path == "/api/devices/1", request.httpMethod == "PUT" {
+                let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, request.bodyData)
+            }
+            throw TraccarError.invalidServerURL
+        }
+
+        try await makeClient().updateDeviceName(deviceId: 1, name: "Rex")
+
+        let allRequests = requests.values
+        #expect(allRequests.count == 2)
+
+        let putRequest = allRequests.last!
+        #expect(putRequest.httpMethod == "PUT")
+        let putBody = try JSONSerialization.jsonObject(with: putRequest.bodyData) as? [String: Any]
+
+        // The new name applies...
+        #expect(putBody?["name"] as? String == "Rex")
+
+        // ...and every other pre-existing field, including attributes, survives untouched.
+        #expect(putBody?["uniqueId"] as? String == "123456789012345")
+        #expect(putBody?["phone"] as? String == "+15551234567")
+        #expect(putBody?["model"] as? String == "Mictrack MT710")
+        #expect(putBody?["contact"] as? String == "Jane Doe")
+        #expect(putBody?["groupId"] as? Int == 7)
+        #expect(putBody?["calendarId"] as? Int == 3)
+        #expect(putBody?["category"] as? String == "animal")
+        let attributes = putBody?["attributes"] as? [String: Any]
+        #expect(attributes?["scentrailHome"] as? Bool == true)
+    }
+
     @Test("decodeSocketMessage parses a positions-only update (verified wire format)")
     func decodeSocketMessageParsesPositionsUpdate() async throws {
         let json = """

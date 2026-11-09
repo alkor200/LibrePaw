@@ -85,6 +85,7 @@ struct PreviewPetRepository: PetRepository {
     }
 
     func setPhoto(forPetID petID: Int, jpegData: Data) async throws {}
+    func renamePet(forPetID petID: Int, name: String) async throws {}
 
     func livePetUpdates() -> AsyncThrowingStream<[Pet], Error> {
         AsyncThrowingStream { continuation in
@@ -151,7 +152,7 @@ struct PreviewPetRepository: PetRepository {
     }
 
     func currentUserPermissions() async throws -> AccountPermissions {
-        AccountPermissions(isAdministrator: true, canManageHomes: true, canManageDevicePhoto: true, canViewExcursions: true)
+        AccountPermissions(isAdministrator: true, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
     }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
 }
