@@ -87,7 +87,7 @@ struct PetDetailView: View {
             await viewModel.loadPermissions()
         }
         .sheet(isPresented: $isShowingEditPet) {
-            EditPetView(currentName: viewModel.pet.name) { newName in
+            EditPetView(pet: viewModel.pet, petRepository: petRepository) { newName in
                 try await viewModel.rename(to: newName)
             } onSavePhoto: { jpegData in
                 try await viewModel.setPhoto(jpegData: jpegData)

@@ -1,19 +1,25 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import LibrePawKit
 
 /// A combined pet editor: change the name and/or photo in one place, save.
-/// Pure UI, callers are responsible for actually persisting each change
-/// (and for only presenting this to accounts permitted to, see
-/// `PetDetailView`'s `canManageDevice` gate, ADR-0023, this view has no
-/// permission check of its own).
+/// Persisting each change is still the caller's responsibility (via
+/// `onSaveName`/`onSavePhoto`), and so is only presenting this to accounts
+/// permitted to (see `PetDetailView`'s `canManageDevice` gate, ADR-0023,
+/// this view has no permission check of its own). `petRepository` is used
+/// for exactly one read, fetching the pet's current photo to show before
+/// anyone picks a new one, the same call `PetAnnotationView` already makes
+/// elsewhere for the same photo.
 struct EditPetView: View {
-    let currentName: String
+    let pet: Pet
+    let petRepository: PetRepository
     let onSaveName: (String) async throws -> Void
     let onSavePhoto: (Data) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
+    @State private var currentPhoto: UIImage?
     @State private var pickerItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var scale: CGFloat = 1
@@ -29,12 +35,20 @@ struct EditPetView: View {
     /// Traccar rejects uploads over 500KB; staying comfortably under that.
     private let maxUploadBytes = 480_000
 
-    init(currentName: String, onSaveName: @escaping (String) async throws -> Void, onSavePhoto: @escaping (Data) async throws -> Void) {
-        self.currentName = currentName
+    init(
+        pet: Pet,
+        petRepository: PetRepository,
+        onSaveName: @escaping (String) async throws -> Void,
+        onSavePhoto: @escaping (Data) async throws -> Void
+    ) {
+        self.pet = pet
+        self.petRepository = petRepository
         self.onSaveName = onSaveName
         self.onSavePhoto = onSavePhoto
-        _name = State(initialValue: currentName)
+        _name = State(initialValue: pet.name)
     }
+
+    private var currentName: String { pet.name }
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -49,6 +63,8 @@ struct EditPetView: View {
             VStack(spacing: 24) {
                 if let selectedImage {
                     cropView(for: selectedImage)
+                } else if let currentPhoto {
+                    currentPhotoView(currentPhoto)
                 } else {
                     photoPickerButton(label: "Choose a Photo", prominent: true)
                         .padding(.vertical, 24)
@@ -91,6 +107,24 @@ struct EditPetView: View {
             .onChange(of: pickerItem) { _, newValue in
                 Task { await loadPickedPhoto(newValue) }
             }
+            .task {
+                guard let data = try? await petRepository.fetchPhoto(for: pet) else { return }
+                currentPhoto = UIImage(data: data)
+            }
+        }
+    }
+
+    private func currentPhotoView(_ photo: UIImage) -> some View {
+        VStack(spacing: 16) {
+            Image(uiImage: photo)
+                .resizable()
+                .scaledToFill()
+                .frame(width: cropDiameter, height: cropDiameter)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(.white, lineWidth: 3))
+                .shadow(radius: 4)
+
+            photoPickerButton(label: "Choose a Different Photo", prominent: false)
         }
     }
 
@@ -235,5 +269,5 @@ struct EditPetView: View {
 }
 
 #Preview {
-    EditPetView(currentName: "Buddy", onSaveName: { _ in }, onSavePhoto: { _ in })
+    EditPetView(pet: .previewOnline, petRepository: PreviewPetRepository(), onSaveName: { _ in }, onSavePhoto: { _ in })
 }
