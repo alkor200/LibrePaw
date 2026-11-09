@@ -324,7 +324,7 @@ struct TraccarPetRepository: PetRepository {
     /// Mictrack reports every one to two minutes while moving), so a gap
     /// this long already means the device stopped reporting, whether
     /// because it went into standby or simply lost signal.
-    static let quietGapAfterHomeProximity: TimeInterval = 5 * 60
+    static let quietGapAfterHomeProximity: TimeInterval = 10 * 60
 
     /// Only re-fetches excursions that ended after the last cached run -
     /// completed excursions' distance/duration get folded into the persisted

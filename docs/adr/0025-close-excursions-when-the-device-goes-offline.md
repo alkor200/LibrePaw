@@ -73,11 +73,14 @@ position itself (nothing to find a gap against beyond it), so the result
 doesn't change. For the four-hour case, the near-home position before the
 quiet gap is now found and wins.
 
-Also lowered `quietGapAfterHomeProximity` from 20 to 5 minutes: confirmed
+Also lowered `quietGapAfterHomeProximity` from 20 to 10 minutes: confirmed
 live that a real Mictrack reports every one to two minutes while moving,
-so a 5-minute gap is already a reliable signal that the device stopped
+so a 10-minute gap is already a reliable signal that the device stopped
 reporting, and 20 minutes was needlessly slow to close an excursion that
-clearly already ended.
+clearly already ended. A lower value closes excursions faster but makes an
+ordinary pause near home (not an actual return) likelier to read as one,
+see "Why running this unconditionally is an accepted risk" below; 10
+minutes was chosen as a middle ground over the originally proposed 5.
 
 ## Decision
 
@@ -92,13 +95,13 @@ locally persisted state.
   home's own radius, ignores positions genuinely far from any home,
   doesn't trigger on a brief pass near home followed by continued
   movement, picks the earliest qualifying pause, matches against
-  whichever configured home is nearest, the 5-minute threshold boundary
+  whichever configured home is nearest, the 10-minute threshold boundary
   both just under and at/over, and handles an empty trail or no homes at
   all). Walks a device's position trail chronologically and returns the
   first position that both:
   - falls within `homeProximitySlackMeters` (100m) of a home, beyond its
     own configured radius, and
-  - is followed by at least `quietGapAfterHomeProximity` (5 minutes) of
+  - is followed by at least `quietGapAfterHomeProximity` (10 minutes) of
     silence, or is simply the last position in the trail.
 - `makeExcursion` calls this unconditionally, whether or not a real enter
   event already exists (see "Revision" above), against the trail it
@@ -111,7 +114,7 @@ locally persisted state.
 - `fetchExcursions` now also maps the home geofences it already fetches
   into `[HomeGeofence]` and passes them through to `makeExcursion`.
 
-The 100m slack and 5-minute quiet threshold are both flat constants
+The 100m slack and 10-minute quiet threshold are both flat constants
 (`TraccarPetRepository.homeProximitySlackMeters`/
 `quietGapAfterHomeProximity`): a flat margin rather than a multiple of
 the home's own radius, since homes are deliberately small (20-100m, see
@@ -128,6 +131,32 @@ the exact same near-home position followed by the exact same gap in the
 exact same place, and reaches the same answer every time. No local
 state has to remember the decision between calls, the trail itself is
 the record.
+
+### Why running this unconditionally is an accepted risk
+
+Running `firstHomecomingPause` even when a real `enter` event already
+exists (the Revision above) means it can, in principle, pick an earlier,
+spurious pause over the correct, later one: `firstHomecomingPause` picks
+the *earliest* qualifying pause in the trail, by design (see its test
+coverage), so a pet that lingers within the proximity slack of a home
+(this one or a different configured one) for a whole
+`quietGapAfterHomeProximity` mid-excursion, then moves on and only
+genuinely returns later, would have its excursion cut short at that
+earlier pause instead of the real, later enter event, silently losing
+the distance/duration walked afterward (`mergeLifetimeStats`' watermark
+advances past it, so it's never recovered on a later fetch either).
+
+Caught in code review, not fixed here: the repository owner reviewed
+this specific trade-off and chose to accept the risk rather than add a
+guard against it, given homes are few and small and such a mid-excursion
+lingering pause near one is expected to be rare in practice. Raising
+`quietGapAfterHomeProximity` from the originally proposed 5 minutes to
+10 (see above) was accepted as a partial mitigation, a shorter pause
+near home is less likely to be an actual stop either way, without
+reintroducing the original 20-minute delay this ADR exists to fix.
+Revisit with a guard (e.g. only override an existing `enter` event if no
+unrelated exit from the chosen home follows the pause before it) if this
+turns out to matter in practice.
 
 ## Consequences
 
