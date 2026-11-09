@@ -66,9 +66,10 @@ struct FirstHomecomingPauseTests {
     func ignoresABriefPassNearHome() {
         let trail = [
             position(id: 1, coordinate: homeCenter, minutesFromNow: -40),
-            // Only 2 minutes later, still moving, nowhere near the quiet
-            // gap threshold - a pass-by, not a stop.
-            position(id: 2, coordinate: farAway, minutesFromNow: -38)
+            // Half a minute later, an ordinary reporting interval, still
+            // moving, nowhere near the quiet gap threshold - a pass-by,
+            // not a stop.
+            position(id: 2, coordinate: farAway, minutesFromNow: -39.5)
         ]
 
         let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()])
@@ -99,11 +100,11 @@ struct FirstHomecomingPauseTests {
         #expect(result?.homeID == 2)
     }
 
-    @Test("A gap just under the default 10 minute threshold doesn't count as quiet yet")
+    @Test("A gap just under the default 5 minute threshold doesn't count as quiet yet")
     func gapJustUnderDefaultThresholdDoesNotQualify() {
         let trail = [
             position(id: 1, coordinate: homeCenter, minutesFromNow: -40),
-            position(id: 2, coordinate: farAway, minutesFromNow: -40 + 9.9)
+            position(id: 2, coordinate: farAway, minutesFromNow: -40 + 4.9)
         ]
 
         let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()])
@@ -111,11 +112,11 @@ struct FirstHomecomingPauseTests {
         #expect(result == nil)
     }
 
-    @Test("A gap at or just over the default 10 minute threshold counts as quiet")
+    @Test("A gap at or just over the default 5 minute threshold counts as quiet")
     func gapAtDefaultThresholdQualifies() {
         let trail = [
             position(id: 1, coordinate: homeCenter, minutesFromNow: -40),
-            position(id: 2, coordinate: farAway, minutesFromNow: -40 + 10.0)
+            position(id: 2, coordinate: farAway, minutesFromNow: -40 + 5.0)
         ]
 
         let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()])

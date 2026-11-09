@@ -327,8 +327,10 @@ struct TraccarPetRepository: PetRepository {
     /// LibrePaw manages), which normally only happens near home. An
     /// ordinary pause mid-walk (sniffing, resting) does not produce a gap
     /// at all, so any gap this long already means the device entered that
-    /// sleep mode, not just "stopped moving."
-    static let quietGapAfterHomeProximity: TimeInterval = 10 * 60
+    /// sleep mode, not just "stopped moving." 5 minutes is ten missed
+    /// 30-second reports, comfortable margin against a dropped fix or two
+    /// while still closing an excursion promptly once sleep mode fires.
+    static let quietGapAfterHomeProximity: TimeInterval = 5 * 60
 
     /// Only re-fetches excursions that ended after the last cached run -
     /// completed excursions' distance/duration get folded into the persisted

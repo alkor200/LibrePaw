@@ -96,13 +96,14 @@ early-closing risk described below is considerably rarer in practice
 than originally assessed, since it would require the device's own
 internal sleep trigger (not an ordinary pause) to fire somewhere that
 also happens to read as "near home" to `firstHomecomingPause`, without
-that actually being the pet's real, final return. Kept as a 10-minute
-threshold (not lowered further) regardless, since the 30-second figure
-only constrains how small a safe margin against jitter needs to be, it
-says nothing about how quickly a real sleep-mode entry should be trusted
-as "actually home," and there's no live-confirmed data point for that
-beyond "a few meters short of the boundary," so a conservative value was
-kept here instead of tightening further on an unconfirmed assumption.
+that actually being the pet's real, final return.
+
+Given that, the repository owner chose to lower `quietGapAfterHomeProximity`
+further, from 10 to 5 minutes, ten missed 30-second reports, a
+comfortable margin against a dropped fix or two while closing an
+excursion promptly once sleep mode actually fires, rather than keep the
+more conservative 10-minute value an earlier draft of this revision
+had settled on while the reporting cadence was still unconfirmed.
 
 ## Decision
 
@@ -117,13 +118,13 @@ locally persisted state.
   home's own radius, ignores positions genuinely far from any home,
   doesn't trigger on a brief pass near home followed by continued
   movement, picks the earliest qualifying pause, matches against
-  whichever configured home is nearest, the 10-minute threshold boundary
+  whichever configured home is nearest, the 5-minute threshold boundary
   both just under and at/over, and handles an empty trail or no homes at
   all). Walks a device's position trail chronologically and returns the
   first position that both:
   - falls within `homeProximitySlackMeters` (100m) of a home, beyond its
     own configured radius, and
-  - is followed by at least `quietGapAfterHomeProximity` (10 minutes) of
+  - is followed by at least `quietGapAfterHomeProximity` (5 minutes) of
     silence, or is simply the last position in the trail.
 - `makeExcursion` calls this unconditionally, whether or not a real enter
   event already exists (see "Revision" above), against the trail it
@@ -138,7 +139,7 @@ locally persisted state.
 - `fetchExcursions` now also maps the home geofences it already fetches
   into `[HomeGeofence]` and passes them through to `makeExcursion`.
 
-The 100m slack and 10-minute quiet threshold are both flat constants
+The 100m slack and 5-minute quiet threshold are both flat constants
 (`TraccarPetRepository.homeProximitySlackMeters`/
 `quietGapAfterHomeProximity`): a flat margin rather than a multiple of
 the home's own radius, since homes are deliberately small (20-100m, see
