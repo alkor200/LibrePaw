@@ -17,9 +17,8 @@ its own backend, and is not affiliated with the Traccar project.
 - **Find Pet**: an AirTag-style compass arrow + distance pointing you toward
   a pet.
 - Pet avatars on the map: a photo if you set one (see
-  [Setting a pet photo](#setting-a-pet-photo)), otherwise a paw icon.
-- Rename a pet right from its detail screen (tap its name), for accounts
-  with permission to edit the underlying device (see ADR-0023).
+  [Setting a pet's name and photo](#setting-a-pets-name-and-photo)),
+  otherwise a paw icon.
 - **Excursions**: set one or more of a pet's home locations (current
   location + a radius, right from the app) and see a list of trips away
   from home and back, with distance and duration. A trip can start at one
@@ -67,18 +66,19 @@ sign in with your Traccar server's address and your account's email/password.
 Whenever you add, remove, or move source files, or change `project.yml`,
 re-run `xcodegen generate` before building.
 
-### Setting a pet photo
+### Setting a pet's name and photo
 
-Tap a pet's avatar on its detail screen to pick a photo from your library
-and position it inside a circular crop, right from LibrePaw. This uploads
-through Traccar's own device image endpoint (the `deviceImage` attribute),
-the same thing editing the device in Traccar's web UI → **Edit Device** →
+Tap **Edit `<Pet>`** on its detail screen to change its name and/or photo
+together, right from LibrePaw: pick a photo from your library and position
+it inside a circular crop, edit the name, save. The photo uploads through
+Traccar's own device image endpoint (the `deviceImage` attribute), the
+same thing editing the device in Traccar's web UI → **Edit Device** →
 upload an image would do, so either path works and both stay in sync.
 Devices without a photo show a paw icon instead.
 
-The pet's **name** can be changed the same way: tap it on the detail
-screen. Both are really just editing the underlying Traccar device, so
-the same permission gates both (see
+Both are really just editing the underlying Traccar device, so the same
+permission gates the whole screen, it's hidden for an account that isn't
+allowed to (see
 [ADR-0023](docs/adr/0023-follow-traccars-own-permission-model.md)).
 
 ### Setting a pet's home locations

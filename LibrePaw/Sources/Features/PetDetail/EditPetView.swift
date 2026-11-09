@@ -2,15 +2,18 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
-/// A minimal in-app photo editor: pick a photo from the library, pinch/drag
-/// to position it inside a circular crop, save. Renders exactly what's
-/// visible inside the circle to a fixed-size JPEG and hands it to `onSave`,
-/// callers are responsible for actually uploading it.
-struct PhotoEditorView: View {
-    let petName: String
-    let onSave: (Data) async throws -> Void
+/// A combined pet editor: change the name and/or photo in one place, save.
+/// Pure UI, callers are responsible for actually persisting each change
+/// (and for only presenting this to accounts permitted to, see
+/// `PetDetailView`'s `canManageDevice` gate, ADR-0023, this view has no
+/// permission check of its own).
+struct EditPetView: View {
+    let currentName: String
+    let onSaveName: (String) async throws -> Void
+    let onSavePhoto: (Data) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var name: String
     @State private var pickerItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var scale: CGFloat = 1
@@ -19,21 +22,41 @@ struct PhotoEditorView: View {
     @State private var lastOffset: CGSize = .zero
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @FocusState private var isNameFieldFocused: Bool
 
-    private let cropDiameter: CGFloat = 280
+    private let cropDiameter: CGFloat = 220
     private let outputDiameter: CGFloat = 512
     /// Traccar rejects uploads over 500KB; staying comfortably under that.
     private let maxUploadBytes = 480_000
 
+    init(currentName: String, onSaveName: @escaping (String) async throws -> Void, onSavePhoto: @escaping (Data) async throws -> Void) {
+        self.currentName = currentName
+        self.onSaveName = onSaveName
+        self.onSavePhoto = onSavePhoto
+        _name = State(initialValue: currentName)
+    }
+
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasChanges: Bool {
+        trimmedName != currentName || selectedImage != nil
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: 24) {
                 if let selectedImage {
                     cropView(for: selectedImage)
                 } else {
                     photoPickerButton(label: "Choose a Photo", prominent: true)
-                        .padding(.vertical, 40)
+                        .padding(.vertical, 24)
                 }
+
+                TextField("Name", text: $name)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isNameFieldFocused)
 
                 if let errorMessage {
                     Label(errorMessage, systemImage: "xmark.octagon.fill")
@@ -46,7 +69,7 @@ struct PhotoEditorView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
             .background(Color.appBackground)
-            .navigationTitle("\(petName)'s Photo")
+            .navigationTitle("Edit \(currentName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -62,7 +85,7 @@ struct PhotoEditorView: View {
                             Text("Save")
                         }
                     }
-                    .disabled(selectedImage == nil || isSaving)
+                    .disabled(trimmedName.isEmpty || !hasChanges || isSaving)
                 }
             }
             .onChange(of: pickerItem) { _, newValue in
@@ -124,10 +147,6 @@ struct PhotoEditorView: View {
                 )
 
             photoPickerButton(label: "Choose a Different Photo", prominent: false)
-
-            Text("Pinch to zoom, drag to reposition")
-                .font(.caption)
-                .foregroundStyle(.appSecondaryText)
         }
     }
 
@@ -155,19 +174,30 @@ struct PhotoEditorView: View {
         lastOffset = .zero
     }
 
+    /// Saves only what actually changed, name and photo are independent
+    /// writes against two different Traccar endpoints (see
+    /// `TraccarClient.updateDeviceName`/`updateDeviceImage`), no reason to
+    /// resend an unchanged name, or upload nothing, every time either one
+    /// is edited. If one save succeeds and the other then throws, the sheet
+    /// stays open with the error shown rather than dismissing, re-tapping
+    /// Save simply retries the one that failed, resending an already-saved
+    /// name is a harmless no-op.
     private func save() async {
-        guard let selectedImage else { return }
         isSaving = true
         errorMessage = nil
         defer { isSaving = false }
 
-        guard let jpegData = renderCircularCrop(image: selectedImage) else {
-            errorMessage = localized("Couldn't process that photo, try a different one.")
-            return
-        }
-
         do {
-            try await onSave(jpegData)
+            if trimmedName != currentName {
+                try await onSaveName(trimmedName)
+            }
+            if let selectedImage {
+                guard let jpegData = renderCircularCrop(image: selectedImage) else {
+                    errorMessage = localized("Couldn't process that photo, try a different one.")
+                    return
+                }
+                try await onSavePhoto(jpegData)
+            }
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -205,5 +235,5 @@ struct PhotoEditorView: View {
 }
 
 #Preview {
-    PhotoEditorView(petName: "Buddy", onSave: { _ in })
+    EditPetView(currentName: "Buddy", onSaveName: { _ in }, onSavePhoto: { _ in })
 }

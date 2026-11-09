@@ -15,8 +15,8 @@ final class PetDetailViewModel {
     private(set) var trailErrorMessage: String?
     private(set) var lifetimeStats: LifetimeStats?
     private(set) var todaysExcursions: [Excursion] = []
-    /// Gates the "Share `<Pet>`" action, the avatar's edit-photo/rename
-    /// affordances, and the Trail/Excursions rows, each straight off what
+    /// Gates the "Share `<Pet>`" action, the "Edit `<Pet>`" row (name and
+    /// photo), and the Trail/Excursions rows, each straight off what
     /// Traccar's own permission flags allow the signed-in account to do (see
     /// ADR-0018, ADR-0023). `nil` until ``loadPermissions()`` resolves, every
     /// gated affordance stays hidden until then.

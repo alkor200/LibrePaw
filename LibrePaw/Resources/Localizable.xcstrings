@@ -42,17 +42,6 @@
         }
       }
     },
-    "%@'s Photo": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Foto von %@"
-          }
-        }
-      }
-    },
     "%@'s tracker hasn't reported a position yet.": {
       "extractionState": "manual",
       "localizations": {
@@ -273,17 +262,6 @@
         }
       }
     },
-    "Change %@'s photo": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Foto von %@ ändern"
-          }
-        }
-      }
-    },
     "Choose a Different Photo": {
       "extractionState": "manual",
       "localizations": {
@@ -456,6 +434,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dauer"
+          }
+        }
+      }
+    },
+    "Edit %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bearbeiten"
           }
         }
       }
@@ -944,17 +933,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zum Zoomen kneifen, zum Verschieben ziehen"
-          }
-        }
-      }
-    },
-    "Rename %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ umbenennen"
           }
         }
       }
