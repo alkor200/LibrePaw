@@ -71,8 +71,13 @@ struct EditPetView: View {
                 }
 
                 TextField("Name", text: $name)
-                    .textFieldStyle(.roundedBorder)
                     .focused($isNameFieldFocused)
+                    .padding(12)
+                    .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.appBorder, lineWidth: 1)
+                    )
 
                 if let errorMessage {
                     Label(errorMessage, systemImage: "xmark.octagon.fill")
