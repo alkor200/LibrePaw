@@ -12,6 +12,19 @@ import Foundation
 /// look like it changed. See ADR-0026.
 struct CachedExcursions: Codable, Sendable, Equatable {
     var excursions: [Excursion]
+    /// The earliest point this cache has *contiguous* coverage from, up to
+    /// `cachedThroughEndTime`. Needed because the very first call to ever
+    /// populate this cache might ask for a narrow, recent range (e.g.
+    /// `PetDetailViewModel.loadTodaysExcursions()`'s `from: startOfDay`),
+    /// not the full history. Without tracking this separately, a later,
+    /// wider request (e.g. `ExcursionsView`'s own window) would see a
+    /// non-nil `cachedThroughEndTime` and wrongly assume everything before
+    /// it was already cached, silently hiding every excursion older than
+    /// that first narrow query forever (confirmed live: this exact bug,
+    /// before `coveredFrom` existed). A request whose own `from` is
+    /// earlier than this must always be fetched live in full, regardless
+    /// of `cachedThroughEndTime`. `nil` means nothing has been cached yet.
+    var coveredFrom: Date?
     /// End time of the most recent *closed* excursion folded in here.
     /// `nil` means nothing has been cached yet. An ongoing excursion
     /// (`endTime == nil`) never advances this and is never itself stored,

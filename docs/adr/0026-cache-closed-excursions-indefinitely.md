@@ -45,28 +45,61 @@ event that `shouldPreferHomecoming` never overrides needs no homes data
 at all to compute its `endTime`/distance, those were already fully
 home-independent.
 
+### Revision: a narrow first query can poison the cache for every wider one after it
+
+Confirmed live, same day this shipped: a real pet's Excursions screen
+started showing only today's excursions, everything older had silently
+disappeared. Root cause was a gap the original version of this decision
+never accounted for: `PetDetailViewModel.loadTodaysExcursions()` queries
+`fetchExcursions(from: startOfDay, to: .now)`, a narrow, recent range,
+and `PetDetailView` fires it (among other `.task`s) on every load. If
+that happens to be the *first* call that ever populates a pet's
+excursions cache, `cachedThroughEndTime` ends up set from only that
+narrow range, e.g. "today," even though the cache has never actually
+seen anything before today. The original `fetchExcursions` trusted that
+watermark unconditionally: a later, wider call (`ExcursionsView`'s own
+7-day window) saw a non-nil `cachedThroughEndTime` and narrowed its live
+fetch to `max(from, watermark)`, silently treating "today" as "already
+fully cached back to the beginning of time," meaning every excursion
+genuinely older than today never got fetched, cached, or shown again.
+
+Fixed by tracking the cache's own contiguous coverage separately from
+the watermark: `CachedExcursions.coveredFrom`, the earliest point this
+cache is actually known-complete from. `TraccarPetRepository.liveFetchStart(cached:from:)`
+(pulled out, unit tested directly) only narrows to the watermark when
+`coveredFrom <= from`, otherwise it fetches the entire requested range
+live, regardless of what the watermark claims, closing the gap and
+extending `coveredFrom` back to it. Self-healing for anyone who already
+hit this: an old cached blob has no `coveredFrom` key at all, decodes to
+`nil` (missing key on an `Optional` property), which `liveFetchStart`
+treats the same as no cache at all, the very next call ignores the
+poisoned watermark and rebuilds correctly, no manual cache reset needed.
+
 ## Decision
 
 - `CachedExcursions` (new, `LibrePawKit/Repositories/ExcursionCacheStore.swift`):
-  `{ excursions: [Excursion], cachedThroughEndTime: Date? }`, the same
-  watermark shape as `CachedLifetimeStats`. Only *closed* excursions
-  (`endTime != nil`) ever go in, an ongoing one is never persisted, its
-  distance/end are still growing.
+  `{ excursions: [Excursion], coveredFrom: Date?, cachedThroughEndTime: Date? }`.
+  `cachedThroughEndTime` is the same watermark shape as
+  `CachedLifetimeStats`; `coveredFrom` is this cache's own addition (see
+  Revision above), the earliest point coverage is contiguous from. Only
+  *closed* excursions (`endTime != nil`) ever go into `excursions`, an
+  ongoing one is never persisted, its distance/end are still growing.
 - `ExcursionCacheStore` protocol + `UserDefaultsExcursionCacheStore`,
   keyed `org.librepaw.excursionsCache.<serverHost>.<petID>`, the same
   per-pet-per-server keying `UserDefaultsLifetimeStatsStore` already uses
   and for the same reason (device ids are only unique within one server).
-- `fetchExcursions(forPetID:from:to:)`: loads the cache first, only
-  live-fetches events/positions for whatever portion of `[from, to]`
-  isn't already covered by `cachedThroughEndTime`, exactly the same
-  watermark-narrowing `lifetimeExcursionStats` already did one layer up.
-  The result merges cached and freshly-computed excursions (deduplicated
-  by id, an excursion's own exit event id, stable and unique within a
-  server) and re-filters to the originally requested window before
-  returning, since the cache itself holds everything ever seen, not just
-  this call's range.
-- `TraccarPetRepository.mergeExcursions(cached:freshExcursions:)`, a pure
-  static function pulled out for direct unit testing, the same pattern as
+- `fetchExcursions(forPetID:from:to:)`: loads the cache first, calls
+  `TraccarPetRepository.liveFetchStart(cached:from:)` to decide where to
+  start the live fetch from (`from` itself unless `coveredFrom` already
+  reaches back to or before it, see Revision above), fetches
+  events/positions only for `[liveFrom, to]`. The result merges cached
+  and freshly-computed excursions (deduplicated by id, an excursion's own
+  exit event id, stable and unique within a server) and re-filters to the
+  originally requested window before returning, since the cache itself
+  holds everything ever seen, not just this call's range.
+- `TraccarPetRepository.mergeExcursions(cached:freshExcursions:liveFrom:)`
+  and `liveFetchStart(cached:from:)`, both pure static functions pulled
+  out for direct unit testing, the same pattern as
   `mergeLifetimeStats`/`pairHomeExitsWithEnters`/`firstHomecomingPause`.
 - `PetRepository.resetExcursionsCache(forPetID:)` discards a pet's cached
   excursions entirely, the recovery path for a bad cached one (e.g. one a

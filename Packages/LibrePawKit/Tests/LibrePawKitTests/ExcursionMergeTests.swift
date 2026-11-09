@@ -18,48 +18,55 @@ struct ExcursionMergeTests {
     @Test("First-ever run folds every closed excursion into the cache, not the ongoing one")
     func firstRunCachesOnlyClosedExcursions() {
         let now = Date.now
+        let liveFrom = now.addingTimeInterval(-20_000)
         let fresh = [
             excursion(id: 2, startTime: now.addingTimeInterval(-1_000), endTime: nil), // still ongoing
             excursion(id: 1, startTime: now.addingTimeInterval(-10_000), endTime: now.addingTimeInterval(-9_000))
         ]
 
-        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: nil, freshExcursions: fresh)
+        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: nil, freshExcursions: fresh, liveFrom: liveFrom)
 
         #expect(Set(all.map(\.id)) == [1, 2])
         #expect(newCache.excursions.map(\.id) == [1])
         #expect(newCache.cachedThroughEndTime == fresh[1].endTime)
+        #expect(newCache.coveredFrom == liveFrom)
     }
 
     @Test("A later run adds a newly-closed excursion alongside what was already cached")
     func laterRunAddsNewlyClosedExcursion() {
         let now = Date.now
+        let coveredFrom = now.addingTimeInterval(-20_000)
         let watermark = now.addingTimeInterval(-9_000)
         let cached = CachedExcursions(
             excursions: [excursion(id: 1, startTime: now.addingTimeInterval(-10_000), endTime: watermark)],
+            coveredFrom: coveredFrom,
             cachedThroughEndTime: watermark
         )
         let fresh = [excursion(id: 2, startTime: now.addingTimeInterval(-500), endTime: now.addingTimeInterval(-100))]
 
-        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: fresh)
+        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: fresh, liveFrom: watermark)
 
         #expect(Set(all.map(\.id)) == [1, 2])
         #expect(Set(newCache.excursions.map(\.id)) == [1, 2])
         #expect(newCache.cachedThroughEndTime == fresh[0].endTime)
+        #expect(newCache.coveredFrom == coveredFrom) // unchanged, still the earliest known point
     }
 
     @Test("Re-fetching an already-cached excursion overwrites rather than duplicating it")
     func refetchedExcursionDoesNotDuplicate() {
         let now = Date.now
         let endTime = now.addingTimeInterval(-9_000)
+        let coveredFrom = now.addingTimeInterval(-20_000)
         let cached = CachedExcursions(
             excursions: [excursion(id: 1, startTime: now.addingTimeInterval(-10_000), endTime: endTime, distanceMeters: 100)],
+            coveredFrom: coveredFrom,
             cachedThroughEndTime: endTime
         )
         // Same excursion, re-fetched because its exit event still fell
         // inside the query window, with a (hypothetically) corrected value.
         let fresh = [excursion(id: 1, startTime: now.addingTimeInterval(-10_000), endTime: endTime, distanceMeters: 150)]
 
-        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: fresh)
+        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: fresh, liveFrom: endTime)
 
         #expect(all.count == 1)
         #expect(all.first?.distanceMeters == 150)
@@ -70,10 +77,11 @@ struct ExcursionMergeTests {
     @Test("An ongoing excursion is returned but never cached, and never advances the watermark")
     func ongoingExcursionIsNeverCached() {
         let now = Date.now
-        let cached = CachedExcursions(excursions: [], cachedThroughEndTime: nil)
-        let fresh = [excursion(id: 1, startTime: now.addingTimeInterval(-600), endTime: nil)]
+        let liveFrom = now.addingTimeInterval(-600)
+        let cached = CachedExcursions(excursions: [], coveredFrom: nil, cachedThroughEndTime: nil)
+        let fresh = [excursion(id: 1, startTime: liveFrom, endTime: nil)]
 
-        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: fresh)
+        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: fresh, liveFrom: liveFrom)
 
         #expect(all.map(\.id) == [1])
         #expect(newCache.excursions.isEmpty)
@@ -83,15 +91,67 @@ struct ExcursionMergeTests {
     @Test("No fresh excursions leaves the cache and its watermark untouched")
     func noFreshExcursionsLeavesCacheUnchanged() {
         let now = Date.now
+        let coveredFrom = now.addingTimeInterval(-20_000)
         let watermark = now.addingTimeInterval(-9_000)
         let cached = CachedExcursions(
             excursions: [excursion(id: 1, startTime: now.addingTimeInterval(-10_000), endTime: watermark)],
+            coveredFrom: coveredFrom,
             cachedThroughEndTime: watermark
         )
 
-        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: [])
+        // liveFetchStart would return `to` itself here (nothing left to
+        // fetch), mergeExcursions doesn't need to know that, just that
+        // liveFrom is already >= the cache's own prior coverage.
+        let (all, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: [], liveFrom: watermark)
 
         #expect(all.map(\.id) == [1])
         #expect(newCache == cached)
+    }
+}
+
+@Suite("TraccarPetRepository.liveFetchStart")
+struct LiveFetchStartTests {
+    @Test("No cache at all means fetch the whole requested range")
+    func noCacheFetchesWholeRange() {
+        let from = Date.now.addingTimeInterval(-100_000)
+        #expect(TraccarPetRepository.liveFetchStart(cached: nil, from: from) == from)
+    }
+
+    @Test("Cache coverage reaching back to (or before) `from` narrows to the watermark")
+    func coverageReachingBackNarrowsToWatermark() {
+        let now = Date.now
+        let from = now.addingTimeInterval(-10_000)
+        let watermark = now.addingTimeInterval(-5_000)
+        let cached = CachedExcursions(excursions: [], coveredFrom: now.addingTimeInterval(-20_000), cachedThroughEndTime: watermark)
+
+        #expect(TraccarPetRepository.liveFetchStart(cached: cached, from: from) == watermark)
+    }
+
+    @Test(
+        "A gap between the true start of history and the cache's own coverage always forces a full re-fetch, confirmed live regression"
+    )
+    func gapBeforeCoverageForcesFullRefetch() {
+        let now = Date.now
+        // Reproduces the exact bug: `loadTodaysExcursions()` is the first
+        // call to ever populate the cache, with a narrow `from: startOfDay`
+        // range, long after some much older excursion already happened.
+        let startOfToday = Calendar.current.startOfDay(for: now)
+        let cached = CachedExcursions(excursions: [], coveredFrom: startOfToday, cachedThroughEndTime: startOfToday)
+
+        // A later, much wider request (e.g. ExcursionsView's own window)
+        // must not trust the watermark here, there's a real gap between
+        // `sevenDaysAgo` and `coveredFrom` this cache never actually saw.
+        let sevenDaysAgo = now.addingTimeInterval(-7 * 24 * 60 * 60)
+        #expect(TraccarPetRepository.liveFetchStart(cached: cached, from: sevenDaysAgo) == sevenDaysAgo)
+    }
+
+    @Test("Requesting exactly the cache's own coverage start narrows to the watermark, not a gap")
+    func requestingExactCoverageStartNarrows() {
+        let now = Date.now
+        let coveredFrom = now.addingTimeInterval(-20_000)
+        let watermark = now.addingTimeInterval(-5_000)
+        let cached = CachedExcursions(excursions: [], coveredFrom: coveredFrom, cachedThroughEndTime: watermark)
+
+        #expect(TraccarPetRepository.liveFetchStart(cached: cached, from: coveredFrom) == watermark)
     }
 }

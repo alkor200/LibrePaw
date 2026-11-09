@@ -271,7 +271,7 @@ struct TraccarPetRepository: PetRepository {
 
             let serverHost = client.serverURL.host ?? ""
             let cached = excursionCacheStore.load(forPetID: petID, serverHost: serverHost)
-            let liveFrom = cached?.cachedThroughEndTime.map { max(from, $0) } ?? from
+            let liveFrom = Self.liveFetchStart(cached: cached, from: from)
 
             var freshExcursions: [Excursion] = []
             if liveFrom < to {
@@ -293,7 +293,7 @@ struct TraccarPetRepository: PetRepository {
                 }
             }
 
-            let (all, newCache) = Self.mergeExcursions(cached: cached, freshExcursions: freshExcursions)
+            let (all, newCache) = Self.mergeExcursions(cached: cached, freshExcursions: freshExcursions, liveFrom: liveFrom)
             excursionCacheStore.save(newCache, forPetID: petID, serverHost: serverHost)
 
             return all
@@ -322,9 +322,26 @@ struct TraccarPetRepository: PetRepository {
     /// returned cache and advance `cachedThroughEndTime`, an ongoing one is
     /// included in `all` (what the caller actually sees) but never
     /// persisted.
+    /// Where to start a live fetch from, given what's already cached. Only
+    /// narrows to the watermark when the cache's own coverage already
+    /// reaches back to (or before) `from`, never when there's a gap
+    /// between the true start of history and wherever an earlier,
+    /// narrower call first populated this cache (e.g.
+    /// `loadTodaysExcursions()`'s `from: startOfDay`, confirmed live: this
+    /// exact gap once caused a wider request, like `ExcursionsView`'s own
+    /// window, to wrongly trust the watermark and silently show only
+    /// today's excursions, see `CachedExcursions.coveredFrom`).
+    static func liveFetchStart(cached: CachedExcursions?, from: Date) -> Date {
+        if let coveredFrom = cached?.coveredFrom, coveredFrom <= from, let watermark = cached?.cachedThroughEndTime {
+            return max(from, watermark)
+        }
+        return from
+    }
+
     static func mergeExcursions(
         cached: CachedExcursions?,
-        freshExcursions: [Excursion]
+        freshExcursions: [Excursion],
+        liveFrom: Date
     ) -> (all: [Excursion], newCache: CachedExcursions) {
         var byID = Dictionary(uniqueKeysWithValues: (cached?.excursions ?? []).map { ($0.id, $0) })
         var watermark = cached?.cachedThroughEndTime
@@ -336,8 +353,12 @@ struct TraccarPetRepository: PetRepository {
             }
         }
 
+        // Whichever is earlier: the cache's own prior coverage start, or
+        // this call's `liveFrom`, the point it just (re-)fetched live from.
+        let coveredFrom = [cached?.coveredFrom, liveFrom].compactMap { $0 }.min()
+
         let closed = byID.values.filter { $0.endTime != nil }
-        let newCache = CachedExcursions(excursions: closed, cachedThroughEndTime: watermark)
+        let newCache = CachedExcursions(excursions: closed, coveredFrom: coveredFrom, cachedThroughEndTime: watermark)
         return (Array(byID.values), newCache)
     }
 
