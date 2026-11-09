@@ -45,15 +45,28 @@ final class HomesViewModel {
     /// succeeded.
     func load() async {
         loadTask?.cancel()
-        let task = Task { await performLoad() }
+        let task = Task { await performLoad(showsLoadingIndicator: true) }
         loadTask = task
         await task.value
     }
 
-    private func performLoad() async {
-        isLoading = true
+    /// Reloads without touching `isLoading`, for `.refreshable`: toggling
+    /// `isLoading` there would swap `HomesView`'s `List` out for a
+    /// full-screen `ProgressView` while the pull-to-refresh gesture is still
+    /// in progress, tearing down the list (and the system refresh control's
+    /// own task with it) and surfacing a spurious cancellation error on the
+    /// very first pull. Same fix as `ExcursionsViewModel.refresh()`.
+    func refresh() async {
+        loadTask?.cancel()
+        let task = Task { await performLoad(showsLoadingIndicator: false) }
+        loadTask = task
+        await task.value
+    }
+
+    private func performLoad(showsLoadingIndicator: Bool) async {
+        if showsLoadingIndicator { isLoading = true }
         errorMessage = nil
-        defer { isLoading = false }
+        defer { if showsLoadingIndicator { isLoading = false } }
 
         do {
             homes = try await petRepository.homeGeofences(forPetID: pet.id)

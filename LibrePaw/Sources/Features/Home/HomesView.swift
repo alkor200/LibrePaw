@@ -53,7 +53,7 @@ struct HomesView: View {
             // owner pops back, the same way it does after returning from
             // `HomeGeofence`'s navigationDestination above.
             .onAppear { Task { await viewModel.load() } }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .task { await viewModel.loadPermissionContext() }
     }
 

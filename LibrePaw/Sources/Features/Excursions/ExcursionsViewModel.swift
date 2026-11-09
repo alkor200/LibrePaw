@@ -25,9 +25,24 @@ final class ExcursionsViewModel {
 
     func load() async {
         isLoading = true
-        errorMessage = nil
         defer { isLoading = false }
+        await performLoad()
+    }
 
+    /// Reloads without touching `isLoading`, for `.refreshable`: toggling
+    /// `isLoading` there would swap `ExcursionsView`'s `List` out for a
+    /// full-screen `ProgressView` while the pull-to-refresh gesture is still
+    /// in progress, tearing down the list (and the system refresh control's
+    /// own task with it) and surfacing a spurious cancellation error on the
+    /// very first pull (confirmed live; a subsequent "Try Again" tap always
+    /// succeeded since it isn't tied to the list's lifecycle). Same fix as
+    /// `PetListViewModel.refresh()`.
+    func refresh() async {
+        await performLoad()
+    }
+
+    private func performLoad() async {
+        errorMessage = nil
         do {
             let from = Calendar.current.date(byAdding: .day, value: -lookbackDays, to: .now) ?? .now
             async let fetchedExcursions = petRepository.fetchExcursions(forPetID: pet.id, from: from, to: .now)
@@ -35,6 +50,7 @@ final class ExcursionsViewModel {
             excursions = try await fetchedExcursions
             homeNamesByID = Dictionary(uniqueKeysWithValues: try await homes.map { ($0.id, $0.name) })
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
         }
     }

@@ -23,7 +23,7 @@ struct ExcursionsView: View {
                 ))
             }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
     }
 
     @ViewBuilder
