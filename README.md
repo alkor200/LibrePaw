@@ -221,4 +221,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-LibrePaw is available under the [MIT License](LICENSE).
+LibrePaw is available under the [GNU General Public License v3.0](LICENSE): you're free to use, modify, and distribute it, including forks, but any distributed derivative work must stay open source under the same license.
