@@ -1,10 +1,13 @@
 import SwiftUI
-import MapKit
+import MapLibre
+import MapLibreSwiftDSL
+import MapLibreSwiftUI
 import LibrePawKit
 
 struct ExcursionDetailView: View {
     @State private var viewModel: ExcursionDetailViewModel
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var camera: MapViewCamera = .default()
+    @Environment(\.colorScheme) private var colorScheme
 
     init(viewModel: ExcursionDetailViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -99,10 +102,16 @@ struct ExcursionDetailView: View {
                 .font(.subheadline.bold())
                 .foregroundStyle(.appSecondaryText)
 
-            Map(position: $cameraPosition) {
+            MapView(styleURL: OpenFreeMapStyle.url(for: colorScheme), camera: $camera) {
                 if viewModel.trail.count > 1 {
-                    MapPolyline(coordinates: viewModel.trail.map(\.coordinate.clLocationCoordinate2D))
-                        .stroke(.tint, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                    let routeSource = ShapeSource(identifier: "excursion-route") {
+                        MLNPolylineFeature(coordinates: viewModel.trail.map(\.coordinate.clLocationCoordinate2D))
+                    }
+                    LineStyleLayer(identifier: "excursion-route", source: routeSource)
+                        .lineCap(.round)
+                        .lineJoin(.round)
+                        .lineColor(UIColor(Color.appPrimaryDark))
+                        .lineWidth(4)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -131,9 +140,20 @@ struct ExcursionDetailView: View {
 
     private func fitCameraToTrail() {
         let coordinates = viewModel.trail.map(\.coordinate.clLocationCoordinate2D)
-        guard let region = MKCoordinateRegion.fitting(coordinates) else { return }
+        guard !coordinates.isEmpty else { return }
+        // A single-point `.showcase()` is a zero-size bounding box, which
+        // stalled MapLibre's render loop entirely in `PetMapView` (see its
+        // `fitCameraToAllPets()`), so the same single-point case is
+        // centered on directly here too.
+        guard coordinates.count > 1 else {
+            withAnimation {
+                camera = .center(coordinates[0], zoom: 16)
+            }
+            return
+        }
+        let shapeCollection = MLNShapeCollection(shapes: [MLNPointCollectionFeature(coordinates: coordinates, count: UInt(coordinates.count))])
         withAnimation {
-            cameraPosition = .region(region)
+            camera = .showcase(shapeCollection: shapeCollection, edgePadding: UIEdgeInsets(top: 24, left: 24, bottom: 24, right: 24))
         }
     }
 

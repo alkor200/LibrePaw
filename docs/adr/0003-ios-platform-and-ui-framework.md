@@ -21,7 +21,8 @@ greenfield iOS app with no legacy constraints.
   No completion-handler APIs, no Combine for networking.
 - **Maps: the SwiftUI `Map` view from MapKit** (iOS 17's `Map(initialPosition:)`
   / `MapContentBuilder` API), not the older `MKMapView` UIViewRepresentable
-  wrapper.
+  wrapper. Superseded by [ADR-0028](0028-maplibre-and-openfreemap-instead-of-mapkit.md):
+  maps are now MapLibre Native rendering OpenFreeMap tiles.
 
 As a consequence, we also adopt Swift 6 language mode / strict concurrency
 checking in all targets and packages.

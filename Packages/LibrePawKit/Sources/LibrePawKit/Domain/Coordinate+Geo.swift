@@ -33,6 +33,43 @@ extension Coordinate {
 
         return (bearing + 360).truncatingRemainder(dividingBy: 360)
     }
+
+    /// The point `distanceMeters` away from this one, along `bearingDegrees`
+    /// (from true north). The inverse of `distanceMeters(to:)`/
+    /// `initialBearingDegrees(to:)`: given a center, a distance, and a
+    /// bearing, finds the destination, rather than the distance/bearing
+    /// between two known points.
+    ///
+    /// Added to approximate a geofence's circle as a polygon of points
+    /// around its center: MapLibre's circle-radius style property is in
+    /// screen pixels, not real-world meters, so it can't draw a circle that
+    /// stays the correct ground size across zoom levels the way MapKit's
+    /// `MapCircle(center:radius:)` did (see ADR-0028).
+    public func destination(distanceMeters: Double, bearingDegrees: Double) -> Coordinate {
+        let angularDistance = distanceMeters / Self.earthRadiusMeters
+        let bearing = bearingDegrees.radians
+        let lat1 = latitude.radians
+        let lon1 = longitude.radians
+
+        let lat2 = asin(sin(lat1) * cos(angularDistance) + cos(lat1) * sin(angularDistance) * cos(bearing))
+        let lon2 = lon1 + atan2(
+            sin(bearing) * sin(angularDistance) * cos(lat1),
+            cos(angularDistance) - sin(lat1) * sin(lat2)
+        )
+
+        return Coordinate(latitude: lat2.degrees, longitude: lon2.degrees)
+    }
+
+    /// A closed ring of `segments` points approximating a circle of
+    /// `radiusMeters` around this coordinate, suitable for rendering as a
+    /// polygon (first and last point identical, as GeoJSON/MapLibre
+    /// polygons require).
+    public func circlePolygon(radiusMeters: Double, segments: Int = 64) -> [Coordinate] {
+        let points = (0..<segments).map { index in
+            destination(distanceMeters: radiusMeters, bearingDegrees: Double(index) / Double(segments) * 360)
+        }
+        return points + [points[0]]
+    }
 }
 
 private extension Double {

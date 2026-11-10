@@ -60,4 +60,42 @@ struct CoordinateGeoTests {
         #expect(bearing >= 0 && bearing < 360)
         #expect(bearing > 180 && bearing < 270)
     }
+
+    @Test("Destination 0 meters away is (within floating-point error of) the origin")
+    func destinationZeroDistanceIsOrigin() {
+        let origin = Coordinate(latitude: 52.5200, longitude: 13.4050)
+        let destination = origin.destination(distanceMeters: 0, bearingDegrees: 90)
+
+        #expect(abs(destination.latitude - origin.latitude) < 0.000_001)
+        #expect(abs(destination.longitude - origin.longitude) < 0.000_001)
+    }
+
+    @Test("Destination is the known round-trip distance and bearing away")
+    func destinationRoundTripsWithDistanceAndBearing() {
+        let origin = Coordinate(latitude: 52.5200, longitude: 13.4050)
+        let destination = origin.destination(distanceMeters: 1_000, bearingDegrees: 45)
+
+        #expect(abs(origin.distanceMeters(to: destination) - 1_000) < 1)
+        #expect(abs(origin.initialBearingDegrees(to: destination) - 45) < 0.1)
+    }
+
+    @Test("A circle polygon has the requested number of segments, plus a closing point identical to the first")
+    func circlePolygonClosesTheRing() {
+        let center = Coordinate(latitude: 52.5200, longitude: 13.4050)
+        let polygon = center.circlePolygon(radiusMeters: 50, segments: 32)
+
+        #expect(polygon.count == 33)
+        #expect(polygon.first == polygon.last)
+    }
+
+    @Test("Every point on a circle polygon is the requested radius from the center")
+    func circlePolygonPointsAreAllTheRadiusAway() {
+        let center = Coordinate(latitude: 52.5200, longitude: 13.4050)
+        let radius = 75.0
+        let polygon = center.circlePolygon(radiusMeters: radius, segments: 16)
+
+        for point in polygon {
+            #expect(abs(center.distanceMeters(to: point) - radius) < 0.1)
+        }
+    }
 }

@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
-import MapKit
+import MapLibre
+import MapLibreSwiftDSL
+import MapLibreSwiftUI
 import LibrePawKit
 
 /// Shows a pet's current home (if any) and lets the owner move it, the pin
@@ -11,29 +13,29 @@ import LibrePawKit
 struct SetHomeView: View {
     @State private var viewModel: SetHomeViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var cameraPosition: MapCameraPosition
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var camera: MapViewCamera
     @State private var hasCenteredCamera: Bool
 
     init(viewModel: SetHomeViewModel) {
         _viewModel = State(initialValue: viewModel)
         // When editing an existing home, `viewModel.homeCoordinate` is
         // already set at init time (unlike adding a new one, where it only
-        // becomes available later via `.task`/`.onChange` below), so `Map`
-        // takes the `homeCoordinate != nil` branch in `content` on its very
-        // first render. Seeding `cameraPosition` with its final region here,
-        // rather than leaving it at `.automatic` and jumping it to `.region`
-        // a moment later in `.task`, matters a lot more than it looks:
-        // without this, `Map` mounts once at `.automatic` and is then
-        // immediately redirected, which, observed on the simulator, see
-        // ADR-0016, sent `MKMapView` into a repeated re-initialization
-        // spiral (each pass paying its multi-second cold-start cost) that
-        // pegged the main thread and made the app look hung/crashed. Mounting
-        // already at the final region avoids that transition entirely.
+        // becomes available later via `.task`/`.onChange` below), so
+        // `content` takes the `homeCoordinate != nil` branch on its very
+        // first render. Seeding `camera` with its final position here,
+        // rather than leaving it at `.default()` and jumping it a moment
+        // later in `.task`, matters a lot more than it looks: the MapKit
+        // version of this screen hit a real re-initialization spiral from
+        // mounting at one position and immediately redirecting (see
+        // ADR-0016), and while unconfirmed whether MapLibre has the same
+        // failure mode, avoiding the same mount-then-jump pattern here
+        // costs nothing and sidesteps the question entirely.
         if let coordinate = viewModel.homeCoordinate {
-            _cameraPosition = State(initialValue: .region(Self.region(center: coordinate, radiusMeters: viewModel.radiusMeters)))
+            _camera = State(initialValue: .center(coordinate.clLocationCoordinate2D, zoom: Self.zoomLevel(forRadiusMeters: viewModel.radiusMeters, atLatitude: coordinate.latitude)))
             _hasCenteredCamera = State(initialValue: true)
         } else {
-            _cameraPosition = State(initialValue: .automatic)
+            _camera = State(initialValue: .default())
             _hasCenteredCamera = State(initialValue: false)
         }
     }
@@ -92,14 +94,28 @@ struct SetHomeView: View {
             deniedView
         } else if let homeCoordinate = viewModel.homeCoordinate {
             ZStack {
-                Map(position: $cameraPosition) {
-                    MapCircle(center: homeCoordinate.clLocationCoordinate2D, radius: viewModel.radiusMeters)
-                        .foregroundStyle(.tint.opacity(0.2))
-                        .stroke(.tint, lineWidth: 2)
+                MapView(styleURL: OpenFreeMapStyle.url(for: colorScheme), camera: $camera) {
+                    // A real polygon approximating a circle, not
+                    // `MapCircle`/`CircleStyleLayer`: MapLibre's circle
+                    // radius is in screen pixels, not meters, so it
+                    // wouldn't stay the true geofence size across zoom
+                    // levels the way this needs to (see
+                    // `Coordinate.circlePolygon(radiusMeters:)`'s doc
+                    // comment).
+                    let circleSource = ShapeSource(identifier: "home-circle") {
+                        let ring = homeCoordinate.circlePolygon(radiusMeters: viewModel.radiusMeters).map(\.clLocationCoordinate2D)
+                        MLNPolygonFeature(coordinates: ring, count: UInt(ring.count))
+                    }
+                    FillStyleLayer(identifier: "home-circle-fill", source: circleSource)
+                        .fillColor(UIColor(Color.appPrimary))
+                        .fillOpacity(0.2)
+                    LineStyleLayer(identifier: "home-circle-outline", source: circleSource)
+                        .lineColor(UIColor(Color.appPrimaryDark))
+                        .lineWidth(2)
                 }
-                .onMapCameraChange(frequency: .continuous) { context in
-                    guard viewModel.canManage != false else { return }
-                    viewModel.homeCoordinate = Coordinate(context.region.center)
+                .onChange(of: camera) { _, newCamera in
+                    guard viewModel.canManage != false, case let .centered(onCoordinate: coordinate, _, _, _, _) = newCamera.state else { return }
+                    viewModel.homeCoordinate = Coordinate(coordinate)
                 }
 
                 Image(systemName: "house.fill")
@@ -220,15 +236,19 @@ struct SetHomeView: View {
     private func centerCameraIfNeeded() {
         guard !hasCenteredCamera, let coordinate = viewModel.homeCoordinate else { return }
         hasCenteredCamera = true
-        cameraPosition = .region(Self.region(center: coordinate, radiusMeters: viewModel.radiusMeters))
+        camera = .center(coordinate.clLocationCoordinate2D, zoom: Self.zoomLevel(forRadiusMeters: viewModel.radiusMeters, atLatitude: coordinate.latitude))
     }
 
-    private static func region(center: Coordinate, radiusMeters: Double) -> MKCoordinateRegion {
-        MKCoordinateRegion(
-            center: center.clLocationCoordinate2D,
-            latitudinalMeters: radiusMeters * 6,
-            longitudinalMeters: radiusMeters * 6
-        )
+    /// MapLibre's camera is a zoom level, not an explicit meter span the way
+    /// `MKCoordinateRegion` is. Solves the standard web-mercator "meters per
+    /// point at a given zoom/latitude" formula for the zoom that fits
+    /// `radiusMeters * 6` (same multiple the MapKit version used) across an
+    /// assumed ~350pt-wide screen.
+    private static func zoomLevel(forRadiusMeters radiusMeters: Double, atLatitude latitude: Double) -> Double {
+        let desiredSpanMeters = radiusMeters * 6
+        let assumedScreenWidthPoints = 350.0
+        let metersPerPointAtZoom0 = 156_543.03392 * cos(latitude * .pi / 180)
+        return log2(metersPerPointAtZoom0 * assumedScreenWidthPoints / desiredSpanMeters)
     }
 }
 
