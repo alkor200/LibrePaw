@@ -29,10 +29,16 @@ struct PetMapView: View {
             ForEach(viewModel.petsWithPosition) { pet in
                 if let position = pet.lastPosition {
                     Annotation(pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
-                        // A plain Button driving `tabNavigation`, rather
-                        // than Map's own `selection` binding driving
-                        // `.navigationDestination(item:)`. That combination
-                        // was fragile: the live position feed keeps
+                        // `.onTapGesture`/`.onLongPressGesture` directly,
+                        // not a `Button`: a `Button` with a long-press
+                        // gesture layered on top fires only the button's
+                        // own tap on release, long- or short-press alike
+                        // (confirmed live), this pairing is the standard
+                        // conflict-free way to tell the two apart. Tap
+                        // drives `tabNavigation` rather than Map's own
+                        // `selection` binding plus
+                        // `.navigationDestination(item:)`: that combination
+                        // was fragile, the live position feed keeps
                         // reassigning `selection` to fresh `Pet` values as
                         // pets move, and tying navigation to that same
                         // binding let an unrelated re-render of this view
@@ -40,22 +46,22 @@ struct PetMapView: View {
                         // already pushed, racing with navigation happening
                         // deeper in the stack and leaving pet detail's
                         // buttons unresponsive (and, eventually, this map
-                        // unable to render at all). This switches to the
+                        // unable to render at all). Tap switches to the
                         // Pets tab and pushes that pet's detail there,
-                        // rather than pushing within this tab's own stack.
-                        Button {
-                            tabNavigation.showPetDetail(pet)
-                        } label: {
-                            PetAnnotationView(pet: pet, petRepository: petRepository)
-                        }
-                        // Long press goes straight to navigating, rather
+                        // rather than pushing within this tab's own stack;
+                        // long press goes straight to navigating, rather
                         // than surfacing a context menu with that as its
                         // only item, one less tap to get the same outcome.
-                        .onLongPressGesture {
-                            if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
-                                navigationChoicePet = pet
+                        PetAnnotationView(pet: pet, petRepository: petRepository)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                tabNavigation.showPetDetail(pet)
                             }
-                        }
+                            .onLongPressGesture {
+                                if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
+                                    navigationChoicePet = pet
+                                }
+                            }
                     }
                 }
             }
