@@ -214,6 +214,7 @@ Key decisions, each recorded as an ADR:
 | [0024](docs/adr/0024-rename-to-librepaw.md) | Rename the app from Scentrail to LibrePaw |
 | [0025](docs/adr/0025-close-excursions-when-the-device-goes-offline.md) | Close an excursion once the trail pauses back near home |
 | [0026](docs/adr/0026-cache-closed-excursions-indefinitely.md) | Cache closed excursions indefinitely, never invalidated by a later home change |
+| [0027](docs/adr/0027-filter-out-degenerate-near-instant-excursions.md) | Filter out degenerate, near-instant excursions (exit immediately followed by enter) |
 
 ## Contributing
 

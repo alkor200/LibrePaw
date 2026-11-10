@@ -155,3 +155,39 @@ struct LiveFetchStartTests {
         #expect(TraccarPetRepository.liveFetchStart(cached: cached, from: coveredFrom) == watermark)
     }
 }
+
+@Suite("TraccarPetRepository.isDegenerate")
+struct IsDegenerateExcursionTests {
+    private func excursion(startTime: Date, endTime: Date?) -> Excursion {
+        Excursion(id: 1, startTime: startTime, endTime: endTime, startCoordinate: nil, endCoordinate: nil, distanceMeters: nil)
+    }
+
+    @Test("An excursion still ongoing is never degenerate, there's nothing to judge yet")
+    func ongoingExcursionIsNeverDegenerate() {
+        let excursion = excursion(startTime: .now, endTime: nil)
+        #expect(!TraccarPetRepository.isDegenerate(excursion))
+    }
+
+    @Test(
+        "An exit immediately followed by an enter is degenerate, confirmed live: a \"0 min\" excursion with no route at all"
+    )
+    func nearInstantExitThenEnterIsDegenerate() {
+        let now = Date.now
+        let excursion = excursion(startTime: now, endTime: now.addingTimeInterval(5))
+        #expect(TraccarPetRepository.isDegenerate(excursion))
+    }
+
+    @Test("Exactly the minimum duration is not degenerate, only strictly shorter is")
+    func exactlyMinimumDurationIsNotDegenerate() {
+        let now = Date.now
+        let excursion = excursion(startTime: now, endTime: now.addingTimeInterval(TraccarPetRepository.minimumExcursionDuration))
+        #expect(!TraccarPetRepository.isDegenerate(excursion))
+    }
+
+    @Test("An ordinary excursion well above the minimum duration is not degenerate")
+    func ordinaryExcursionIsNotDegenerate() {
+        let now = Date.now
+        let excursion = excursion(startTime: now, endTime: now.addingTimeInterval(30 * 60))
+        #expect(!TraccarPetRepository.isDegenerate(excursion))
+    }
+}

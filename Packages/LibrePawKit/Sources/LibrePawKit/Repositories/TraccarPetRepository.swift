@@ -288,9 +288,16 @@ struct TraccarPetRepository: PetRepository {
                 // otherwise fire a network request per excursion all at
                 // once - fine for a handful, not for a thousand-plus
                 // against a small self-hosted server.
+                // Filtered here too, not just below: keeps a degenerate
+                // excursion out of the persisted cache altogether, rather
+                // than writing it and relying on every future read to hide
+                // it again. The filter below on `all` is still needed on
+                // top of this one, to also hide one already sitting in an
+                // existing cache from before this check existed.
                 freshExcursions = try await Self.concurrentMap(pairs, maxConcurrent: 20) { pair in
                     try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter, homes: homes)
                 }
+                .filter { !Self.isDegenerate($0) }
             }
 
             let (all, newCache) = Self.mergeExcursions(cached: cached, freshExcursions: freshExcursions, liveFrom: liveFrom)
@@ -298,6 +305,7 @@ struct TraccarPetRepository: PetRepository {
 
             return all
                 .filter { $0.startTime >= from && $0.startTime <= to }
+                .filter { !Self.isDegenerate($0) }
                 .sorted { $0.startTime > $1.startTime }
         } catch let error as TraccarError {
             throw error.asLibrePawError
@@ -392,6 +400,24 @@ struct TraccarPetRepository: PetRepository {
             pairs.append((exit, matchingEnter))
         }
         return pairs
+    }
+
+    /// Below this, an exit immediately followed by an enter is GPS/geofence
+    /// boundary jitter, not a real trip: confirmed live, one of Phoebe's
+    /// showed up as a "0 min" excursion with no route at all, the exit and
+    /// enter resolving to (near-)identical times despite the raw Traccar
+    /// events in that window otherwise all being tens of minutes apart. A
+    /// real Mictrack reports every 30 seconds unconditionally (see
+    /// `quietGapAfterHomeProximity`'s own doc comment), so a shorter gap
+    /// than that can't reflect any real movement in between regardless of
+    /// what triggered it.
+    static let minimumExcursionDuration: TimeInterval = 60
+
+    /// `false` for a still-open excursion, there's nothing degenerate about
+    /// one that's simply ongoing.
+    static func isDegenerate(_ excursion: Excursion) -> Bool {
+        guard let duration = excursion.duration else { return false }
+        return duration < minimumExcursionDuration
     }
 
     /// Extra distance beyond a home's own configured radius that still
