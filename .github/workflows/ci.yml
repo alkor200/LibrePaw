@@ -46,4 +46,6 @@ jobs:
             -project LibrePaw.xcodeproj \
             -scheme LibrePaw \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
             | xcpretty
