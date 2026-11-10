@@ -1,5 +1,10 @@
 import XCTest
 
+// XCUIApplication/XCUIElement APIs are main-actor-isolated on newer SDKs
+// (confirmed on CI, not reproduced on this machine's older toolchain);
+// under Swift 6 strict concurrency a plain, nonisolated test method can't
+// call them at all.
+@MainActor
 final class LibrePawUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
