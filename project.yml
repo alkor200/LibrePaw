@@ -54,6 +54,13 @@ targets:
         CFBundleLocalizations: [en, de]
         ITSAppUsesNonExemptEncryption: false
         NSLocationWhenInUseUsageDescription: "LibrePaw uses your location to show how far away your pet is and to point you in their direction in the Find Pet screen."
+        # Needed for NavigationApp.isInstalled's canOpenURL checks: without
+        # a scheme being declared here, canOpenURL always returns false for
+        # it, installed or not, so "Navigate to <Pet>" would only ever
+        # offer Apple Maps.
+        LSApplicationQueriesSchemes:
+          - comgooglemaps
+          - waze
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

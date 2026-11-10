@@ -8,6 +8,10 @@ struct PetMapView: View {
     @State private var viewModel: PetMapViewModel
     @State private var cameraPosition: MapCameraPosition
     @State private var mapLayer: MapLayer = .standard
+    /// Which pet's long-press context menu asked for a navigation app
+    /// chooser; `nil` dismisses the dialog. Tracked per pet rather than a
+    /// plain `Bool`, multiple pets can each trigger this independently.
+    @State private var navigationChoicePet: Pet?
     @Environment(AppTabNavigation.self) private var tabNavigation
 
     init(petRepository: PetRepository, locationService: LocationService) {
@@ -46,7 +50,9 @@ struct PetMapView: View {
                         }
                         .contextMenu {
                             Button {
-                                pet.openDirectionsInMaps()
+                                if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
+                                    navigationChoicePet = pet
+                                }
                             } label: {
                                 Label("Navigate to \(pet.name)", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
                             }
@@ -88,6 +94,21 @@ struct PetMapView: View {
         }
         .navigationTitle("Map")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Navigate to \(navigationChoicePet?.name ?? "")",
+            isPresented: Binding(
+                get: { navigationChoicePet != nil },
+                set: { if !$0 { navigationChoicePet = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: navigationChoicePet
+        ) { pet in
+            ForEach(NavigationApp.installed) { app in
+                Button(app.label) {
+                    app.openDirections(to: pet)
+                }
+            }
+        }
         .onChange(of: tabNavigation.mapFocusPet) { _, pet in
             // `PetMapView` is a single, long-lived instance (owned by
             // `MainTabView`), not re-created per visit, so the

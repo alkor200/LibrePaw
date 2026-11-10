@@ -23,6 +23,7 @@ struct PetDetailView: View {
     let locationService: LocationService
     @State private var viewModel: PetDetailViewModel
     @State private var isShowingEditPet = false
+    @State private var isShowingNavigationChoice = false
     @Environment(AppTabNavigation.self) private var tabNavigation
     /// Shown in place of whatever `PetAnnotationView` would otherwise fetch,
     /// right after a successful edit, see its doc comment for why the fetch
@@ -162,11 +163,24 @@ struct PetDetailView: View {
             // Nowhere to route to without a position yet.
             if viewModel.pet.lastPosition != nil {
                 Button {
-                    viewModel.pet.openDirectionsInMaps()
+                    if !NavigationApp.openIfOnlyOneInstalled(for: viewModel.pet) {
+                        isShowingNavigationChoice = true
+                    }
                 } label: {
                     actionRow(systemImage: "arrow.triangle.turn.up.right.diamond.fill", title: "Navigate to \(viewModel.pet.name)")
                 }
                 .buttonStyle(.plain)
+                .confirmationDialog(
+                    "Navigate to \(viewModel.pet.name)",
+                    isPresented: $isShowingNavigationChoice,
+                    titleVisibility: .visible
+                ) {
+                    ForEach(NavigationApp.installed) { app in
+                        Button(app.label) {
+                            app.openDirections(to: viewModel.pet)
+                        }
+                    }
+                }
 
                 Divider().padding(.leading, 44).overlay(Color.appBorder)
             }
