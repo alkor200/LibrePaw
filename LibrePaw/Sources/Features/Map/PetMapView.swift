@@ -48,13 +48,12 @@ struct PetMapView: View {
                         } label: {
                             PetAnnotationView(pet: pet, petRepository: petRepository)
                         }
-                        .contextMenu {
-                            Button {
-                                if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
-                                    navigationChoicePet = pet
-                                }
-                            } label: {
-                                Label("Navigate to \(pet.name)", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                        // Long press goes straight to navigating, rather
+                        // than surfacing a context menu with that as its
+                        // only item, one less tap to get the same outcome.
+                        .onLongPressGesture {
+                            if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
+                                navigationChoicePet = pet
                             }
                         }
                     }
