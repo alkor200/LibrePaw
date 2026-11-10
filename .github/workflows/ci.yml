@@ -25,6 +25,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Create a CI-only Local.xcconfig
+        # Local.xcconfig is gitignored (see ADR-0015, per-developer signing
+        # config), so it doesn't exist on a fresh checkout. project.yml
+        # references it as a configFile, and xcodegen refuses to generate
+        # at all if a referenced configFile path doesn't exist, empty or
+        # not. No DEVELOPMENT_TEAM is needed here: building for the
+        # simulator (not a device) needs no real code signing.
+        run: |
+          mkdir -p LibrePaw/Config
+          echo "// CI-only, see .github/workflows/ci.yml" > LibrePaw/Config/Local.xcconfig
       - name: Generate Xcode project
         run: xcodegen generate
       - name: Install xcpretty
