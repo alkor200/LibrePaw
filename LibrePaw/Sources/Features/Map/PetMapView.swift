@@ -22,54 +22,16 @@ struct PetMapView: View {
     }
 
     var body: some View {
-        Map(position: $cameraPosition) {
-            UserAnnotation()
-                .tint(.appPrimaryDark)
-
-            ForEach(viewModel.petsWithPosition) { pet in
-                if let position = pet.lastPosition {
-                    Annotation(pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
-                        // `.onTapGesture`/`.onLongPressGesture` directly,
-                        // not a `Button`: a `Button` with a long-press
-                        // gesture layered on top fires only the button's
-                        // own tap on release, long- or short-press alike
-                        // (confirmed live), this pairing is the standard
-                        // conflict-free way to tell the two apart. Tap
-                        // drives `tabNavigation` rather than Map's own
-                        // `selection` binding plus
-                        // `.navigationDestination(item:)`: that combination
-                        // was fragile, the live position feed keeps
-                        // reassigning `selection` to fresh `Pet` values as
-                        // pets move, and tying navigation to that same
-                        // binding let an unrelated re-render of this view
-                        // re-resolve the destination while pet detail was
-                        // already pushed, racing with navigation happening
-                        // deeper in the stack and leaving pet detail's
-                        // buttons unresponsive (and, eventually, this map
-                        // unable to render at all). Tap switches to the
-                        // Pets tab and pushes that pet's detail there,
-                        // rather than pushing within this tab's own stack;
-                        // long press goes straight to navigating, rather
-                        // than surfacing a context menu with that as its
-                        // only item, one less tap to get the same outcome.
-                        PetAnnotationView(pet: pet, petRepository: petRepository)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                tabNavigation.showPetDetail(pet)
-                            }
-                            .onLongPressGesture {
-                                if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
-                                    navigationChoicePet = pet
-                                }
-                            }
-                    }
-                }
-            }
-        }
-        .mapStyle(mapLayer.mapStyle)
-        .mapControls {
-            MapCompass()
-            MapScaleView()
+        // The confirmation dialog below (and every other presentation-ish
+        // modifier) is deliberately on this wrapping `ZStack`, not chained
+        // directly onto `Map` itself: attached straight to `Map`, the
+        // dialog opened pinned near the top of the screen instead of as
+        // the normal bottom-anchored sheet (confirmed live), `Map` being
+        // backed by a `UIViewRepresentable` apparently confuses the
+        // presentation anchor UIKit computes for it. A plain SwiftUI
+        // container in between avoids that.
+        ZStack {
+            mapContent
         }
         .overlay(alignment: .topTrailing) {
             MapLayerPicker(selection: $mapLayer)
@@ -155,6 +117,58 @@ struct PetMapView: View {
         .onDisappear {
             viewModel.stopLiveUpdates()
             locationService.stopUpdating()
+        }
+    }
+
+    private var mapContent: some View {
+        Map(position: $cameraPosition) {
+            UserAnnotation()
+                .tint(.appPrimaryDark)
+
+            ForEach(viewModel.petsWithPosition) { pet in
+                if let position = pet.lastPosition {
+                    Annotation(pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
+                        // `.onTapGesture`/`.onLongPressGesture` directly,
+                        // not a `Button`: a `Button` with a long-press
+                        // gesture layered on top fires only the button's
+                        // own tap on release, long- or short-press alike
+                        // (confirmed live), this pairing is the standard
+                        // conflict-free way to tell the two apart. Tap
+                        // drives `tabNavigation` rather than Map's own
+                        // `selection` binding plus
+                        // `.navigationDestination(item:)`: that combination
+                        // was fragile, the live position feed keeps
+                        // reassigning `selection` to fresh `Pet` values as
+                        // pets move, and tying navigation to that same
+                        // binding let an unrelated re-render of this view
+                        // re-resolve the destination while pet detail was
+                        // already pushed, racing with navigation happening
+                        // deeper in the stack and leaving pet detail's
+                        // buttons unresponsive (and, eventually, this map
+                        // unable to render at all). Tap switches to the
+                        // Pets tab and pushes that pet's detail there,
+                        // rather than pushing within this tab's own stack;
+                        // long press goes straight to navigating, rather
+                        // than surfacing a context menu with that as its
+                        // only item, one less tap to get the same outcome.
+                        PetAnnotationView(pet: pet, petRepository: petRepository)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                tabNavigation.showPetDetail(pet)
+                            }
+                            .onLongPressGesture {
+                                if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
+                                    navigationChoicePet = pet
+                                }
+                            }
+                    }
+                }
+            }
+        }
+        .mapStyle(mapLayer.mapStyle)
+        .mapControls {
+            MapCompass()
+            MapScaleView()
         }
     }
 }
