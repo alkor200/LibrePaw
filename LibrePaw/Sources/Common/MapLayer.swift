@@ -1,44 +1,15 @@
-import MapKit
 import SwiftUI
 
-/// The map layers a user can switch between, mirrors the choices in
-/// Apple's own Maps app.
-enum MapLayer: String, CaseIterable, Identifiable {
-    case standard
-    case satellite
-    case hybrid
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .standard: localized("Standard")
-        case .satellite: localized("Satellite")
-        case .hybrid: localized("Hybrid")
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .standard: "map"
-        case .satellite: "globe.americas.fill"
-        case .hybrid: "square.stack.3d.up.fill"
-        }
-    }
-
-    var mapStyle: MapStyle {
-        switch self {
-        case .standard: .standard
-        case .satellite: .imagery
-        case .hybrid: .hybrid
-        }
-    }
-}
-
-/// Chrome for a custom floating map control, sized to match
+/// Chrome for a custom floating map control, sized to match the MapKit-era
 /// `MapUserLocationButton`'s own fixed 44x44pt frame exactly (measured live
 /// via a `GeometryReader`, since that size isn't documented anywhere), so
 /// custom controls placed alongside it read as one consistent set.
+///
+/// This file used to also define `MapLayer`/`MapLayerPicker` for switching
+/// between Apple's standard/satellite/hybrid map styles. OpenFreeMap only
+/// offers general-purpose vector styles for free, with no satellite
+/// imagery equivalent (see ADR-0028), so that picker has nothing left to
+/// pick between and was removed rather than kept around disabled.
 struct MapControlButtonStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -51,25 +22,5 @@ struct MapControlButtonStyle: ViewModifier {
 extension View {
     func mapControlButtonStyle() -> some View {
         modifier(MapControlButtonStyle())
-    }
-}
-
-/// A layers menu button matching Apple Maps' own control for switching map
-/// type, for use inside a `Map`'s `.mapControls`.
-struct MapLayerPicker: View {
-    @Binding var selection: MapLayer
-
-    var body: some View {
-        Menu {
-            Picker("Map Layer", selection: $selection) {
-                ForEach(MapLayer.allCases) { layer in
-                    Label(layer.label, systemImage: layer.systemImage).tag(layer)
-                }
-            }
-        } label: {
-            Image(systemName: "square.3.layers.3d")
-                .mapControlButtonStyle()
-        }
-        .menuStyle(.borderlessButton)
     }
 }

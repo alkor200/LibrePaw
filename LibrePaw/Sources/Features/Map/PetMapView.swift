@@ -1,100 +1,146 @@
 import SwiftUI
-import MapKit
+import MapLibre
+import MapLibreSwiftDSL
+import MapLibreSwiftUI
+import CoreLocation
 import LibrePawKit
 
 struct PetMapView: View {
     let petRepository: PetRepository
     let locationService: LocationService
     @State private var viewModel: PetMapViewModel
-    @State private var cameraPosition: MapCameraPosition
-    @State private var mapLayer: MapLayer = .standard
+    @State private var camera: MapViewCamera = .default()
+    /// Rendered once per pet (a snapshot of `PetAnnotationView`, photo
+    /// included) and fed to `SymbolStyleLayer` as a per-feature icon.
+    /// Populated by the `.task(id:)` below, keyed on the live set of pet
+    /// ids so a pet that only gets its first position after this view has
+    /// already appeared still gets rendered (a plain `.task` without `id:`
+    /// only ever runs once, against whatever `petsWithPosition` was at
+    /// first appearance, confirmed live: with a `.task` plain, a pet whose
+    /// position arrived after mount kept the fallback icon forever).
+    @State private var pinImages: [Int: UIImage] = [:]
+    /// Which pet's long-press asked for a navigation app chooser; `nil`
+    /// dismisses the dialog.
+    @State private var navigationChoicePet: Pet?
     @Environment(AppTabNavigation.self) private var tabNavigation
+    @Environment(\.colorScheme) private var colorScheme
+
+    private static let petLayerID = "pet-pins"
+    private static let fallbackPinImage = UIImage(systemName: "pawprint.circle.fill")!
+        .withTintColor(.gray, renderingMode: .alwaysOriginal)
 
     init(petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
         self.locationService = locationService
         _viewModel = State(initialValue: PetMapViewModel(petRepository: petRepository))
-        _cameraPosition = State(initialValue: .automatic)
     }
 
     var body: some View {
-        Map(position: $cameraPosition) {
-            UserAnnotation()
-                .tint(.appPrimaryDark)
+        GeometryReader { geometry in
+            mapContent(bottomSafeArea: geometry.safeAreaInsets.bottom)
+        }
+        .ignoresSafeArea()
+    }
 
-            ForEach(viewModel.petsWithPosition) { pet in
-                if let position = pet.lastPosition {
-                    Annotation(pet.name, coordinate: position.coordinate.clLocationCoordinate2D) {
-                        // `.onTapGesture` plus `.contextMenu`, not a
-                        // `Button`: a `Button` with a long-press gesture
-                        // layered on top fires only the button's own tap on
-                        // release, long- or short-press alike (confirmed
-                        // live). `.contextMenu` doesn't have that problem
-                        // and, unlike a `confirmationDialog` triggered from
-                        // a plain long-press gesture, actually opens
-                        // anchored over the pressed annotation rather than
-                        // as an unrelated bottom sheet (also confirmed
-                        // live, a `confirmationDialog` is always a bottom
-                        // sheet on iPhone no matter what it's attached to).
-                        // The chooser's items are the installed nav apps
-                        // directly, not a single "Navigate" item leading to
-                        // another menu.
-                        //
-                        // Tap drives `tabNavigation` rather than Map's own
-                        // `selection` binding plus
-                        // `.navigationDestination(item:)`: that combination
-                        // was fragile, the live position feed keeps
-                        // reassigning `selection` to fresh `Pet` values as
-                        // pets move, and tying navigation to that same
-                        // binding let an unrelated re-render of this view
-                        // re-resolve the destination while pet detail was
-                        // already pushed, racing with navigation happening
-                        // deeper in the stack and leaving pet detail's
-                        // buttons unresponsive (and, eventually, this map
-                        // unable to render at all). Tap switches to the
-                        // Pets tab and pushes that pet's detail there,
-                        // rather than pushing within this tab's own stack.
-                        PetAnnotationView(pet: pet, petRepository: petRepository)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                tabNavigation.showPetDetail(pet)
+    /// `bottomSafeArea` is the tab bar's own reported safe-area inset (read
+    /// via `GeometryReader` rather than a guessed flat constant), used to
+    /// place MapLibre's own ornament row (logo, attribution) flush just
+    /// above the tab bar, and the locate button stacked above that, per
+    /// the layout asked for live: "direkt ueber die liquid glass bubble und
+    /// darueber dann das locate symbol".
+    private func mapContent(bottomSafeArea: CGFloat) -> some View {
+        // A single source of truth for "how far up MapLibre's own ornament
+        // row sits", so the locate button's own clearance (below) is always
+        // defined relative to this exact number, rather than two
+        // independently-computed paddings that could drift apart on a
+        // device whose actual safe-area/tab-bar geometry doesn't match
+        // what was tested in the simulator (confirmed live: it did drift,
+        // the button ended up level with, not above, the ornament row).
+        let ornamentBottomInset = bottomSafeArea + 8
+        return MapView(styleURL: OpenFreeMapStyle.url(for: colorScheme), camera: $camera) {
+            // The whole layer only added once there's at least one pet, and
+            // `mappings` below always has at least one entry whenever it
+            // is: an empty `mappings` dictionary crashes MapLibre's style
+            // engine outright ("Expected at least 4 arguments, but found
+            // only 2", confirmed live) rather than just matching nothing,
+            // which it otherwise would on every very first render, before
+            // `pinImages` has anything in it yet (`renderPinImage(for:)`
+            // is async). `effectivePinImages` papers over that gap with
+            // the fallback icon per pet until the real photo is ready.
+            if !viewModel.petsWithPosition.isEmpty {
+                let petSource = ShapeSource(identifier: "pets") {
+                    for pet in viewModel.petsWithPosition {
+                        if let position = pet.lastPosition {
+                            MLNPointFeature(coordinate: position.coordinate.clLocationCoordinate2D) { feature in
+                                feature.attributes["petId"] = pet.id
                             }
-                            .contextMenu {
-                                ForEach(NavigationApp.installed) { app in
-                                    Button {
-                                        app.openDirections(to: pet)
-                                    } label: {
-                                        Label("Navigate in \(app.label)", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
-                                    }
-                                }
-                            }
+                        }
                     }
+                }
+
+                let effectivePinImages = Dictionary(uniqueKeysWithValues: viewModel.petsWithPosition.map { pet in
+                    (AnyHashable(pet.id), pinImages[pet.id] ?? Self.fallbackPinImage)
+                })
+
+                SymbolStyleLayer(identifier: Self.petLayerID, source: petSource)
+                    .iconImage(featurePropertyNamed: "petId", mappings: effectivePinImages, default: Self.fallbackPinImage)
+                    .iconAllowsOverlap(true)
+            }
+        }
+        // Pushes MapLibre's own built-in ornaments (logo, attribution,
+        // compass) up to sit flush just above the tab bar, using the real
+        // device safe-area inset (from the enclosing `GeometryReader`, see
+        // `body`) rather than a guessed flat constant, which still looked
+        // "weirdly" placed on a device whose tab bar/home-indicator inset
+        // didn't match the simulator's.
+        .mapContentInset(UIEdgeInsets(top: 0, left: 0, bottom: ornamentBottomInset, right: 0))
+        // `showsUserLocation` has no DSL-level modifier yet (see
+        // `unsafeMapViewControllerModifier`'s own doc comment, which gives
+        // this exact example), unlike the MapKit version's `UserAnnotation()`.
+        .unsafeMapViewControllerModifier { controller in
+            controller.mapView.showsUserLocation = true
+        }
+        // Limitation: unlike the MapKit version's `.contextMenu`
+        // (anchored right over the pressed pin), MapLibreSwiftUI's
+        // `onLongPressMapGesture` only gives a coordinate, no built-in
+        // feature hit-testing for long press (`onTapMapGesture(on:)` has
+        // that, long press doesn't). Approximated here by nearest pet
+        // within a small radius rather than true hit-testing, and
+        // presented as a confirmationDialog (always a bottom sheet on
+        // iPhone, see the fix earlier this session for why that's not
+        // anchored either way).
+        .onTapMapGesture(on: [Self.petLayerID]) { _, features in
+            guard let petId = features.first?.attributes["petId"] as? Int,
+                  let pet = viewModel.petsWithPosition.first(where: { $0.id == petId }) else { return }
+            tabNavigation.showPetDetail(pet)
+        }
+        .onLongPressMapGesture { context in
+            guard let pet = nearestPet(to: Coordinate(context.coordinate)) else { return }
+            if !NavigationApp.openIfOnlyOneInstalled(for: pet) {
+                navigationChoicePet = pet
+            }
+        }
+        .confirmationDialog(
+            "Navigate to \(navigationChoicePet?.name ?? "")",
+            isPresented: Binding(
+                get: { navigationChoicePet != nil },
+                set: { if !$0 { navigationChoicePet = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: navigationChoicePet
+        ) { pet in
+            ForEach(NavigationApp.installed) { app in
+                Button(app.label) {
+                    app.openDirections(to: pet)
                 }
             }
         }
-        .mapStyle(mapLayer.mapStyle)
-        .mapControls {
-            MapCompass()
-            MapScaleView()
-        }
-        .overlay(alignment: .topTrailing) {
-            MapLayerPicker(selection: $mapLayer)
-                .padding()
-        }
         .overlay(alignment: .bottomTrailing) {
-            // A custom button rather than `MapUserLocationButton`: that
-            // control only ever draws itself when placed inside
-            // `.mapControls`, which pins it to its own fixed corner
-            // (confirmed live: moved into a plain `.overlay`, it still
-            // occupies layout space but renders nothing). This one matches
-            // its look via `mapControlButtonStyle()` instead.
             Button {
                 locationService.requestAuthorizationIfNeeded()
                 if let coordinate = locationService.coordinate?.clLocationCoordinate2D {
                     withAnimation {
-                        cameraPosition = .region(
-                            MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
-                        )
+                        camera = .center(coordinate, zoom: 16)
                     }
                 }
             } label: {
@@ -102,22 +148,30 @@ struct PetMapView: View {
                     .mapControlButtonStyle()
             }
             .padding()
+            // Defined relative to `ornamentBottomInset`, not independently,
+            // so it's always clearly above the ornament row regardless of
+            // the device. Confirmed live on-device: +50 wasn't enough
+            // clearance, doubled to +100.
+            .padding(.bottom, ornamentBottomInset + 120)
         }
-        .navigationTitle("Map")
-        .navigationBarTitleDisplayMode(.inline)
+        // No title: it's the tab's own root screen, already labeled by the
+        // tab bar itself, a floating "Map" label only got in the way of a
+        // full-bleed map underneath it.
+        .toolbar(.hidden, for: .navigationBar)
         .onChange(of: tabNavigation.mapFocusPet) { _, pet in
-            // `PetMapView` is a single, long-lived instance (owned by
-            // `MainTabView`), not re-created per visit, so the
-            // `initialFocus` init parameter only ever applies once at
-            // launch; this is what reacts to "View on Map"/the pet's photo
-            // in Pet Detail afterward.
             guard let pet, let coordinate = pet.lastPosition?.coordinate.clLocationCoordinate2D else { return }
             withAnimation {
-                cameraPosition = .region(
-                    MKCoordinateRegion(center: coordinate, latitudinalMeters: 500, longitudinalMeters: 500)
-                )
+                camera = .center(coordinate, zoom: 16)
             }
             tabNavigation.mapFocusPet = nil
+        }
+        .onChange(of: viewModel.petsWithPosition.map(\.id)) {
+            fitCameraToAllPets()
+        }
+        .task(id: viewModel.petsWithPosition.map(\.id)) {
+            for pet in viewModel.petsWithPosition where pinImages[pet.id] == nil {
+                pinImages[pet.id] = await renderPinImage(for: pet)
+            }
         }
         .overlay(alignment: .top) {
             if let errorMessage = viewModel.errorMessage {
@@ -127,6 +181,7 @@ struct PetMapView: View {
                     .padding(.vertical, 6)
                     .background(.thinMaterial, in: Capsule())
                     .padding(.top, 8)
+                    .safeAreaPadding(.top)
             }
         }
         .overlay {
@@ -146,6 +201,59 @@ struct PetMapView: View {
         .onDisappear {
             viewModel.stopLiveUpdates()
             locationService.stopUpdating()
+        }
+    }
+
+    /// Renders a snapshot of `PetAnnotationView` (fetching the photo once,
+    /// up front, via `overrideImage` rather than letting the view's own
+    /// `.task` fetch it, since `ImageRenderer.uiImage` is read synchronously
+    /// right after construction and wouldn't wait for that).
+    private func renderPinImage(for pet: Pet) async -> UIImage {
+        let photoData = try? await petRepository.fetchPhoto(for: pet)
+        let photo = photoData.flatMap { UIImage(data: $0) }
+        // `ImageRenderer` captures exactly `PetAnnotationView`'s own frame
+        // (its `size` parameter), with no room for its `.shadow(radius:)`
+        // to render into, so without this padding the shadow got hard
+        // clipped at the circle's edge (confirmed live: a visibly
+        // pixelated, cut-off ring around the pin).
+        let renderer = ImageRenderer(content: PetAnnotationView(pet: pet, petRepository: petRepository, overrideImage: photo).padding(6))
+        renderer.scale = await UIScreen.main.scale
+        renderer.isOpaque = false
+        return renderer.uiImage ?? Self.fallbackPinImage
+    }
+
+    /// Long press only gives a coordinate (see the comment on
+    /// `onLongPressMapGesture` above), approximated here as "the nearest
+    /// pet, if close enough to plausibly be the one pressed".
+    private func nearestPet(to coordinate: Coordinate, maximumDistanceMeters: Double = 50) -> Pet? {
+        viewModel.petsWithPosition
+            .compactMap { pet -> (Pet, Double)? in
+                guard let position = pet.lastPosition else { return nil }
+                return (pet, coordinate.distanceMeters(to: position.coordinate))
+            }
+            .filter { $0.1 <= maximumDistanceMeters }
+            .min { $0.1 < $1.1 }
+            .map(\.0)
+    }
+
+    private func fitCameraToAllPets() {
+        let coordinates = viewModel.petsWithPosition.compactMap { $0.lastPosition?.coordinate.clLocationCoordinate2D }
+        guard !coordinates.isEmpty else { return }
+        // A single coordinate is a zero-size bounding box, a degenerate case
+        // for `.showcase()`'s fit-bounds math (confirmed live: with only one
+        // pet, the map got stuck requesting tiles forever and never
+        // rendered anything past the initial background color). Centering
+        // on it directly, the same way the locate button and
+        // `tabNavigation.mapFocusPet` already do, sidesteps that entirely.
+        guard coordinates.count > 1 else {
+            withAnimation {
+                camera = .center(coordinates[0], zoom: 16)
+            }
+            return
+        }
+        let shapeCollection = MLNShapeCollection(shapes: [MLNPointCollectionFeature(coordinates: coordinates, count: UInt(coordinates.count))])
+        withAnimation {
+            camera = .showcase(shapeCollection: shapeCollection, edgePadding: UIEdgeInsets(top: 80, left: 40, bottom: 80, right: 40))
         }
     }
 }

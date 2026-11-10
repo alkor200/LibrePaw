@@ -1,5 +1,8 @@
 import SwiftUI
-import MapKit
+import MapLibre
+import MapLibreSwiftDSL
+import MapLibreSwiftUI
+import CoreLocation
 import LibrePawKit
 
 /// A full-screen map aggregating every excursion in an adjustable window
@@ -10,7 +13,9 @@ import LibrePawKit
 struct TrailView: View {
     let petRepository: PetRepository
     @State private var viewModel: TrailViewModel
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var camera: MapViewCamera = .default()
+    @State private var pendingPush: Excursion?
+    @Environment(\.colorScheme) private var colorScheme
 
     init(viewModel: TrailViewModel, petRepository: PetRepository) {
         _viewModel = State(initialValue: viewModel)
@@ -21,42 +26,48 @@ struct TrailView: View {
     /// palette by each excursion's position in `viewModel.excursions`
     /// (most-recent-first, same order every reload for a given window) so
     /// a route's color doesn't shuffle between renders.
-    private static let palette: [Color] = [.blue, .orange, .purple, .pink, .teal, .indigo, .brown, .mint, .cyan, .yellow]
+    private static let palette: [UIColor] = [.systemBlue, .systemOrange, .systemPurple, .systemPink, .systemTeal, .systemIndigo, .systemBrown, .systemMint, .systemCyan, .systemYellow]
+    private static let midpointLayerIDPrefix = "trail-midpoint-"
 
     var body: some View {
-        Map(position: $cameraPosition) {
-            ForEach(Array(viewModel.excursions.enumerated()), id: \.element.id) { index, excursion in
-                if let positions = viewModel.trailsByExcursionID[excursion.id], positions.count > 1 {
-                    let routeColor = color(at: index)
+        MapView(styleURL: OpenFreeMapStyle.url(for: colorScheme), camera: $camera) {
+            let routes = Array(viewModel.excursions.enumerated()).compactMap { index, excursion -> (excursion: Excursion, positions: [PetPosition], color: UIColor)? in
+                guard let positions = viewModel.trailsByExcursionID[excursion.id], positions.count > 1 else { return nil }
+                return (excursion, positions, color(at: index))
+            }
 
-                    MapPolyline(coordinates: positions.map(\.coordinate.clLocationCoordinate2D))
-                        .stroke(routeColor, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-
-                    // `MapPolyline` itself isn't a tappable target (confirmed
-                    // live: a `selection`/`.tag()` binding on it never fires),
-                    // so tapping "the route" is really tapping a marker
-                    // dropped on it, the same `NavigationLink`-wrapped
-                    // `Annotation` pattern `PetMapView` already uses for pet
-                    // pins, placed at the route's midpoint fix.
-                    Annotation(
-                        excursion.startTime.formatted(date: .omitted, time: .shortened),
-                        coordinate: positions[positions.count / 2].coordinate.clLocationCoordinate2D
-                    ) {
-                        NavigationLink(value: excursion) {
-                            Circle()
-                                .fill(routeColor)
-                                .frame(width: 16, height: 16)
-                                .overlay(Circle().stroke(.white, lineWidth: 2))
-                                .shadow(radius: 2)
-                        }
-                    }
-                    .annotationTitles(.hidden)
+            for route in routes {
+                let lineSource = ShapeSource(identifier: "trail-line-\(route.excursion.id)") {
+                    MLNPolylineFeature(coordinates: route.positions.map(\.coordinate.clLocationCoordinate2D))
                 }
+                LineStyleLayer(identifier: "trail-line-\(route.excursion.id)", source: lineSource)
+                    .lineCap(.round)
+                    .lineJoin(.round)
+                    .lineColor(route.color)
+                    .lineWidth(4)
+            }
+
+            // One CircleStyleLayer per excursion rather than one shared one:
+            // unlike `SymbolStyleLayer.iconImage`, `CircleStyleLayer.color`
+            // has no per-feature/data-driven mapping overload in this DSL,
+            // only a single flat `UIColor` for the whole layer.
+            for route in routes {
+                let midpointSource = ShapeSource(identifier: "trail-midpoint-\(route.excursion.id)") {
+                    MLNPointFeature(coordinate: route.positions[route.positions.count / 2].coordinate.clLocationCoordinate2D) { feature in
+                        feature.attributes["excursionId"] = route.excursion.id
+                    }
+                }
+                CircleStyleLayer(identifier: "\(Self.midpointLayerIDPrefix)\(route.excursion.id)", source: midpointSource)
+                    .radius(8)
+                    .color(route.color)
+                    .strokeWidth(2)
+                    .strokeColor(.white)
             }
         }
-        .mapControls {
-            MapCompass()
-            MapScaleView()
+        .onTapMapGesture(on: Set(viewModel.excursions.map { "\(Self.midpointLayerIDPrefix)\($0.id)" })) { _, features in
+            guard let excursionId = features.first?.attributes["excursionId"] as? Int,
+                  let excursion = viewModel.excursions.first(where: { $0.id == excursionId }) else { return }
+            pendingPush = excursion
         }
         .navigationTitle("Trail")
         .navigationBarTitleDisplayMode(.inline)
@@ -91,7 +102,7 @@ struct TrailView: View {
                     .padding(.bottom, 8)
             }
         }
-        .navigationDestination(for: Excursion.self) { excursion in
+        .navigationDestination(item: $pendingPush) { excursion in
             ExcursionDetailView(viewModel: ExcursionDetailViewModel(
                 excursion: excursion,
                 petID: viewModel.pet.id,
@@ -115,7 +126,7 @@ struct TrailView: View {
         .padding()
     }
 
-    private func color(at index: Int) -> Color {
+    private func color(at index: Int) -> UIColor {
         Self.palette[index % Self.palette.count]
     }
 
@@ -126,9 +137,20 @@ struct TrailView: View {
 
     private func fitCameraToAllTrails() {
         let coordinates = viewModel.trailsByExcursionID.values.flatMap { $0 }.map(\.coordinate.clLocationCoordinate2D)
-        guard let region = MKCoordinateRegion.fitting(coordinates) else { return }
+        guard !coordinates.isEmpty else { return }
+        // A single-point `.showcase()` is a zero-size bounding box, which
+        // stalled MapLibre's render loop entirely in `PetMapView` (see its
+        // `fitCameraToAllPets()`), so the same single-point case is
+        // centered on directly here too.
+        guard coordinates.count > 1 else {
+            withAnimation {
+                camera = .center(coordinates[0], zoom: 16)
+            }
+            return
+        }
+        let shapeCollection = MLNShapeCollection(shapes: [MLNPointCollectionFeature(coordinates: coordinates, count: UInt(coordinates.count))])
         withAnimation {
-            cameraPosition = .region(region)
+            camera = .showcase(shapeCollection: shapeCollection, edgePadding: UIEdgeInsets(top: 100, left: 40, bottom: 60, right: 40))
         }
     }
 }

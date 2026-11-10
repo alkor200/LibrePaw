@@ -10,6 +10,13 @@ packages:
     path: Packages/TraccarKit
   LibrePawKit:
     path: Packages/LibrePawKit
+  # EXPERIMENTAL (see docs/adr/0028-experiment-maplibre-plus-openfreemap.md):
+  # the project's first-ever external dependency, only on this branch, to
+  # try swapping MapKit (Apple's own map data) for MapLibre Native rendering
+  # OpenFreeMap's openly-licensed OSM-based vector tiles, no API key needed.
+  MapLibreSwiftUI:
+    url: https://github.com/maplibre/swiftui-dsl
+    from: 0.27.0
 
 targets:
   LibrePaw:
@@ -27,7 +34,7 @@ targets:
         SWIFT_STRICT_CONCURRENCY: complete
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        MARKETING_VERSION: "1.1.1"
+        MARKETING_VERSION: "1.2.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
@@ -41,6 +48,7 @@ targets:
       Release: LibrePaw/Config/Local.xcconfig
     dependencies:
       - package: LibrePawKit
+      - package: MapLibreSwiftUI
     info:
       path: LibrePaw/Resources/Info.plist
       properties:
