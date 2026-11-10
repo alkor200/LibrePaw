@@ -134,18 +134,29 @@ struct EditPetView: View {
     }
 
     private func photoPickerButton(label: LocalizedStringKey, prominent: Bool) -> some View {
-        PhotosPicker(selection: $pickerItem, matching: .images) {
+        // `Text(label)` built here, outside `PhotosPicker`'s content
+        // closure, rather than passing the raw `LocalizedStringKey`
+        // straight in: that closure is `@Sendable`/isolated in newer SDKs,
+        // and `LocalizedStringKey` itself isn't `Sendable` (it can hold
+        // arbitrary interpolated values), triggering a Swift 6 strict
+        // concurrency error. `Text`, already resolved, captures cleanly.
+        let title = Text(label)
+        return PhotosPicker(selection: $pickerItem, matching: .images) {
             if prominent {
                 VStack(spacing: 12) {
                     Image(systemName: "photo.badge.plus")
                         .font(.system(size: 56))
                         .foregroundStyle(.tint)
-                    Text(label)
+                    title
                         .font(.headline)
                 }
                 .frame(maxWidth: .infinity)
             } else {
-                Label(label, systemImage: "photo.on.rectangle")
+                Label {
+                    title
+                } icon: {
+                    Image(systemName: "photo.on.rectangle")
+                }
             }
         }
     }
