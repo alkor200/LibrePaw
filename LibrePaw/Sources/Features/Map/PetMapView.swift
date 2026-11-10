@@ -44,6 +44,13 @@ struct PetMapView: View {
                         } label: {
                             PetAnnotationView(pet: pet, petRepository: petRepository)
                         }
+                        .contextMenu {
+                            Button {
+                                pet.openDirectionsInMaps()
+                            } label: {
+                                Label("Navigate to \(pet.name)", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                            }
+                        }
                     }
                 }
             }

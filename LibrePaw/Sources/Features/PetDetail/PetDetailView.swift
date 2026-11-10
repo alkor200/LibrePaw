@@ -104,6 +104,23 @@ struct PetDetailView: View {
                 PetAnnotationView(pet: viewModel.pet, petRepository: petRepository, size: 96, overrideImage: justSavedPhoto)
             }
             .buttonStyle(.plain)
+            .overlay(alignment: .bottomTrailing) {
+                // Editing a device (its name or photo) needs Traccar's own
+                // `deviceReadonly`/`readonly` to both be clear, hidden
+                // rather than left tappable toward a save that would just
+                // fail (see ADR-0023).
+                if viewModel.permissions?.canManageDevice == true {
+                    Button {
+                        isShowingEditPet = true
+                    } label: {
+                        Image(systemName: "pencil.circle.fill")
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .tint)
+                            .background(Color.appSurface, in: Circle())
+                            .font(.title2)
+                    }
+                }
+            }
             Text(viewModel.pet.name)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
@@ -142,15 +159,12 @@ struct PetDetailView: View {
 
     private var actionsCard: some View {
         VStack(spacing: 0) {
-            // Editing a device (its name or photo) needs Traccar's own
-            // `deviceReadonly`/`readonly` to both be clear, hidden rather
-            // than left tappable toward a save that would just fail (see
-            // ADR-0023).
-            if viewModel.permissions?.canManageDevice == true {
+            // Nowhere to route to without a position yet.
+            if viewModel.pet.lastPosition != nil {
                 Button {
-                    isShowingEditPet = true
+                    viewModel.pet.openDirectionsInMaps()
                 } label: {
-                    actionRow(systemImage: "pencil", title: "Edit \(viewModel.pet.name)")
+                    actionRow(systemImage: "arrow.triangle.turn.up.right.diamond.fill", title: "Navigate to \(viewModel.pet.name)")
                 }
                 .buttonStyle(.plain)
 
