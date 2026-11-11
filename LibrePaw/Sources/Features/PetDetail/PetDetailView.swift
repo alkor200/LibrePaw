@@ -85,6 +85,12 @@ struct PetDetailView: View {
         .task {
             await viewModel.loadPermissions()
         }
+        .task {
+            viewModel.startLiveUpdates()
+        }
+        .onDisappear {
+            viewModel.stopLiveUpdates()
+        }
         .sheet(isPresented: $isShowingEditPet) {
             EditPetView(pet: viewModel.pet, petRepository: petRepository) { newName in
                 try await viewModel.rename(to: newName)

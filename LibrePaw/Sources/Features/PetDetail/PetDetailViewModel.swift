@@ -23,10 +23,47 @@ final class PetDetailViewModel {
     private(set) var permissions: AccountPermissions?
 
     private let petRepository: PetRepository
+    private var liveUpdatesTask: Task<Void, Never>?
 
     init(pet: Pet, petRepository: PetRepository) {
         self.pet = pet
         self.petRepository = petRepository
+    }
+
+    /// Keeps `pet` (so `lastPosition`, `status`, `lastSeenAt`) current while
+    /// this screen stays open, over Traccar's WebSocket feed (ADR-0013),
+    /// same as `PetListViewModel.startLiveUpdates()`.
+    ///
+    /// Without this, `pet` was a one-time snapshot, exactly as it was when
+    /// this screen was pushed, and the real tracker keeps reporting a new
+    /// position every 30 seconds or so (see ADR-0025) the whole time this
+    /// screen stays open. "View on Map" reads `pet.lastPosition` directly
+    /// (see its header button below), so the longer this screen was open
+    /// before tapping it, the further the pet had already moved on from
+    /// wherever the map then centered on, confirmed live: this is exactly
+    /// what read as "View on Map doesn't go to where the pet actually is".
+    func startLiveUpdates() {
+        guard liveUpdatesTask == nil else { return }
+        let petID = pet.id
+        liveUpdatesTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                for try await pets in self.petRepository.livePetUpdates() {
+                    guard let updated = pets.first(where: { $0.id == petID }) else { continue }
+                    self.pet = updated
+                }
+            } catch {
+                // Best-effort: a dropped feed just means the header/"View
+                // on Map" go stale until it reconnects on its own
+                // (ADR-0013), not worth surfacing as an error on top of
+                // this screen's other, already-best-effort loads.
+            }
+        }
+    }
+
+    func stopLiveUpdates() {
+        liveUpdatesTask?.cancel()
+        liveUpdatesTask = nil
     }
 
     /// Loads today's position history so the detail map can draw a trail.
