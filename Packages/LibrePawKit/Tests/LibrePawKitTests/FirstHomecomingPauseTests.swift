@@ -159,4 +159,74 @@ struct FirstHomecomingPauseTests {
 
         #expect(TraccarPetRepository.shouldPreferHomecoming(homecoming, overFetchedEndTime: nil))
     }
+
+    @Test("requireStaysHomeAfterward rejects a candidate if the trail resumes far from home")
+    func requireStaysHomeAfterwardRejectsEarlyFalsePositive() {
+        // Chatting near home when the tracker goes quiet for a few minutes, a brief signal
+        // dead spot, then clearly walking far away: a real walk, not a genuine early return.
+        let trail = [
+            position(id: 1, coordinate: homeCenter, minutesFromNow: -10),
+            position(id: 2, coordinate: farAway, minutesFromNow: -4)
+        ]
+
+        let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()], requireStaysHomeAfterward: true)
+
+        #expect(result == nil)
+    }
+
+    @Test("requireStaysHomeAfterward accepts a candidate if the trail stays near home afterward")
+    func requireStaysHomeAfterwardAcceptsGenuineHomecoming() {
+        let trail = [
+            position(id: 1, coordinate: homeCenter, minutesFromNow: -10),
+            position(id: 2, coordinate: homeCenter, minutesFromNow: -4)
+        ]
+
+        let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()], requireStaysHomeAfterward: true)
+
+        #expect(result?.homeID == 1)
+    }
+
+    @Test("requireStaysHomeAfterward still accepts when the trail simply ends")
+    func requireStaysHomeAfterwardAcceptsWhenTrailEnds() {
+        // The original tracker fell asleep scenario, nothing at all follows the near home pause.
+        let trail = [
+            position(id: 1, coordinate: farAway, minutesFromNow: -10),
+            position(id: 2, coordinate: homeCenter, minutesFromNow: -4)
+        ]
+
+        let result = TraccarPetRepository.firstHomecomingPause(in: trail, homes: [home()], requireStaysHomeAfterward: true)
+
+        #expect(result?.fixTime == trail[1].fixTime)
+    }
+
+    @Test("A single position near home does not count as a homecoming until real time has actually passed")
+    func singlePositionNotEnoughTimeElapsedDoesNotQualifyYet() {
+        // Checking the app moments after leaving, exactly one position has been recorded so
+        // far. Without measuring its gap against a real time bound, that would otherwise
+        // default to an infinite gap and look exactly like a homecoming.
+        let onlyPosition = position(id: 1, coordinate: homeCenter, minutesFromNow: 0)
+
+        let result = TraccarPetRepository.firstHomecomingPause(
+            in: [onlyPosition],
+            homes: [home()],
+            requireStaysHomeAfterward: true,
+            trailEndTime: onlyPosition.fixTime.addingTimeInterval(30)
+        )
+
+        #expect(result == nil)
+    }
+
+    @Test("A single position near home counts once enough real time has passed with nothing further")
+    func singlePositionEnoughTimeElapsedQualifies() {
+        let onlyPosition = position(id: 1, coordinate: homeCenter, minutesFromNow: 0)
+
+        let result = TraccarPetRepository.firstHomecomingPause(
+            in: [onlyPosition],
+            homes: [home()],
+            requireStaysHomeAfterward: true,
+            trailEndTime: onlyPosition.fixTime.addingTimeInterval(6 * 60)
+        )
+
+        #expect(result?.homeID == 1)
+    }
 }

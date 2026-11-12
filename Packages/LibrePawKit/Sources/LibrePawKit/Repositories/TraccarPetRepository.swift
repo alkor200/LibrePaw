@@ -520,7 +520,15 @@ struct TraccarPetRepository: PetRepository {
     /// reason to re-derive it per excursion.
     private func makeExcursion(petID: Int, exit: TraccarEvent, enter: TraccarEvent?, homes: [HomeGeofence]) async throws -> Excursion {
         let fetchedEndTime = enter?.eventTime
-        let fullTrail = (try? await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: fetchedEndTime ?? Date())) ?? []
+        // Also what a trailing position's quiet gap in `firstHomecomingPause`
+        // measures itself against when nothing newer has been recorded yet:
+        // for a still-open excursion that's genuinely now, not an
+        // unconditional pass, a single position moments after leaving (e.g.
+        // checking the app 50m from the front door) would otherwise look
+        // exactly like an infinitely long silence purely because a second
+        // fix hasn't streamed in yet, not because the pet actually stopped.
+        let trailEndTime = fetchedEndTime ?? Date()
+        let fullTrail = (try? await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: trailEndTime)) ?? []
 
         var endTime = fetchedEndTime
         var endHomeID = enter?.geofenceId
@@ -533,8 +541,24 @@ struct TraccarPetRepository: PetRepository {
         // at or before `fetchedEndTime` (it searches within this same
         // bounded trail), so it can never push the end *later* than a real
         // enter event, only catch an earlier, truer one.
-        if let homecoming = Self.firstHomecomingPause(in: fullTrail, homes: homes),
-           Self.shouldPreferHomecoming(homecoming, overFetchedEndTime: fetchedEndTime) {
+        //
+        // requireStaysHomeAfterward is only enabled while there's no real
+        // enter event yet (fetchedEndTime == nil): the whole fetched trail
+        // necessarily belongs to this one still-open excursion, Traccar
+        // hasn't closed it yet, so checking the pet stays near home for the
+        // rest of what's known so far safely tells a real early return
+        // apart from a brief mid-walk signal gap. For an already-closed
+        // pair that same check would be unsafe: confirmed live, a dead
+        // tracker's own trail can span into an entirely separate, later
+        // walk that never got its own exit event, and that walk's
+        // far-from-home positions would otherwise wrongly veto a genuine
+        // homecoming earlier in the same bounded trail.
+        if let homecoming = Self.firstHomecomingPause(
+            in: fullTrail,
+            homes: homes,
+            requireStaysHomeAfterward: fetchedEndTime == nil,
+            trailEndTime: trailEndTime
+        ), Self.shouldPreferHomecoming(homecoming, overFetchedEndTime: fetchedEndTime) {
             endTime = homecoming.fixTime
             endHomeID = homecoming.homeID
             // Bounds the distance/end-coordinate below to the walk-home
@@ -597,20 +621,51 @@ struct TraccarPetRepository: PetRepository {
     /// appended after it, finds the exact same gap in the exact same
     /// place and reaches the same answer, no local state needs to
     /// remember the decision between calls.
+    ///
+    /// `requireStaysHomeAfterward`, enabled only for a still-open excursion
+    /// (see `makeExcursion`), rejects a candidate if the trail resumes with
+    /// the pet clearly elsewhere: a quiet gap right after leaving (e.g. a
+    /// brief signal dead spot while still chatting by the front door) can
+    /// otherwise look identical to a real, early return, closing out what's
+    /// actually about to become a much longer walk, and since Traccar
+    /// hasn't closed this excursion yet, the real enter event that
+    /// eventually arrives would have no exit left to pair with (the
+    /// cached, too-early closure already consumed it), silently losing the
+    /// whole walk rather than just mis-timing it.
+    ///
+    /// `trailEndTime` is what a trailing position (one with nothing
+    /// recorded after it yet) measures its own quiet gap against, instead
+    /// of treating that as an unconditional, infinite pass: for a
+    /// still-open excursion that bound is genuinely now (see
+    /// `makeExcursion`), since a single position moments after leaving
+    /// would otherwise look exactly like an infinitely long silence purely
+    /// from the absence of more data so far, not because the pet actually
+    /// went quiet. For an already-closed pair it's the real enter event's
+    /// own time, matching the original, validated tracker-fell-asleep
+    /// scenario (confirmed live: nothing else was ever recorded before
+    /// that event).
     static func firstHomecomingPause(
         in trail: [TraccarPosition],
         homes: [HomeGeofence],
         proximitySlackMeters: Double = homeProximitySlackMeters,
-        minimumQuietGap: TimeInterval = quietGapAfterHomeProximity
+        minimumQuietGap: TimeInterval = quietGapAfterHomeProximity,
+        requireStaysHomeAfterward: Bool = false,
+        trailEndTime: Date = .distantFuture
     ) -> (fixTime: Date, homeID: Int)? {
         let sorted = trail.sorted { $0.fixTime < $1.fixTime }
+        func isNearAnyHome(_ position: TraccarPosition) -> Bool {
+            let coordinate = Coordinate(latitude: position.latitude, longitude: position.longitude)
+            return homes.contains { coordinate.distanceMeters(to: $0.center) <= $0.radiusMeters + proximitySlackMeters }
+        }
         for (index, position) in sorted.enumerated() {
             let coordinate = Coordinate(latitude: position.latitude, longitude: position.longitude)
             guard let nearestHome = homes.first(where: { coordinate.distanceMeters(to: $0.center) <= $0.radiusMeters + proximitySlackMeters }) else {
                 continue
             }
-            let gap = sorted[(index + 1)...].first.map { $0.fixTime.timeIntervalSince(position.fixTime) } ?? .infinity
-            if gap >= minimumQuietGap {
+            let remainder = sorted[(index + 1)...]
+            let nextTime = remainder.first?.fixTime ?? trailEndTime
+            let gap = nextTime.timeIntervalSince(position.fixTime)
+            if gap >= minimumQuietGap, !requireStaysHomeAfterward || remainder.allSatisfy(isNearAnyHome) {
                 return (position.fixTime, nearestHome.id)
             }
         }
