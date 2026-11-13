@@ -252,8 +252,10 @@ struct SetHomeView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         SetHomeView(viewModel: SetHomeViewModel(pet: .previewOnline, existingHome: nil, petRepository: PreviewPetRepository(), locationService: LocationService()))
     }
 }
+#endif

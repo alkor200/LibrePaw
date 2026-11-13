@@ -67,8 +67,10 @@ struct PetListView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         PetListView(petRepository: PreviewPetRepository(), locationService: LocationService())
     }
 }
+#endif

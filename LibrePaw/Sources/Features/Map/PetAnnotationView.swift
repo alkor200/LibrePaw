@@ -58,6 +58,7 @@ struct PetAnnotationView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     HStack(spacing: 20) {
         PetAnnotationView(pet: .previewOnline, petRepository: PreviewPetRepository())
@@ -65,3 +66,4 @@ struct PetAnnotationView: View {
     }
     .padding()
 }
+#endif

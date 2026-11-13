@@ -180,6 +180,7 @@ struct ExcursionDetailView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         ExcursionDetailView(viewModel: ExcursionDetailViewModel(
@@ -198,3 +199,4 @@ struct ExcursionDetailView: View {
         ))
     }
 }
+#endif

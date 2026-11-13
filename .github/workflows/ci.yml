@@ -49,3 +49,20 @@ jobs:
             -skipMacroValidation \
             -skipPackagePluginValidation \
             | xcpretty
+      - name: Build Release configuration
+        # The test step above only ever compiles Debug, where DEBUG-only
+        # code (PreviewSupport, #Preview canvases) is always available. A
+        # Release build is what an archive actually compiles, so it gets
+        # its own check, otherwise a DEBUG-only symbol leaking into shared
+        # code only surfaces at archive time.
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project LibrePaw.xcodeproj \
+            -scheme LibrePaw \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty

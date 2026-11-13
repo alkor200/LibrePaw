@@ -80,6 +80,7 @@ struct SettingsView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         SettingsView(
@@ -90,3 +91,4 @@ struct SettingsView: View {
     .environment(LanguageSettings())
     .environment(AppearanceSettings())
 }
+#endif

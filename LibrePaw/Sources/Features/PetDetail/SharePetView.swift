@@ -66,8 +66,10 @@ struct SharePetView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         SharePetView(viewModel: SharePetViewModel(pet: .previewOnline, petRepository: PreviewPetRepository()))
     }
 }
+#endif

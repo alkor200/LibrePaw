@@ -162,6 +162,7 @@ private struct HomeRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         HomesView(
@@ -171,3 +172,4 @@ private struct HomeRow: View {
         )
     }
 }
+#endif

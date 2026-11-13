@@ -392,6 +392,7 @@ struct PetDetailView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         PetDetailView(
@@ -402,3 +403,4 @@ struct PetDetailView: View {
     }
     .environment(AppTabNavigation())
 }
+#endif

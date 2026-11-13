@@ -200,6 +200,7 @@ struct TrailView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         TrailView(
@@ -208,3 +209,4 @@ struct TrailView: View {
         )
     }
 }
+#endif

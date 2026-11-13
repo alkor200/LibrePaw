@@ -51,6 +51,7 @@ struct PetGridCell: View {
     }
 }
 
+#if DEBUG
 #Preview {
     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 20) {
         PetGridCell(pet: .previewOnline, petRepository: PreviewPetRepository())
@@ -58,3 +59,4 @@ struct PetGridCell: View {
     }
     .padding()
 }
+#endif

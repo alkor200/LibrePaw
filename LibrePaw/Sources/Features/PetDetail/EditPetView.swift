@@ -284,6 +284,8 @@ struct EditPetView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     EditPetView(pet: .previewOnline, petRepository: PreviewPetRepository(), onSaveName: { _ in }, onSavePhoto: { _ in })
 }
+#endif

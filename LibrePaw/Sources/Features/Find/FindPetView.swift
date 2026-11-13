@@ -115,8 +115,10 @@ struct FindPetView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         FindPetView(viewModel: FindPetViewModel(pet: .previewOnline, petRepository: PreviewPetRepository(), locationService: LocationService()))
     }
 }
+#endif

@@ -123,6 +123,7 @@ private struct ExcursionRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         ExcursionsView(
@@ -131,3 +132,4 @@ private struct ExcursionRow: View {
         )
     }
 }
+#endif
