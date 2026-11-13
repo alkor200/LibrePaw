@@ -109,8 +109,12 @@ struct EditPetView: View {
                     .disabled(trimmedName.isEmpty || !hasChanges || isSaving)
                 }
             }
-            .onChange(of: pickerItem) { _, newValue in
-                Task { await loadPickedPhoto(newValue) }
+            // `.task(id:)` rather than a `Task` per `.onChange`: picking
+            // again cancels the previous, still-loading pick, otherwise
+            // whichever load happened to finish last won, not the photo
+            // picked last.
+            .task(id: pickerItem) {
+                await loadPickedPhoto(pickerItem)
             }
             .task {
                 guard let data = try? await petRepository.fetchPhoto(for: pet) else { return }
@@ -214,9 +218,17 @@ struct EditPetView: View {
     }
 
     private func loadPickedPhoto(_ item: PhotosPickerItem?) async {
-        guard let item, let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else {
+        guard let item else { return }
+        let data = try? await item.loadTransferable(type: Data.self)
+        guard !Task.isCancelled else { return }
+        guard let data, let image = UIImage(data: data) else {
+            // Previously just returned, so picking a photo that couldn't
+            // be loaded (e.g. an iCloud original that failed to download,
+            // or a format UIImage can't read) silently did nothing.
+            errorMessage = localized("Couldn't load that photo, try a different one.")
             return
         }
+        errorMessage = nil
         selectedImage = image
         scale = 1
         lastScale = 1

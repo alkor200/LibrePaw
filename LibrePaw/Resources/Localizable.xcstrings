@@ -375,6 +375,17 @@
         }
       }
     },
+    "Couldn't load that photo, try a different one.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Foto konnte nicht geladen werden, versuche ein anderes."
+          }
+        }
+      }
+    },
     "Couldn't process that photo, try a different one.": {
       "extractionState": "manual",
       "localizations": {
