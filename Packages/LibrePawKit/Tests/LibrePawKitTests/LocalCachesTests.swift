@@ -46,7 +46,7 @@ struct LocalCachesTests {
     func logOutClearsCaches() throws {
         let defaults = makeDefaults()
         populate(defaults)
-        let service = LiveAuthenticationService(credentialStore: InMemoryCredentialStore(), cacheDefaults: defaults)
+        let service = LiveAuthenticationService(credentialStore: InMemoryCredentialStore(), defaults: defaults)
 
         try service.logOut()
 
@@ -58,7 +58,7 @@ struct LocalCachesTests {
     func logOutClearsCachesEvenIfKeychainFails() {
         let defaults = makeDefaults()
         populate(defaults)
-        let service = LiveAuthenticationService(credentialStore: FailingCredentialStore(), cacheDefaults: defaults)
+        let service = LiveAuthenticationService(credentialStore: FailingCredentialStore(), defaults: defaults)
 
         #expect(throws: KeychainError.self) { try service.logOut() }
         #expect(UserDefaultsExcursionCacheStore(defaults: defaults).load(forPetID: 1, serverHost: host) == nil)

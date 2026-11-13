@@ -4,20 +4,35 @@ import TraccarKit
 /// Default, server-backed implementation of ``AuthenticationService``.
 public struct LiveAuthenticationService: AuthenticationService, @unchecked Sendable {
     private let credentialStore: CredentialStore
-    /// Where `TraccarPetRepository`'s caches live, see ``LocalCaches``.
-    private let cacheDefaults: UserDefaults
+    /// Where `TraccarPetRepository`'s caches live (see ``LocalCaches``),
+    /// and the pending-logout marker (see ``pendingLogoutKey``).
+    private let defaults: UserDefaults
+
+    /// Set when ``logOut()`` couldn't delete the Keychain item. The UI
+    /// shows the user as logged out either way (it can't stay around to
+    /// report the failure), so without this marker the next launch would
+    /// find the credentials still there and silently log straight back
+    /// in. ``restoreSession()`` finishes the logout instead.
+    static let pendingLogoutKey = "org.librepaw.pendingLogout"
 
     public init(credentialStore: CredentialStore = KeychainCredentialStore()) {
-        self.init(credentialStore: credentialStore, cacheDefaults: .standard)
+        self.init(credentialStore: credentialStore, defaults: .standard)
     }
 
-    init(credentialStore: CredentialStore, cacheDefaults: UserDefaults) {
+    init(credentialStore: CredentialStore, defaults: UserDefaults) {
         self.credentialStore = credentialStore
-        self.cacheDefaults = cacheDefaults
+        self.defaults = defaults
     }
 
     public func restoreSession() throws -> StoredSession? {
-        try credentialStore.loadSession()
+        if defaults.bool(forKey: Self.pendingLogoutKey) {
+            // Still throws (and so still restores nothing) if the delete
+            // keeps failing, the marker stays for the next attempt.
+            try credentialStore.clear()
+            defaults.removeObject(forKey: Self.pendingLogoutKey)
+            return nil
+        }
+        return try credentialStore.loadSession()
     }
 
     @discardableResult
@@ -38,18 +53,25 @@ public struct LiveAuthenticationService: AuthenticationService, @unchecked Senda
 
         // Starts every account from an empty cache, also covering caches
         // left behind by a build from before logOut cleared them.
-        LocalCaches.clearAll(in: cacheDefaults)
+        LocalCaches.clearAll(in: defaults)
 
         let session = StoredSession(serverURL: serverURL, email: email, password: password)
         try credentialStore.save(session)
+        defaults.removeObject(forKey: Self.pendingLogoutKey)
         return session
     }
 
     public func logOut() throws {
         // First, and regardless of whether the Keychain delete below
         // succeeds: the cached data belongs to the account signing out.
-        LocalCaches.clearAll(in: cacheDefaults)
-        try credentialStore.clear()
+        LocalCaches.clearAll(in: defaults)
+        do {
+            try credentialStore.clear()
+            defaults.removeObject(forKey: Self.pendingLogoutKey)
+        } catch {
+            defaults.set(true, forKey: Self.pendingLogoutKey)
+            throw error
+        }
     }
 
     public func makePetRepository(for session: StoredSession) -> PetRepository {
