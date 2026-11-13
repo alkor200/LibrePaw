@@ -97,14 +97,6 @@ public actor TraccarClient {
         return try await getJSON("/api/geofences", queryItems: queryItems)
     }
 
-    /// One geofence by id, including its current attributes, used before an
-    /// update that must carry forward an attribute (e.g. who created it,
-    /// see ADR-0021) the update's own payload isn't changing, since
-    /// `updateGeofence` replaces `attributes` wholesale rather than merging.
-    public func fetchGeofence(id: Int) async throws -> TraccarGeofence {
-        try await getJSON("/api/geofences/\(id)")
-    }
-
     /// Creates a new geofence. Does not link it to any device, follow up
     /// with ``linkGeofence(geofenceId:toDeviceId:)``.
     public func createGeofence(name: String, area: String, attributes: [String: JSONValue]) async throws -> TraccarGeofence {
