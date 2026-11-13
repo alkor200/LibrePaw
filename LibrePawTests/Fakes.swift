@@ -35,12 +35,19 @@ final class FakeAuthenticationService: AuthenticationService, @unchecked Sendabl
 struct FakePetRepository: PetRepository {
     /// Thrown from ``fetchPets()`` instead of returning, when set.
     var error: Error?
+    /// Route fetches starting at one of these times fail, the start time
+    /// being the only thing ``fetchTrail(forPetID:from:to:)`` gets to
+    /// tell excursions apart by.
+    var failingTrailStarts: Set<Date> = []
 
     func fetchPets() async throws -> [Pet] {
         if let error { throw error }
         return []
     }
-    func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] { [] }
+    func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] {
+        if failingTrailStarts.contains(from) { throw LibrePawError.network("offline") }
+        return []
+    }
     func fetchPhoto(for pet: Pet) async throws -> Data? { nil }
     func setPhoto(forPetID petID: Int, jpegData: Data) async throws {}
     func renamePet(forPetID petID: Int, name: String) async throws {}
@@ -65,3 +72,4 @@ struct FakePetRepository: PetRepository {
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
     func endSession() async {}
 }
+

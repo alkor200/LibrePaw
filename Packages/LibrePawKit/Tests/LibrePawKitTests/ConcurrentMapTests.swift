@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import LibrePawKit
 
-@Suite("TraccarPetRepository.concurrentMap")
+@Suite("concurrentMap")
 struct ConcurrentMapTests {
     @Test("Results preserve input order regardless of completion order")
     func preservesOrder() async throws {
@@ -10,7 +10,7 @@ struct ConcurrentMapTests {
         // reassembly the results would come back out of order.
         let delaysMs: [UInt64] = [30, 20, 10, 5, 1]
 
-        let results = try await TraccarPetRepository.concurrentMap(Array(delaysMs.enumerated()), maxConcurrent: 5) { index, delay in
+        let results = try await concurrentMap(Array(delaysMs.enumerated()), maxConcurrent: 5) { index, delay in
             try await Task.sleep(nanoseconds: delay * 1_000_000)
             return index
         }
@@ -23,7 +23,7 @@ struct ConcurrentMapTests {
         let inFlight = Counter()
         let maxObserved = Counter()
 
-        _ = try await TraccarPetRepository.concurrentMap(Array(0..<50), maxConcurrent: 5) { _ in
+        _ = try await concurrentMap(Array(0..<50), maxConcurrent: 5) { _ in
             let current = await inFlight.increment()
             await maxObserved.recordMax(current)
             try await Task.sleep(nanoseconds: 1_000_000)
@@ -41,7 +41,7 @@ struct ConcurrentMapTests {
         struct TestError: Error {}
 
         await #expect(throws: TestError.self) {
-            _ = try await TraccarPetRepository.concurrentMap(Array(0..<10), maxConcurrent: 3) { value in
+            _ = try await concurrentMap(Array(0..<10), maxConcurrent: 3) { value in
                 if value == 7 { throw TestError() }
                 return value
             }
@@ -50,7 +50,7 @@ struct ConcurrentMapTests {
 
     @Test("Empty input returns empty output without scheduling anything")
     func handlesEmptyInput() async throws {
-        let results: [Int] = try await TraccarPetRepository.concurrentMap([Int](), maxConcurrent: 5) { $0 }
+        let results: [Int] = try await concurrentMap([Int](), maxConcurrent: 5) { $0 }
         #expect(results.isEmpty)
     }
 }

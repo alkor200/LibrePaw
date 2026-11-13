@@ -59,7 +59,14 @@ final class TrailViewModel {
         loadTask?.cancel()
         let task = Task { await performLoad() }
         loadTask = task
-        await task.value
+        // `task` is unstructured, so cancelling the caller (e.g. the view's
+        // own `.task` when it pops) wouldn't reach it on its own, every
+        // route fetch would keep running for a screen nobody sees.
+        await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     private func performLoad() async {
@@ -84,28 +91,47 @@ final class TrailViewModel {
         }
     }
 
-    /// One position-history fetch per excursion, all concurrently, each
-    /// bounded to that excursion's own start/end (or now, if still
-    /// ongoing) so the drawn route matches exactly what `ExcursionDetailView`
-    /// would show for the same excursion.
-    private static func loadTrails(
+    /// At most this many route fetches run at once. A 30-day window can
+    /// hold a hundred-plus excursions, all at once is too much for a
+    /// small self-hosted server, same reasoning (and limit) as
+    /// `TraccarPetRepository.fetchExcursions`' own fan-out.
+    static let maxConcurrentTrailFetches = 20
+
+    /// One position-history fetch per excursion, bounded to that
+    /// excursion's own start/end (or now, if still ongoing) so the drawn
+    /// route matches exactly what `ExcursionDetailView` would show for the
+    /// same excursion.
+    ///
+    /// A route that fails to load is just left out (its excursion is still
+    /// listed, it simply draws no line) rather than failing the whole
+    /// screen. Only when every single one failed is that worth an error.
+    static func loadTrails(
         for excursions: [Excursion],
         petID: Int,
         petRepository: PetRepository
     ) async throws -> [Int: [PetPosition]] {
-        try await withThrowingTaskGroup(of: (Int, [PetPosition]).self) { group in
-            for excursion in excursions {
-                group.addTask {
-                    let positions = try await petRepository.fetchTrail(forPetID: petID, from: excursion.startTime, to: excursion.endTime ?? .now)
-                    return (excursion.id, positions)
-                }
+        let results = try await concurrentMap(excursions, maxConcurrent: maxConcurrentTrailFetches) { excursion in
+            do {
+                let positions = try await petRepository.fetchTrail(forPetID: petID, from: excursion.startTime, to: excursion.endTime ?? .now)
+                return (excursion.id, Result<[PetPosition], Error>.success(positions))
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                return (excursion.id, Result<[PetPosition], Error>.failure(error))
             }
-
-            var result: [Int: [PetPosition]] = [:]
-            for try await (excursionID, positions) in group {
-                result[excursionID] = positions
-            }
-            return result
         }
+
+        var trails: [Int: [PetPosition]] = [:]
+        var firstError: Error?
+        for (excursionID, result) in results {
+            switch result {
+            case .success(let positions): trails[excursionID] = positions
+            case .failure(let error): firstError = firstError ?? error
+            }
+        }
+        if trails.isEmpty, let firstError {
+            throw firstError
+        }
+        return trails
     }
 }
