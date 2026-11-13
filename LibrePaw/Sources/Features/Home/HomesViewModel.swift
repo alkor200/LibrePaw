@@ -72,7 +72,7 @@ final class HomesViewModel {
             homes = try await petRepository.homeGeofences(forPetID: pet.id)
         } catch {
             guard !Task.isCancelled else { return }
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 
@@ -100,7 +100,7 @@ final class HomesViewModel {
             try await petRepository.deleteHomeGeofence(home.id)
             homes.removeAll { $0.id == home.id }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 }

@@ -34,7 +34,7 @@ final class SharePetViewModel {
             try await petRepository.sharePet(forPetID: pet.id, withEmail: trimmedEmail)
             didShare = true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 }

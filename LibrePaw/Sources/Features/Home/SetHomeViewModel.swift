@@ -95,7 +95,7 @@ final class SetHomeViewModel {
             }
             didSave = true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 
@@ -121,7 +121,7 @@ final class SetHomeViewModel {
             try await petRepository.deleteHomeGeofence(existingHomeID)
             didDelete = true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 }

@@ -287,6 +287,17 @@
         }
       }
     },
+    "Could not reach the server: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server ist nicht erreichbar: %@"
+          }
+        }
+      }
+    },
     "Couldn't Load Excursions": {
       "extractionState": "manual",
       "localizations": {
@@ -784,6 +795,17 @@
         }
       }
     },
+    "No Traccar user with that email was found on this server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Server gibt es keinen Traccar-Benutzer mit dieser E-Mail-Adresse."
+          }
+        }
+      }
+    },
     "No Trail Yet": {
       "extractionState": "manual",
       "localizations": {
@@ -1026,6 +1048,39 @@
         }
       }
     },
+    "The email or password is incorrect.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-Mail oder Passwort ist falsch."
+          }
+        }
+      }
+    },
+    "The login couldn't be saved on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Anmeldung konnte auf diesem Gerät nicht gespeichert werden."
+          }
+        }
+      }
+    },
+    "The server address is not a valid URL.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Serveradresse ist keine gültige URL."
+          }
+        }
+      }
+    },
     "The server no longer accepts this account's password, e.g. because it was changed. Please sign in again.": {
       "extractionState": "manual",
       "localizations": {
@@ -1033,6 +1088,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Server akzeptiert das Passwort dieses Kontos nicht mehr, z. B. weil es geändert wurde. Bitte melde dich erneut an."
+          }
+        }
+      }
+    },
+    "The server responded with an unexpected status (%lld).": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat mit einem unerwarteten Status geantwortet (%lld)."
+          }
+        }
+      }
+    },
+    "The server response could not be understood.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Antwort des Servers konnte nicht verarbeitet werden."
+          }
+        }
+      }
+    },
+    "This account isn't allowed to do that on this server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Konto darf das auf diesem Server nicht."
           }
         }
       }

@@ -76,7 +76,7 @@ final class PetDetailViewModel {
             let startOfDay = Calendar.current.startOfDay(for: .now)
             trail = try await petRepository.fetchTrail(forPetID: pet.id, from: startOfDay, to: .now)
         } catch {
-            trailErrorMessage = error.localizedDescription
+            trailErrorMessage = error.userFacingMessage
         }
     }
 

@@ -30,7 +30,7 @@ final class PetMapViewModel {
                 self.errorMessage = nil
                 return true
             } onError: { error in
-                self?.errorMessage = error.localizedDescription
+                self?.errorMessage = error.userFacingMessage
             }
         }
     }

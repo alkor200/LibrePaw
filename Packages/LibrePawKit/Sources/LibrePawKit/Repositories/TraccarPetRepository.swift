@@ -241,7 +241,7 @@ struct TraccarPetRepository: PetRepository {
         do {
             let matches = try await client.fetchUsers(keyword: email)
             guard let user = matches.first(where: { $0.email.caseInsensitiveCompare(email) == .orderedSame }) else {
-                throw LibrePawError.unexpected("No Traccar user with that email was found on this server.")
+                throw LibrePawError.userNotFound
             }
             try await client.linkDevice(deviceId: petID, toUserId: user.id)
 

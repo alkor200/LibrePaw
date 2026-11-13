@@ -33,7 +33,7 @@ final class PetListViewModel {
                 return true
             } onError: { error in
                 guard let self, !self.hasLoadedPets else { return }
-                self.state = .failed(error.localizedDescription)
+                self.state = .failed(error.userFacingMessage)
             }
         }
     }
@@ -54,7 +54,7 @@ final class PetListViewModel {
         do {
             state = .loaded(sorted(try await petRepository.fetchPets()))
         } catch {
-            state = .failed(error.localizedDescription)
+            state = .failed(error.userFacingMessage)
         }
     }
 

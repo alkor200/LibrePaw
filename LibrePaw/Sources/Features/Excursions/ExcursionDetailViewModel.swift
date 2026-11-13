@@ -30,7 +30,7 @@ final class ExcursionDetailViewModel {
             trail = try await fetchedTrail
             homeNamesByID = Dictionary(uniqueKeysWithValues: try await homes.map { ($0.id, $0.name) })
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 

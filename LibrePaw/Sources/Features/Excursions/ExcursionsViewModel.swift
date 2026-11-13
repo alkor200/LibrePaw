@@ -51,7 +51,7 @@ final class ExcursionsViewModel {
             homeNamesByID = Dictionary(uniqueKeysWithValues: try await homes.map { ($0.id, $0.name) })
         } catch {
             guard !Task.isCancelled else { return }
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 

@@ -45,7 +45,7 @@ final class LoginViewModel {
         do {
             try await appSession.logIn(serverURL: url, email: email.trimmed, password: password)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 

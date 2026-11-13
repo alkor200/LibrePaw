@@ -87,7 +87,7 @@ final class TrailViewModel {
             trailsByExcursionID = fetchedTrails
         } catch {
             guard !Task.isCancelled else { return }
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 
