@@ -278,6 +278,7 @@ struct TraccarPetRepository: PetRepository {
             let liveFrom = Self.liveFetchStart(cached: cached, from: from)
 
             var freshExcursions: [Excursion] = []
+            var provisionalIDs: Set<Int> = []
             if liveFrom < to {
                 async let exitEvents = client.fetchEvents(deviceId: petID, from: liveFrom, to: to, type: TraccarEvent.EventType.geofenceExit)
                 async let enterEvents = client.fetchEvents(deviceId: petID, from: liveFrom, to: to, type: TraccarEvent.EventType.geofenceEnter)
@@ -298,17 +299,29 @@ struct TraccarPetRepository: PetRepository {
                 // it again. The filter below on `all` is still needed on
                 // top of this one, to also hide one already sitting in an
                 // existing cache from before this check existed.
-                freshExcursions = try await concurrentMap(pairs, maxConcurrent: 20) { pair in
-                    try await self.makeExcursion(petID: petID, exit: pair.exit, enter: pair.enter, homes: homes)
+                let resolved = try await concurrentMap(pairs, maxConcurrent: 20) { pair in
+                    (excursions: try await self.makeExcursions(petID: petID, exit: pair.exit, enter: pair.enter, homes: homes),
+                     isFinal: pair.enter != nil)
                 }
-                .filter { !Self.isDegenerate($0) }
+                freshExcursions = resolved.flatMap(\.excursions).filter { !Self.isDegenerate($0) }
+                // Everything split out of a pair Traccar hasn't closed yet
+                // is provisional, even a part that already ended at a
+                // homecoming pause: later positions can still turn the
+                // rest of the pair into further excursions, see
+                // `mergeExcursions`.
+                provisionalIDs = Set(resolved.filter { !$0.isFinal }.flatMap { $0.excursions.map(\.id) })
             }
 
             // Merged against whatever is stored *now*, not `cached` from
             // before the fetch, another concurrent call for the same pet
             // may have saved in the meantime (see `ExcursionCacheStore.update`).
             let all = excursionCacheStore.update(forPetID: petID, serverHost: serverHost) { latest in
-                let (all, newCache) = Self.mergeExcursions(cached: latest, freshExcursions: freshExcursions, liveFrom: liveFrom)
+                let (all, newCache) = Self.mergeExcursions(
+                    cached: latest,
+                    freshExcursions: freshExcursions,
+                    provisionalIDs: provisionalIDs,
+                    liveFrom: liveFrom
+                )
                 return (newCache, all)
             }
 
@@ -326,18 +339,25 @@ struct TraccarPetRepository: PetRepository {
         excursionCacheStore.clear(forPetID: petID, serverHost: serverHost)
     }
 
-    /// Where to start a live fetch from, given what's already cached. Only
-    /// narrows to the watermark when the cache's own coverage already
-    /// reaches back to (or before) `from`, never when there's a gap
-    /// between the true start of history and wherever an earlier,
-    /// narrower call first populated this cache (e.g.
-    /// `loadTodaysExcursions()`'s `from: startOfDay`, confirmed live: this
-    /// exact gap once caused a wider request, like `ExcursionsView`'s own
-    /// window, to wrongly trust the watermark and silently show only
-    /// today's excursions, see `CachedExcursions.coveredFrom`).
+    /// Where to start a live fetch from, given what's already cached. Uses
+    /// the watermark when the cache's own coverage already reaches back to
+    /// (or before) `from`, never when there's a gap between the true start
+    /// of history and wherever an earlier, narrower call first populated
+    /// this cache (e.g. `loadTodaysExcursions()`'s `from: startOfDay`,
+    /// confirmed live: this exact gap once caused a wider request, like
+    /// `ExcursionsView`'s own window, to wrongly trust the watermark and
+    /// silently show only today's excursions, see
+    /// `CachedExcursions.coveredFrom`).
+    ///
+    /// The watermark even when `from` is later: everything after it is
+    /// what isn't final yet, and the exit event that opened it can lie
+    /// before `from`. Starting at `from` instead missed that exit, and with
+    /// it every walk split out of a still-open pair (see
+    /// `splitIntoExcursions`), e.g. this afternoon's walk for a request
+    /// starting after this morning's.
     static func liveFetchStart(cached: CachedExcursions?, from: Date) -> Date {
         if let coveredFrom = cached?.coveredFrom, coveredFrom <= from, let watermark = cached?.cachedThroughEndTime {
-            return max(from, watermark)
+            return watermark
         }
         return from
     }
@@ -351,10 +371,14 @@ struct TraccarPetRepository: PetRepository {
     /// the cache. Keyed by id (an excursion's own exit event id, stable and
     /// unique within one server), so re-fetching one already cached, or an
     /// id appearing in both, never duplicates it, a fresh copy simply wins.
-    /// Only closed excursions (`endTime != nil`) are folded into the
-    /// returned cache and advance `cachedThroughEndTime`, an ongoing one is
-    /// included in `all` (what the caller actually sees) but never
-    /// persisted.
+    /// Only final excursions are folded into the returned cache and
+    /// advance `cachedThroughEndTime`: closed (`endTime != nil`) and not in
+    /// `provisionalIDs`, i.e. not split out of a pair Traccar hasn't closed
+    /// yet. Anything else is included in `all` (what the caller actually
+    /// sees) but never persisted. A provisional excursion that already
+    /// ended at a homecoming pause used to be cached anyway, moving the
+    /// watermark past the still-open exit event, so the next walk, which
+    /// Traccar never gives an exit of its own, was never looked for again.
     ///
     /// `coveredFrom` only keeps its earlier value when this call's live
     /// fetch actually connects to what the cache already covered, i.e.
@@ -368,6 +392,7 @@ struct TraccarPetRepository: PetRepository {
     static func mergeExcursions(
         cached: CachedExcursions?,
         freshExcursions: [Excursion],
+        provisionalIDs: Set<Int> = [],
         liveFrom: Date
     ) -> (all: [Excursion], newCache: CachedExcursions) {
         var byID = Dictionary(uniqueKeysWithValues: (cached?.excursions ?? []).map { ($0.id, $0) })
@@ -375,6 +400,7 @@ struct TraccarPetRepository: PetRepository {
 
         for excursion in freshExcursions {
             byID[excursion.id] = excursion
+            guard !provisionalIDs.contains(excursion.id) else { continue }
             if let endTime = excursion.endTime, watermark == nil || endTime > watermark! {
                 watermark = endTime
             }
@@ -391,7 +417,7 @@ struct TraccarPetRepository: PetRepository {
             coveredFrom = liveFrom
         }
 
-        let closed = byID.values.filter { $0.endTime != nil }
+        let closed = byID.values.filter { $0.endTime != nil && !provisionalIDs.contains($0.id) }
         let newCache = CachedExcursions(excursions: closed, coveredFrom: coveredFrom, cachedThroughEndTime: watermark)
         return (Array(byID.values), newCache)
     }
@@ -479,7 +505,14 @@ struct TraccarPetRepository: PetRepository {
         let serverHost = client.serverURL.host ?? ""
         let cached = lifetimeStatsStore.load(forPetID: petID, serverHost: serverHost)
 
-        let recentExcursions = try await fetchExcursions(forPetID: petID, from: cached?.cachedThroughEndTime ?? .distantPast, to: .now)
+        // The whole history, not just from this cache's own watermark:
+        // that can fall in the middle of a still-open exit/enter pair (a
+        // walk closed by a homecoming pause, Traccar still waiting for an
+        // enter), and the next walk split out of that pair only exists
+        // when the pair is evaluated from its exit. `mergeLifetimeStats`
+        // skips whatever was already counted, and `fetchExcursions` serves
+        // everything final from its own cache.
+        let recentExcursions = try await fetchExcursions(forPetID: petID, from: .distantPast, to: .now)
 
         let (stats, newCache) = Self.mergeLifetimeStats(cached: cached, recentExcursions: recentExcursions)
         lifetimeStatsStore.save(newCache, forPetID: petID, serverHost: serverHost)
@@ -540,81 +573,196 @@ struct TraccarPetRepository: PetRepository {
         return (LifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration), newCache)
     }
 
-    /// `homes` is needed for `firstHomecomingPause`, checked for every
-    /// excursion regardless of whether a real enter event exists, every
-    /// caller already has it on hand from `fetchExcursions` so there's no
-    /// reason to re-derive it per excursion.
-    private func makeExcursion(petID: Int, exit: TraccarEvent, enter: TraccarEvent?, homes: [HomeGeofence]) async throws -> Excursion {
-        let fetchedEndTime = enter?.eventTime
-        // Also what a trailing position's quiet gap in `firstHomecomingPause`
-        // measures itself against when nothing newer has been recorded yet:
-        // for a still-open excursion that's genuinely now, not an
-        // unconditional pass, a single position moments after leaving (e.g.
-        // checking the app 50m from the front door) would otherwise look
-        // exactly like an infinitely long silence purely because a second
-        // fix hasn't streamed in yet, not because the pet actually stopped.
-        let trailEndTime = fetchedEndTime ?? Date()
+    /// Every excursion one exit/enter pair stands for, see
+    /// ``splitIntoExcursions(exit:enter:trail:homes:trailEndTime:)``.
+    /// `homes` is needed for its homecoming checks, every caller already
+    /// has it on hand from `fetchExcursions`.
+    private func makeExcursions(petID: Int, exit: TraccarEvent, enter: TraccarEvent?, homes: [HomeGeofence]) async throws -> [Excursion] {
+        // For a still-open pair, "now" is what a trailing position's quiet
+        // gap is measured against: a single position moments after leaving
+        // (e.g. checking the app 50m from the front door) would otherwise
+        // look exactly like an infinitely long silence purely because a
+        // second fix hasn't streamed in yet, not because the pet stopped.
+        let trailEndTime = enter?.eventTime ?? Date()
         // Not `try?`: a failed fetch here must fail the whole call rather
         // than produce an excursion with no route and no distance, a
         // closed one of those would be cached for good (ADR-0026) and
         // folded into lifetime stats as zero meters, never recomputed.
         // Failing instead just means the next load tries again.
-        let fullTrail = try await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: trailEndTime)
+        let trail = try await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: trailEndTime)
+        return Self.splitIntoExcursions(exit: exit, enter: enter, trail: trail, homes: homes, trailEndTime: trailEndTime)
+    }
 
-        var endTime = fetchedEndTime
-        var endHomeID = enter?.geofenceId
-        var trail = fullTrail
-        // Checked unconditionally, not just while there's no real enter
-        // event yet: a real `geofenceEnter` can itself arrive hours late
-        // (confirmed live, see ADR-0025) if the device went quiet a short
-        // distance short of the boundary and only resumed reporting once
-        // it crossed it. `firstHomecomingPause` only ever finds a position
-        // at or before `fetchedEndTime` (it searches within this same
-        // bounded trail), so it can never push the end *later* than a real
-        // enter event, only catch an earlier, truer one.
-        //
-        // requireStaysHomeAfterward is only enabled while there's no real
-        // enter event yet (fetchedEndTime == nil): the whole fetched trail
-        // necessarily belongs to this one still-open excursion, Traccar
-        // hasn't closed it yet, so checking the pet stays near home for the
-        // rest of what's known so far safely tells a real early return
-        // apart from a brief mid-walk signal gap. For an already-closed
-        // pair that same check would be unsafe: confirmed live, a dead
-        // tracker's own trail can span into an entirely separate, later
-        // walk that never got its own exit event, and that walk's
-        // far-from-home positions would otherwise wrongly veto a genuine
-        // homecoming earlier in the same bounded trail.
-        if let homecoming = Self.firstHomecomingPause(
-            in: fullTrail,
-            homes: homes,
-            requireStaysHomeAfterward: fetchedEndTime == nil,
-            trailEndTime: trailEndTime
-        ), Self.shouldPreferHomecoming(homecoming, overFetchedEndTime: fetchedEndTime) {
-            endTime = homecoming.fixTime
-            endHomeID = homecoming.homeID
-            // Bounds the distance/end-coordinate below to the walk-home
-            // portion only, not whatever the device reported afterward
-            // (e.g. a second walk that starts before Traccar ever logs a
-            // real enter event for this one, see ADR-0025).
-            trail = fullTrail.filter { $0.fixTime <= homecoming.fixTime }
+    /// Turns one exit/enter pair, and the position trail between them, into
+    /// the excursions it actually stands for: usually one, but several when
+    /// the trail shows the pet coming home and leaving again in between
+    /// without Traccar ever noticing (see ADR-0029).
+    ///
+    /// Traccar only logs `geofenceEnter`/`geofenceExit` when a reported
+    /// position crosses the exact boundary. A Mictrack that falls asleep a
+    /// few meters short of it on the way home (ADR-0025) never reports the
+    /// crossing, and when it wakes up for the next walk it's often already
+    /// outside again, so that walk gets no exit event either. Confirmed
+    /// live with Phoebe: one exit at 08:39 and one enter at 16:12 for what
+    /// were really two walks, 08:39 to 09:17 (asleep 42m from the center
+    /// of a 40m home) and 15:12 to 16:12 (woke up 126m away). Treating the
+    /// pair as one excursion lost the afternoon walk entirely.
+    ///
+    /// Walks the trail segment by segment:
+    /// - A segment ends at its first homecoming pause (see
+    ///   ``firstHomecomingPause(in:homes:proximitySlackMeters:minimumQuietGap:trailEndTime:)``)
+    ///   if that's genuinely earlier than the real enter event (see
+    ///   ``shouldPreferHomecoming(_:overFetchedEndTime:)``), otherwise at
+    ///   the enter event itself, or not at all while the pair is still open.
+    /// - After a pause, the next segment starts where the trail next goes
+    ///   clearly away from every home (beyond radius plus
+    ///   ``homeProximitySlackMeters``), backdated over the moving positions
+    ///   right before it that are already outside the home's own radius
+    ///   (see `nextDepartureIndex`). No such position, no further segment:
+    ///   the pet stayed home.
+    /// - A segment that never got clearly away before its pause, and is
+    ///   followed by a departure, wasn't a trip of its own: an exit that
+    ///   was only GPS jitter at the fence (confirmed live, Phoebe "left" at
+    ///   48m from a 40m home and slept there for hours before the real walk
+    ///   the next day), or a few minutes without signal by the front door.
+    ///   That stub is dropped, and the walk after it keeps the exit's id but
+    ///   starts at its real departure, rather than stretching from the
+    ///   jitter all the way through the night. This replaces the earlier
+    ///   `requireStaysHomeAfterward` guard, which protected against the
+    ///   front door case by refusing any pause the pet later walked away
+    ///   from, and with it also refused the genuine homecoming above.
+    ///
+    /// The first segment keeps the exit event's id. A later one has no
+    /// event of its own, so it's identified by its first position's id,
+    /// negated so it can never collide with an event id, and stable
+    /// across recomputations since history only ever gets appended to.
+    static func splitIntoExcursions(
+        exit: TraccarEvent,
+        enter: TraccarEvent?,
+        trail: [TraccarPosition],
+        homes: [HomeGeofence],
+        trailEndTime: Date
+    ) -> [Excursion] {
+        let sorted = trail.sorted { $0.fixTime < $1.fixTime }
+        var excursions: [Excursion] = []
+
+        var segmentID = exit.id
+        var segmentStartTime = exit.eventTime
+        var segmentStartHomeID = exit.geofenceId
+        var segmentStartIndex = 0
+
+        while true {
+            let pause = homecomingPauseIndex(
+                in: sorted,
+                from: segmentStartIndex,
+                homes: homes,
+                trailEndTime: trailEndTime
+            ).flatMap { pause in
+                shouldPreferHomecoming((sorted[pause.index].fixTime, pause.homeID), overFetchedEndTime: enter?.eventTime) ? pause : nil
+            }
+
+            guard let pause else {
+                excursions.append(excursion(
+                    id: segmentID,
+                    startTime: segmentStartTime,
+                    endTime: enter?.eventTime,
+                    positions: sorted[min(segmentStartIndex, sorted.count)...],
+                    startHomeID: segmentStartHomeID,
+                    endHomeID: enter?.geofenceId
+                ))
+                return excursions
+            }
+
+            let departureIndex = nextDepartureIndex(in: sorted, after: pause.index, homes: homes)
+            let segmentWentAway = sorted[segmentStartIndex...pause.index].contains { !isNearAnyHome($0, homes: homes) }
+
+            if segmentWentAway || departureIndex == nil {
+                excursions.append(excursion(
+                    id: segmentID,
+                    startTime: segmentStartTime,
+                    endTime: sorted[pause.index].fixTime,
+                    positions: sorted[segmentStartIndex...pause.index],
+                    startHomeID: segmentStartHomeID,
+                    endHomeID: pause.homeID
+                ))
+            }
+
+            guard let departureIndex else { return excursions }
+            if segmentWentAway {
+                // A walk of its own, with no event of its own.
+                segmentID = -sorted[departureIndex].id
+                segmentStartHomeID = pause.homeID
+            }
+            // Otherwise the stub before it was no trip at all (see the doc
+            // comment), the walk is still this exit's own excursion.
+            segmentStartTime = sorted[departureIndex].fixTime
+            segmentStartIndex = departureIndex
         }
+    }
 
-        let coordinates = trail.sorted { $0.fixTime < $1.fixTime }.map { Coordinate(latitude: $0.latitude, longitude: $0.longitude) }
+    /// Where the trail next leaves home for real after `pauseIndex`: the
+    /// first position clearly away from every home (beyond its radius plus
+    /// ``homeProximitySlackMeters``, so pottering about just outside the
+    /// fence doesn't count), backdated over the positions right before it
+    /// that are already outside every home's own radius, i.e. to where the
+    /// pet actually crossed out. Backdating stops at a quiet gap: a
+    /// position followed by ``quietGapAfterHomeProximity`` of silence is
+    /// the tracker asleep at home, not the start of the walk, even if it
+    /// happens to lie just outside the fence. `nil` if it never leaves.
+    private static func nextDepartureIndex(in sorted: [TraccarPosition], after pauseIndex: Int, homes: [HomeGeofence]) -> Int? {
+        guard let awayIndex = sorted.indices.first(where: { $0 > pauseIndex && !isNearAnyHome(sorted[$0], homes: homes) }) else {
+            return nil
+        }
+        var departureIndex = awayIndex
+        while departureIndex - 1 > pauseIndex {
+            let previous = sorted[departureIndex - 1]
+            let gap = sorted[departureIndex].fixTime.timeIntervalSince(previous.fixTime)
+            guard !isInsideAnyHome(previous, homes: homes), gap < quietGapAfterHomeProximity else { break }
+            departureIndex -= 1
+        }
+        return departureIndex
+    }
+
+    private static func excursion(
+        id: Int,
+        startTime: Date,
+        endTime: Date?,
+        positions: ArraySlice<TraccarPosition>,
+        startHomeID: Int?,
+        endHomeID: Int?
+    ) -> Excursion {
+        let coordinates = positions.map { Coordinate(latitude: $0.latitude, longitude: $0.longitude) }
         var distance: Double?
         if coordinates.count > 1 {
             distance = zip(coordinates, coordinates.dropFirst()).reduce(0) { $0 + $1.0.distanceMeters(to: $1.1) }
         }
-
         return Excursion(
-            id: exit.id,
-            startTime: exit.eventTime,
+            id: id,
+            startTime: startTime,
             endTime: endTime,
             startCoordinate: coordinates.first,
             endCoordinate: coordinates.last,
             distanceMeters: distance,
-            startHomeID: exit.geofenceId,
+            startHomeID: startHomeID,
             endHomeID: endHomeID
         )
+    }
+
+    private static func isNearAnyHome(
+        _ position: TraccarPosition,
+        homes: [HomeGeofence],
+        proximitySlackMeters: Double = homeProximitySlackMeters
+    ) -> Bool {
+        nearHome(position, homes: homes, proximitySlackMeters: proximitySlackMeters) != nil
+    }
+
+    private static func isInsideAnyHome(_ position: TraccarPosition, homes: [HomeGeofence]) -> Bool {
+        isNearAnyHome(position, homes: homes, proximitySlackMeters: 0)
+    }
+
+    private static func nearHome(_ position: TraccarPosition, homes: [HomeGeofence], proximitySlackMeters: Double) -> HomeGeofence? {
+        let coordinate = Coordinate(latitude: position.latitude, longitude: position.longitude)
+        return homes.first { coordinate.distanceMeters(to: $0.center) <= $0.radiusMeters + proximitySlackMeters }
     }
 
     /// An excursion otherwise ends only when Traccar logs a `geofenceEnter`
@@ -644,31 +792,19 @@ struct TraccarPetRepository: PetRepository {
     /// not to be reliably logged for every protocol (confirmed live, zero
     /// in 30 days for two different real devices on this project's own
     /// test server), and the device's *current* status can flip back to
-    /// online later (e.g. a second walk starting before any real enter
-    /// event arrives), silently reopening an already-"closed" excursion
-    /// the next time this re-evaluates. A quiet gap that has already
-    /// happened in the historical trail, by contrast, is a fixed fact:
-    /// re-running this later, even with a second walk's positions now
-    /// appended after it, finds the exact same gap in the exact same
-    /// place and reaches the same answer, no local state needs to
-    /// remember the decision between calls.
-    ///
-    /// `requireStaysHomeAfterward`, enabled only for a still-open excursion
-    /// (see `makeExcursion`), rejects a candidate if the trail resumes with
-    /// the pet clearly elsewhere: a quiet gap right after leaving (e.g. a
-    /// brief signal dead spot while still chatting by the front door) can
-    /// otherwise look identical to a real, early return, closing out what's
-    /// actually about to become a much longer walk, and since Traccar
-    /// hasn't closed this excursion yet, the real enter event that
-    /// eventually arrives would have no exit left to pair with (the
-    /// cached, too-early closure already consumed it), silently losing the
-    /// whole walk rather than just mis-timing it.
+    /// online later. A quiet gap that has already happened in the
+    /// historical trail, by contrast, is a fixed fact: re-running this
+    /// later, even with a second walk's positions now appended after it,
+    /// finds the exact same gap in the exact same place and reaches the
+    /// same answer, no local state needs to remember the decision between
+    /// calls. What follows the pause is ``splitIntoExcursions(exit:enter:trail:homes:trailEndTime:)``'s
+    /// concern, not this function's.
     ///
     /// `trailEndTime` is what a trailing position (one with nothing
     /// recorded after it yet) measures its own quiet gap against, instead
     /// of treating that as an unconditional, infinite pass: for a
     /// still-open excursion that bound is genuinely now (see
-    /// `makeExcursion`), since a single position moments after leaving
+    /// `makeExcursions`), since a single position moments after leaving
     /// would otherwise look exactly like an infinitely long silence purely
     /// from the absence of more data so far, not because the pet actually
     /// went quiet. For an already-closed pair it's the real enter event's
@@ -680,24 +816,39 @@ struct TraccarPetRepository: PetRepository {
         homes: [HomeGeofence],
         proximitySlackMeters: Double = homeProximitySlackMeters,
         minimumQuietGap: TimeInterval = quietGapAfterHomeProximity,
-        requireStaysHomeAfterward: Bool = false,
         trailEndTime: Date = .distantFuture
     ) -> (fixTime: Date, homeID: Int)? {
         let sorted = trail.sorted { $0.fixTime < $1.fixTime }
-        func isNearAnyHome(_ position: TraccarPosition) -> Bool {
-            let coordinate = Coordinate(latitude: position.latitude, longitude: position.longitude)
-            return homes.contains { coordinate.distanceMeters(to: $0.center) <= $0.radiusMeters + proximitySlackMeters }
-        }
-        for (index, position) in sorted.enumerated() {
-            let coordinate = Coordinate(latitude: position.latitude, longitude: position.longitude)
-            guard let nearestHome = homes.first(where: { coordinate.distanceMeters(to: $0.center) <= $0.radiusMeters + proximitySlackMeters }) else {
+        return homecomingPauseIndex(
+            in: sorted,
+            from: 0,
+            homes: homes,
+            proximitySlackMeters: proximitySlackMeters,
+            minimumQuietGap: minimumQuietGap,
+            trailEndTime: trailEndTime
+        ).map { (sorted[$0.index].fixTime, $0.homeID) }
+    }
+
+    /// ``firstHomecomingPause(in:homes:proximitySlackMeters:minimumQuietGap:trailEndTime:)``
+    /// on an already-sorted trail, starting at `startIndex`, returning the
+    /// pause's index so ``splitIntoExcursions(exit:enter:trail:homes:trailEndTime:)``
+    /// can pick up right after it.
+    private static func homecomingPauseIndex(
+        in sorted: [TraccarPosition],
+        from startIndex: Int,
+        homes: [HomeGeofence],
+        proximitySlackMeters: Double = homeProximitySlackMeters,
+        minimumQuietGap: TimeInterval = quietGapAfterHomeProximity,
+        trailEndTime: Date
+    ) -> (index: Int, homeID: Int)? {
+        guard startIndex < sorted.count else { return nil }
+        for index in startIndex..<sorted.count {
+            guard let home = nearHome(sorted[index], homes: homes, proximitySlackMeters: proximitySlackMeters) else {
                 continue
             }
-            let remainder = sorted[(index + 1)...]
-            let nextTime = remainder.first?.fixTime ?? trailEndTime
-            let gap = nextTime.timeIntervalSince(position.fixTime)
-            if gap >= minimumQuietGap, !requireStaysHomeAfterward || remainder.allSatisfy(isNearAnyHome) {
-                return (position.fixTime, nearestHome.id)
+            let nextTime = index + 1 < sorted.count ? sorted[index + 1].fixTime : trailEndTime
+            if nextTime.timeIntervalSince(sorted[index].fixTime) >= minimumQuietGap {
+                return (index, home.id)
             }
         }
         return nil
@@ -710,11 +861,11 @@ struct TraccarPetRepository: PetRepository {
     /// a homecoming pause), keep trusting the real event's own home
     /// attribution rather than `firstHomecomingPause`'s "first matching
     /// home in array order" picked via `homes.first(where:)`, which isn't
-    /// necessarily the true nearest home despite its `nearestHome` local
-    /// variable name, and so could otherwise silently swap in the wrong
-    /// home whenever two configured homes' proximity slack zones overlap
-    /// (see ADR-0025's revision history). Only a genuinely *earlier*
-    /// pause is worth preferring over an already-correct real event.
+    /// necessarily the true nearest home, and so could otherwise silently
+    /// swap in the wrong home whenever two configured homes' proximity
+    /// slack zones overlap (see ADR-0025's revision history). Only a
+    /// genuinely *earlier* pause is worth preferring over an
+    /// already-correct real event.
     static func shouldPreferHomecoming(
         _ homecoming: (fixTime: Date, homeID: Int),
         overFetchedEndTime fetchedEndTime: Date?

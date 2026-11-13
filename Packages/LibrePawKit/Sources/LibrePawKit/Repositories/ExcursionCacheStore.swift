@@ -92,9 +92,11 @@ struct UserDefaultsExcursionCacheStore: ExcursionCacheStore, @unchecked Sendable
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {
-        // v2: caches written before the coverage-gap fix in
-        // `TraccarPetRepository.mergeExcursions` may already be missing
-        // excursions for good, a new key rebuilds every one of them once.
-        "org.librepaw.excursionsCache.v2.\(serverHost).\(petID)"
+        // v3: caches written before `splitIntoExcursions` can hold a walk
+        // closed at a homecoming pause as final while its exit/enter pair
+        // was still open, with the watermark past the exit, so the next
+        // walk is missing for good. v2 was the same for the coverage-gap
+        // fix. A new key rebuilds every one of them once.
+        "org.librepaw.excursionsCache.v3.\(serverHost).\(petID)"
     }
 }

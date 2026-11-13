@@ -270,8 +270,13 @@ exactly as before.
   reproduction of the four-hour-late-enter-event case from the Revision
   above is possible with that script and worth doing as a follow-up,
   not yet done as of this revision.
-- A real gap remains, inherent to the underlying event model, not
-  something fixable client-side: if the pet leaves again before the
+- **Superseded by ADR-0029:** the gap below turned out to be fixable
+  client-side after all, the trail shows the second walk even though
+  Traccar's events don't, see
+  [ADR-0029](0029-split-exit-enter-pairs-at-homecoming-pauses.md).
+  Original text, kept for history: a real gap remains, inherent to the
+  underlying event model, not something fixable client-side: if the
+  pet leaves again before the
   device ever reports a position genuinely inside a home geofence (not
   just within the slack), Traccar's own exit/enter state never properly
   resets, so that second walk won't appear as its own distinct

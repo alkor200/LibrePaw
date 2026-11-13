@@ -215,6 +215,8 @@ Key decisions, each recorded as an ADR:
 | [0025](docs/adr/0025-close-excursions-when-the-device-goes-offline.md) | Close an excursion once the trail pauses back near home |
 | [0026](docs/adr/0026-cache-closed-excursions-indefinitely.md) | Cache closed excursions indefinitely, never invalidated by a later home change |
 | [0027](docs/adr/0027-filter-out-degenerate-near-instant-excursions.md) | Filter out degenerate, near-instant excursions (exit immediately followed by enter) |
+| [0028](docs/adr/0028-maplibre-and-openfreemap-instead-of-mapkit.md) | Replace MapKit with MapLibre Native and OpenFreeMap |
+| [0029](docs/adr/0029-split-exit-enter-pairs-at-homecoming-pauses.md) | Split one exit/enter pair into several excursions at homecoming pauses |
 
 ## Contributing
 
