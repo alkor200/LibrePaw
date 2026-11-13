@@ -55,6 +55,17 @@ struct HomesView: View {
             .onAppear { Task { await viewModel.load() } }
             .refreshable { await viewModel.refresh() }
             .task { await viewModel.loadPermissionContext() }
+            .alert(
+                "Couldn't Delete Home",
+                isPresented: Binding(
+                    get: { viewModel.deleteErrorMessage != nil },
+                    set: { if !$0 { viewModel.deleteErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(viewModel.deleteErrorMessage ?? "")
+            }
     }
 
     @ViewBuilder

@@ -16,7 +16,14 @@ final class HomesViewModel {
     let pet: Pet
     private(set) var homes: [HomeGeofence] = []
     private(set) var isLoading = true
+    /// Loading the list failed, `HomesView` shows this *instead of* the
+    /// list.
     private(set) var errorMessage: String?
+    /// Deleting one home failed. Kept apart from ``errorMessage`` so the
+    /// list, which loaded fine, stays up and this shows as an alert over
+    /// it, rather than the whole screen turning into "Couldn't Load
+    /// Homes" for a list that never failed to load.
+    var deleteErrorMessage: String?
     /// `nil` until ``loadPermissionContext()`` resolves, `HomesView` only
     /// shows its visibility notice (and the add/edit/delete affordances)
     /// once this is known, rather than flashing the wrong state for a
@@ -100,14 +107,14 @@ final class HomesViewModel {
 
     func delete(_ home: HomeGeofence) async {
         guard canManageHomes else {
-            errorMessage = localized("You have read-only access and can't delete homes.")
+            deleteErrorMessage = localized("You have read-only access and can't delete homes.")
             return
         }
         do {
             try await petRepository.deleteHomeGeofence(home.id)
             homes.removeAll { $0.id == home.id }
         } catch {
-            errorMessage = error.userFacingMessage
+            deleteErrorMessage = error.userFacingMessage
         }
     }
 }

@@ -298,6 +298,17 @@
         }
       }
     },
+    "Couldn't Delete Home": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuhause konnte nicht gelöscht werden"
+          }
+        }
+      }
+    },
     "Couldn't Load Excursions": {
       "extractionState": "manual",
       "localizations": {
@@ -824,6 +835,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Für diesen Ausflug wurde keine Route aufgezeichnet."
+          }
+        }
+      }
+    },
+    "OK": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
           }
         }
       }
