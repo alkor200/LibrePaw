@@ -27,6 +27,8 @@ struct TrailView: View {
     /// (most-recent-first, same order every reload for a given window) so
     /// a route's color doesn't shuffle between renders.
     private static let palette: [UIColor] = [.systemBlue, .systemOrange, .systemPurple, .systemPink, .systemTeal, .systemIndigo, .systemBrown, .systemMint, .systemCyan, .systemYellow]
+    private static let lineLayerIDPrefix = "trail-line-"
+    private static let lineHitLayerIDPrefix = "trail-line-hit-"
     private static let midpointLayerIDPrefix = "trail-midpoint-"
 
     var body: some View {
@@ -37,35 +39,61 @@ struct TrailView: View {
             }
 
             for route in routes {
-                let lineSource = ShapeSource(identifier: "trail-line-\(route.excursion.id)") {
-                    MLNPolylineFeature(coordinates: route.positions.map(\.coordinate.clLocationCoordinate2D))
+                // Carries the same excursionId attribute as the midpoint feature below, so a tap
+                // anywhere on the route itself (not just the small midpoint dot) can look up which
+                // excursion it belongs to, see onTapMapGesture below.
+                let polyline = MLNPolylineFeature(coordinates: route.positions.map(\.coordinate.clLocationCoordinate2D))
+                polyline.attributes["excursionId"] = route.excursion.id
+                let lineSource = ShapeSource(identifier: "\(Self.lineLayerIDPrefix)\(route.excursion.id)") {
+                    polyline
                 }
-                LineStyleLayer(identifier: "trail-line-\(route.excursion.id)", source: lineSource)
+                // An invisible, much wider line sharing the same source, purely so the route is
+                // actually tappable: MapLibre's tap hit-test checks the exact pixel under a finger
+                // against a layer's own rendered stroke width, and the visible 4pt line is far too
+                // thin to reliably land a tap on (confirmed live, 2026-11-13, see
+                // onTapMapGesture below, which hit-tests this layer instead of the visible one).
+                LineStyleLayer(identifier: "\(Self.lineHitLayerIDPrefix)\(route.excursion.id)", source: lineSource)
+                    .lineWidth(30)
+                    .lineOpacity(0)
+                LineStyleLayer(identifier: "\(Self.lineLayerIDPrefix)\(route.excursion.id)", source: lineSource)
                     .lineCap(.round)
                     .lineJoin(.round)
                     .lineColor(route.color)
                     .lineWidth(4)
             }
 
-            // One CircleStyleLayer per excursion rather than one shared one:
-            // unlike `SymbolStyleLayer.iconImage`, `CircleStyleLayer.color`
-            // has no per-feature/data-driven mapping overload in this DSL,
-            // only a single flat `UIColor` for the whole layer.
+            // A SymbolStyleLayer with a rendered dot image, not a CircleStyleLayer: this app's own
+            // tappable pet pins on PetMapView already use SymbolStyleLayer successfully, and
+            // CircleStyleLayer turned out not to be hit-testable by onTapMapGesture(on:) at all in
+            // this MapLibre version (confirmed live, 2026-11-13: the midpoint dot never opened its
+            // excursion, on either layer type the line itself was tried with too). One layer per
+            // excursion rather than one shared one with per-feature iconImage mapping, simplest way
+            // to keep each excursion's own route color without a mappings dictionary.
             for route in routes {
-                let midpointSource = ShapeSource(identifier: "trail-midpoint-\(route.excursion.id)") {
+                let midpointSource = ShapeSource(identifier: "\(Self.midpointLayerIDPrefix)\(route.excursion.id)") {
                     MLNPointFeature(coordinate: route.positions[route.positions.count / 2].coordinate.clLocationCoordinate2D) { feature in
                         feature.attributes["excursionId"] = route.excursion.id
                     }
                 }
-                CircleStyleLayer(identifier: "\(Self.midpointLayerIDPrefix)\(route.excursion.id)", source: midpointSource)
-                    .radius(8)
-                    .color(route.color)
-                    .strokeWidth(2)
-                    .strokeColor(.white)
+                SymbolStyleLayer(identifier: "\(Self.midpointLayerIDPrefix)\(route.excursion.id)", source: midpointSource)
+                    .iconImage(Self.dotImage(color: route.color))
+                    .iconAllowsOverlap(true)
             }
         }
-        .onTapMapGesture(on: Set(viewModel.excursions.map { "\(Self.midpointLayerIDPrefix)\($0.id)" })) { _, features in
-            guard let excursionId = features.first?.attributes["excursionId"] as? Int,
+        // `on: nil` ("check every layer"), not a Set built from viewModel.excursions: MapLibreSwiftUI's
+        // onTapMapGesture(on:) only ever registers once, in ScopedGestureView's .onAppear, with
+        // whatever Set the "on:" parameter evaluated to at that first render (confirmed live,
+        // 2026-11-13: it never re-registers on a later body re-evaluation, even though this view's
+        // own body constructs a fresh Set from viewModel.excursions on every one). Since excursions
+        // loads asynchronously, that first Set was always empty, and every tap, on the route, the
+        // midpoint dot, or anything else, ever since has hit-tested against zero layers. A plain
+        // `nil` sidesteps the whole lifecycle bug by being the same unchanging value on every render,
+        // exactly like PetMapView's own tap gesture already does with its constant petLayerID.
+        .onTapMapGesture(on: nil) { _, features in
+            // `features.first` isn't safe here the way it was with a scoped layer Set: `nil` means
+            // MapLibre hit-tests every rendered layer, including the base map's own roads/labels/etc,
+            // so the array can contain several unrelated features ahead of ours depending on z-order.
+            guard let excursionId = features.first(where: { $0.attributes["excursionId"] != nil })?.attributes["excursionId"] as? Int,
                   let excursion = viewModel.excursions.first(where: { $0.id == excursionId }) else { return }
             pendingPush = excursion
         }
@@ -128,6 +156,23 @@ struct TrailView: View {
 
     private func color(at index: Int) -> UIColor {
         Self.palette[index % Self.palette.count]
+    }
+
+    /// A filled circle with a white stroke, matching the old CircleStyleLayer's own
+    /// `.radius(8).strokeWidth(2).strokeColor(.white)` look, now rendered as a plain image for
+    /// SymbolStyleLayer instead (see its doc comment above for why).
+    private static func dotImage(color: UIColor, diameter: CGFloat = 20) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: diameter, height: diameter))
+        return renderer.image { _ in
+            let strokeWidth: CGFloat = 2
+            let rect = CGRect(x: strokeWidth / 2, y: strokeWidth / 2, width: diameter - strokeWidth, height: diameter - strokeWidth)
+            let path = UIBezierPath(ovalIn: rect)
+            color.setFill()
+            path.fill()
+            UIColor.white.setStroke()
+            path.lineWidth = strokeWidth
+            path.stroke()
+        }
     }
 
     private func reload() async {
