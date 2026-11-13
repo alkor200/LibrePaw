@@ -72,7 +72,9 @@ final class TrailViewModel {
     private func performLoad() async {
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        // A superseded load must leave `isLoading` alone, the newer load
+        // that cancelled it has already set it and is still running.
+        defer { if !Task.isCancelled { isLoading = false } }
 
         do {
             let now = Date.now

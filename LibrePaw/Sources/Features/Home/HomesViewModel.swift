@@ -66,10 +66,17 @@ final class HomesViewModel {
     private func performLoad(showsLoadingIndicator: Bool) async {
         if showsLoadingIndicator { isLoading = true }
         errorMessage = nil
-        defer { if showsLoadingIndicator { isLoading = false } }
+        // A superseded load must leave `isLoading` alone, the newer load
+        // that cancelled it has already set it and is still running.
+        defer { if showsLoadingIndicator, !Task.isCancelled { isLoading = false } }
 
         do {
-            homes = try await petRepository.homeGeofences(forPetID: pet.id)
+            let fetchedHomes = try await petRepository.homeGeofences(forPetID: pet.id)
+            // Cancellation only stops a load at its next suspension point,
+            // a superseded load whose request already succeeded would
+            // otherwise still overwrite the newer load's result here.
+            guard !Task.isCancelled else { return }
+            homes = fetchedHomes
         } catch {
             guard !Task.isCancelled else { return }
             errorMessage = error.userFacingMessage
