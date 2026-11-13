@@ -554,7 +554,12 @@ struct TraccarPetRepository: PetRepository {
         // exactly like an infinitely long silence purely because a second
         // fix hasn't streamed in yet, not because the pet actually stopped.
         let trailEndTime = fetchedEndTime ?? Date()
-        let fullTrail = (try? await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: trailEndTime)) ?? []
+        // Not `try?`: a failed fetch here must fail the whole call rather
+        // than produce an excursion with no route and no distance, a
+        // closed one of those would be cached for good (ADR-0026) and
+        // folded into lifetime stats as zero meters, never recomputed.
+        // Failing instead just means the next load tries again.
+        let fullTrail = try await client.fetchPositionHistory(deviceId: petID, from: exit.eventTime, to: trailEndTime)
 
         var endTime = fetchedEndTime
         var endHomeID = enter?.geofenceId
