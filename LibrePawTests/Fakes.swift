@@ -35,6 +35,9 @@ final class FakeAuthenticationService: AuthenticationService, @unchecked Sendabl
 struct FakePetRepository: PetRepository {
     /// Thrown from ``fetchPets()`` instead of returning, when set.
     var error: Error?
+    /// Thrown from every ``fetchPets()`` call after the first, when set.
+    var errorAfterFirstFetch: Error?
+    private let fetchPetsCalls = CallCounter()
     /// Route fetches starting at one of these times fail, the start time
     /// being the only thing ``fetchTrail(forPetID:from:to:)`` gets to
     /// tell excursions apart by.
@@ -45,6 +48,7 @@ struct FakePetRepository: PetRepository {
 
     func fetchPets() async throws -> [Pet] {
         if let error { throw error }
+        if let errorAfterFirstFetch, fetchPetsCalls.next() > 1 { throw errorAfterFirstFetch }
         return []
     }
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] {

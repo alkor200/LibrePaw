@@ -25,6 +25,17 @@ struct PetListView: View {
             }
             .task { viewModel.startLiveUpdates() }
             .onDisappear { viewModel.stopLiveUpdates() }
+            .alert(
+                "Couldn't Refresh",
+                isPresented: Binding(
+                    get: { viewModel.refreshErrorMessage != nil },
+                    set: { if !$0 { viewModel.refreshErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(viewModel.refreshErrorMessage ?? "")
+            }
     }
 
     @ViewBuilder

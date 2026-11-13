@@ -11,6 +11,13 @@ final class PetListViewModel {
     }
 
     private(set) var state: LoadState = .loading
+    /// A pull-to-refresh failed while a list was already showing. Shown as
+    /// an alert over that list rather than replacing it with an error
+    /// screen, the list itself (and the live feed behind it) is still fine.
+    var refreshErrorMessage: String?
+    /// Bumped by every live update, so ``refresh()`` can tell whether one
+    /// arrived while its REST request was in flight.
+    private var liveUpdateCount = 0
     private let petRepository: PetRepository
     private var liveUpdatesTask: Task<Void, Never>?
 
@@ -29,6 +36,7 @@ final class PetListViewModel {
         liveUpdatesTask = Task { [weak self] in
             await LivePetFeed.run(petRepository) { pets in
                 guard let self else { return false }
+                self.liveUpdateCount += 1
                 self.state = .loaded(self.sorted(pets))
                 return true
             } onError: { error in
@@ -48,13 +56,23 @@ final class PetListViewModel {
         liveUpdatesTask = nil
     }
 
-    /// A manual pull-to-refresh: fetches once over REST, independent of the
-    /// live stream (which keeps running in the background regardless).
+    /// A manual pull-to-refresh (or Try Again): fetches once over REST,
+    /// independent of the live stream (which keeps running in the
+    /// background regardless).
     func refresh() async {
+        let liveUpdateCountBefore = liveUpdateCount
         do {
-            state = .loaded(sorted(try await petRepository.fetchPets()))
+            let pets = try await petRepository.fetchPets()
+            // A live update that arrived meanwhile is at least as fresh as
+            // this snapshot, don't roll it back.
+            guard liveUpdateCount == liveUpdateCountBefore else { return }
+            state = .loaded(sorted(pets))
         } catch {
-            state = .failed(error.userFacingMessage)
+            if hasLoadedPets {
+                refreshErrorMessage = error.userFacingMessage
+            } else {
+                state = .failed(error.userFacingMessage)
+            }
         }
     }
 

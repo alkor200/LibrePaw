@@ -353,6 +353,17 @@
         }
       }
     },
+    "Couldn't Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisieren fehlgeschlagen"
+          }
+        }
+      }
+    },
     "Couldn't check what this account is allowed to change, so saving isn't available. Check your connection and open this home again.": {
       "extractionState": "manual",
       "localizations": {
