@@ -12,6 +12,15 @@ final class LocationService: NSObject {
     private(set) var authorizationStatus: CLAuthorizationStatus
 
     private let manager: CLLocationManager
+    /// How many screens currently want updates (``startUpdating()`` calls
+    /// not yet balanced by ``stopUpdating()``). GPS and compass only run
+    /// while this is above zero.
+    ///
+    /// A count rather than a flag because screens overlap: switching from
+    /// a pushed Find Pet to the Map tab can run the map's start before
+    /// Find Pet's stop, and a single shared on/off switch then turned
+    /// updates off right under the map.
+    private var activeRequests = 0
 
     override init() {
         manager = CLLocationManager()
@@ -40,28 +49,41 @@ final class LocationService: NSObject {
         manager.requestWhenInUseAuthorization()
     }
 
+    /// Each call must be balanced by one ``stopUpdating()``, see
+    /// `activeRequests`. Without authorization yet, updates start as soon
+    /// as it's granted, as long as the request is still active then.
     func startUpdating() {
-        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else { return }
+        activeRequests += 1
+        startManagerIfWanted()
+    }
+
+    func stopUpdating() {
+        activeRequests = max(0, activeRequests - 1)
+        guard activeRequests == 0 else { return }
+        manager.stopUpdatingLocation()
+        manager.stopUpdatingHeading()
+    }
+
+    private func startManagerIfWanted() {
+        guard activeRequests > 0, isAuthorized else { return }
         manager.startUpdatingLocation()
         if CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         }
     }
-
-    func stopUpdating() {
-        manager.stopUpdatingLocation()
-        manager.stopUpdatingHeading()
-    }
 }
 
 extension LocationService: CLLocationManagerDelegate {
+    /// Also called once right after the manager is created, i.e. at app
+    /// launch, on the login screen. Only resumes updates some screen has
+    /// actually asked for, previously this started best-accuracy GPS and
+    /// the compass at launch whenever permission had been granted before,
+    /// with nothing ever stopping them.
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         Task { @MainActor in
             authorizationStatus = status
-            if status == .authorizedWhenInUse || status == .authorizedAlways {
-                startUpdating()
-            }
+            startManagerIfWanted()
         }
     }
 
