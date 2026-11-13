@@ -498,7 +498,12 @@ public actor TraccarClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.httpBody = Data((formComponents.percentEncodedQuery ?? "").utf8)
+        // `percentEncodedQuery` leaves "+" as-is (it's legal in a URL
+        // query), but in a form-encoded body the server decodes "+" as a
+        // space, so a password or email containing one ("me+pets@...")
+        // never got a cookie session.
+        let formBody = (formComponents.percentEncodedQuery ?? "").replacingOccurrences(of: "+", with: "%2B")
+        request.httpBody = Data(formBody.utf8)
 
         let (data, response) = try await perform(request)
         _ = try validated(data, response)

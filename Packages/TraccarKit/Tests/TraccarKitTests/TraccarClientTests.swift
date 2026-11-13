@@ -167,6 +167,30 @@ struct TraccarClientTests {
         #expect(requestedPaths.values == ["/api/session", "/api/media/collar-001/device.jpg"])
     }
 
+    @Test("The cookie login form-encodes a plus sign instead of sending it raw, where it would decode as a space")
+    func cookieLoginEncodesPlusSigns() async throws {
+        let bodies = LockedArray<String>()
+        MockURLProtocol.requestHandler = { request in
+            if request.url?.path == "/api/session" {
+                bodies.append(String(data: request.bodyData, encoding: .utf8) ?? "")
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+        let client = TraccarClient(
+            credentials: TraccarCredentials(
+                serverURL: URL(string: "https://traccar.example.com")!,
+                email: "owner+pets@example.com",
+                password: "a+b"
+            ),
+            urlSession: MockURLProtocol.makeSession()
+        )
+
+        _ = try await client.fetchData(from: URL(string: "https://traccar.example.com/api/media/collar-001/device.jpg")!)
+
+        #expect(bodies.values == ["email=owner%2Bpets@example.com&password=a%2Bb"])
+    }
+
     @Test("Concurrent fetchData calls share one cookie login instead of each POSTing the password")
     func concurrentFetchDataSharesOneCookieLogin() async throws {
         let requestedPaths = LockedArray<String>()
