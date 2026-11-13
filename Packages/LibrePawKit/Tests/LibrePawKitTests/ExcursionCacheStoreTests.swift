@@ -54,4 +54,23 @@ struct ExcursionCacheStoreTests {
 
         #expect(store.load(forPetID: 1, serverHost: "traccar.example.com") == nil)
     }
+
+    @Test("Concurrent updates never lose each other's writes")
+    func concurrentUpdatesDoNotLoseWrites() async {
+        let store = makeStore()
+
+        await withTaskGroup(of: Void.self) { group in
+            for id in 1...50 {
+                group.addTask {
+                    store.update(forPetID: 1, serverHost: "traccar.example.com") { latest in
+                        var cached = latest ?? CachedExcursions(excursions: [], coveredFrom: nil, cachedThroughEndTime: nil)
+                        cached.excursions.append(Excursion(id: id, startTime: .now, endTime: .now, startCoordinate: nil, endCoordinate: nil, distanceMeters: nil))
+                        return (cached, ())
+                    }
+                }
+            }
+        }
+
+        #expect(Set(store.load(forPetID: 1, serverHost: "traccar.example.com")?.excursions.map(\.id) ?? []) == Set(1...50))
+    }
 }

@@ -36,6 +36,17 @@ protocol ExcursionCacheStore: Sendable {
     func load(forPetID petID: Int, serverHost: String) -> CachedExcursions?
     func save(_ cached: CachedExcursions, forPetID petID: Int, serverHost: String)
     func clear(forPetID petID: Int, serverHost: String)
+    /// Loads, transforms and saves in one step that no other `update` for
+    /// any pet can interleave with, unlike a separate `load` then `save`.
+    /// `fetchExcursions` runs concurrently for the same pet (e.g. Pet
+    /// Detail loads lifetime stats and today's excursions side by side),
+    /// and a plain load/save pair let whichever finished last silently
+    /// overwrite the other's freshly fetched excursions.
+    func update<Result>(
+        forPetID petID: Int,
+        serverHost: String,
+        _ transform: (CachedExcursions?) -> (CachedExcursions, Result)
+    ) -> Result
 }
 
 /// `UserDefaults` is a reasonable home for this, same reasoning as
@@ -62,6 +73,22 @@ struct UserDefaultsExcursionCacheStore: ExcursionCacheStore, @unchecked Sendable
 
     func clear(forPetID petID: Int, serverHost: String) {
         defaults.removeObject(forKey: key(forPetID: petID, serverHost: serverHost))
+    }
+
+    /// Shared by every instance, they all read and write the same
+    /// `UserDefaults` keys.
+    private static let updateLock = NSLock()
+
+    func update<Result>(
+        forPetID petID: Int,
+        serverHost: String,
+        _ transform: (CachedExcursions?) -> (CachedExcursions, Result)
+    ) -> Result {
+        Self.updateLock.withLock {
+            let (updated, result) = transform(load(forPetID: petID, serverHost: serverHost))
+            save(updated, forPetID: petID, serverHost: serverHost)
+            return result
+        }
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {

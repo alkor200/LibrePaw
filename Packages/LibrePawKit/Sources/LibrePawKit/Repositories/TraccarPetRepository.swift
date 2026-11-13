@@ -300,8 +300,13 @@ struct TraccarPetRepository: PetRepository {
                 .filter { !Self.isDegenerate($0) }
             }
 
-            let (all, newCache) = Self.mergeExcursions(cached: cached, freshExcursions: freshExcursions, liveFrom: liveFrom)
-            excursionCacheStore.save(newCache, forPetID: petID, serverHost: serverHost)
+            // Merged against whatever is stored *now*, not `cached` from
+            // before the fetch, another concurrent call for the same pet
+            // may have saved in the meantime (see `ExcursionCacheStore.update`).
+            let all = excursionCacheStore.update(forPetID: petID, serverHost: serverHost) { latest in
+                let (all, newCache) = Self.mergeExcursions(cached: latest, freshExcursions: freshExcursions, liveFrom: liveFrom)
+                return (newCache, all)
+            }
 
             return all
                 .filter { $0.startTime >= from && $0.startTime <= to }
