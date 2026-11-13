@@ -12,9 +12,13 @@ packages:
     path: Packages/LibrePawKit
   # The project's first external dependency (see ADR-0028): renders
   # OpenFreeMap's openly-licensed OSM-based vector tiles, no API key needed.
+  # Pinned exactly rather than `from:`: the generated project (and with it
+  # Package.resolved) isn't committed, so a range would let every fresh
+  # checkout and CI run silently pick up whatever newer release exists.
+  # Bump deliberately.
   MapLibreSwiftUI:
     url: https://github.com/maplibre/swiftui-dsl
-    from: 0.27.0
+    exactVersion: 0.27.0
 
 targets:
   LibrePaw:

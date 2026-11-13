@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Nothing here writes to the repository, so the token gets read access
+# only, rather than whatever the repository's default happens to be.
+permissions:
+  contents: read
+
 jobs:
   packages:
     name: Test Swift packages
@@ -13,7 +18,7 @@ jobs:
       matrix:
         package: [TraccarKit, LibrePawKit]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: swift test (${{ matrix.package }})
         working-directory: Packages/${{ matrix.package }}
         run: swift test
@@ -22,7 +27,7 @@ jobs:
     name: Build and test iOS app
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Create a CI-only Local.xcconfig
