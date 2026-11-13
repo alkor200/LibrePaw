@@ -61,11 +61,17 @@ final class SetHomeViewModel {
         homeCoordinate = coordinate
     }
 
-    /// Best-effort, same reasoning as `HomesViewModel`'s equivalent: this
-    /// just gates the visibility notice and (via ``canManage``) whether
-    /// editing is allowed, not something worth surfacing an error for.
+    /// `true` once ``loadPermissionContext()`` gave up, `SetHomeView` then
+    /// explains why Save is unavailable instead of just showing it
+    /// disabled with no reason given.
+    private(set) var permissionsUnavailable = false
+
+    /// Retried a few times (see `currentUserPermissionsRetrying`), this
+    /// gates the visibility notice and (via ``canManage``) whether editing
+    /// is allowed at all.
     func loadPermissionContext() async {
-        permissions = try? await petRepository.currentUserPermissions()
+        permissions = await petRepository.currentUserPermissionsRetrying()
+        permissionsUnavailable = permissions == nil && !Task.isCancelled
     }
 
     func save() async {

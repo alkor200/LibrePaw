@@ -121,9 +121,11 @@ final class PetDetailViewModel {
     }
 
     /// Best-effort, same reasoning as ``loadLifetimeStats()``: this just
-    /// gates UI affordances, not something worth surfacing an error for.
+    /// gates UI affordances, not something worth surfacing an error for,
+    /// but retried a few times (see `currentUserPermissionsRetrying`) so
+    /// one dropped request doesn't hide them for good.
     func loadPermissions() async {
-        permissions = try? await petRepository.currentUserPermissions()
+        permissions = await petRepository.currentUserPermissionsRetrying()
     }
 
     func setPhoto(jpegData: Data) async throws {

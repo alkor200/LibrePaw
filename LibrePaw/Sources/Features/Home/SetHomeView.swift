@@ -162,6 +162,13 @@ struct SetHomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            if viewModel.permissionsUnavailable {
+                Label("Couldn't check what this account is allowed to change, so saving isn't available. Check your connection and open this home again.", systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.appSecondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             // Hidden rather than shown-disabled when `canManage == false`:
             // there's nothing the signed-in account can do here at all, see
             // ADR-0021's "hide rather than offer a broken affordance"

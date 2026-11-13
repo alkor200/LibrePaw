@@ -39,6 +39,9 @@ struct FakePetRepository: PetRepository {
     /// being the only thing ``fetchTrail(forPetID:from:to:)`` gets to
     /// tell excursions apart by.
     var failingTrailStarts: Set<Date> = []
+    /// How many ``currentUserPermissions()`` calls fail before one succeeds.
+    var permissionFailuresBeforeSuccess = 0
+    private let permissionCalls = CallCounter()
 
     func fetchPets() async throws -> [Pet] {
         if let error { throw error }
@@ -67,9 +70,17 @@ struct FakePetRepository: PetRepository {
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats { .zero }
     func resetLifetimeStats(forPetID petID: Int) async throws {}
     func currentUserPermissions() async throws -> AccountPermissions {
-        AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
+        if permissionCalls.next() <= permissionFailuresBeforeSuccess { throw LibrePawError.network("offline") }
+        return AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
     }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
     func endSession() async {}
 }
 
+
+final class CallCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    /// 1 for the first call, 2 for the second, ...
+    func next() -> Int { lock.withLock { count += 1; return count } }
+}

@@ -353,6 +353,17 @@
         }
       }
     },
+    "Couldn't check what this account is allowed to change, so saving isn't available. Check your connection and open this home again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es konnte nicht geprüft werden, was dieses Konto ändern darf, deshalb ist Speichern nicht möglich. Prüfe deine Verbindung und öffne dieses Zuhause erneut."
+          }
+        }
+      }
+    },
     "Couldn't process that photo, try a different one.": {
       "extractionState": "manual",
       "localizations": {

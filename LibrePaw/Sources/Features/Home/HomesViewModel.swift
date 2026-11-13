@@ -94,7 +94,7 @@ final class HomesViewModel {
     /// this just gates the visibility notice and the add/edit/delete
     /// affordances, not something worth surfacing an error for.
     func loadPermissionContext() async {
-        permissions = try? await petRepository.currentUserPermissions()
+        permissions = await petRepository.currentUserPermissionsRetrying()
     }
 
     /// Whether the signed-in account can add, edit, or delete homes at all
