@@ -57,4 +57,5 @@ struct FakePetRepository: PetRepository {
         AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
     }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
+    func endSession() async {}
 }

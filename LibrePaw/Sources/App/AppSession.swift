@@ -39,6 +39,11 @@ final class AppSession {
         if (try? authenticationService.logOut()) == nil {
             try? authenticationService.logOut()
         }
+        // Best-effort and not awaited, the UI switches back to the login
+        // screen right away either way.
+        if let petRepository {
+            Task { await petRepository.endSession() }
+        }
         session = nil
         petRepository = nil
     }

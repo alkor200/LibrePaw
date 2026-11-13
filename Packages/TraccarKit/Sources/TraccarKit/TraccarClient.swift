@@ -19,13 +19,34 @@ public actor TraccarClient {
     /// WebSocket requests (see ADR-0012 and ADR-0013). Established lazily, on
     /// first ``fetchData(from:)`` or ``liveUpdates(reconnectDelay:)`` call.
     private var hasCookieSession = false
+    /// Whether ``urlSession`` was created by this client (and so must be
+    /// invalidated by it) rather than passed in.
+    private let ownsURLSession: Bool
 
-    public init(credentials: TraccarCredentials, urlSession: URLSession = .shared) {
+    /// - Parameter urlSession: `nil` (the default) gives this client its
+    ///   own ephemeral session: the `JSESSIONID` cookie from ADR-0012 then
+    ///   lives only in that session's in-memory cookie jar and dies with
+    ///   this client, instead of landing in `HTTPCookieStorage.shared`
+    ///   where it would outlive a logout. Ephemeral also keeps responses
+    ///   (positions, photos) out of the on-disk URL cache.
+    public init(credentials: TraccarCredentials, urlSession: URLSession? = nil) {
         self.credentials = credentials
-        self.urlSession = urlSession
+        if let urlSession {
+            self.urlSession = urlSession
+            self.ownsURLSession = false
+        } else {
+            self.urlSession = URLSession(configuration: .ephemeral)
+            self.ownsURLSession = true
+        }
         self.decoder = JSONDecoder()
         self.decoder.dateDecodingStrategy = TraccarDateFormatting.decodingStrategy
         self.encoder = JSONEncoder()
+    }
+
+    deinit {
+        if ownsURLSession {
+            urlSession.finishTasksAndInvalidate()
+        }
     }
 
     /// The server this client talks to. `credentials` is otherwise private -
@@ -403,6 +424,21 @@ public actor TraccarClient {
     }
 
     // MARK: - Cookie session (media and WebSocket, see ADR-0012)
+
+    /// Ends the cookie session from ``fetchData(from:)`` and
+    /// ``liveUpdates(reconnectDelay:)`` on the server too
+    /// (`DELETE /api/session`), so it can't be reused after a logout until
+    /// it would otherwise time out. Best-effort and a no-op when no cookie
+    /// session was ever established: Basic Auth itself has nothing
+    /// server-side to end.
+    public func endSession() async {
+        guard hasCookieSession else { return }
+        hasCookieSession = false
+        guard let url = try? makeURL("/api/session") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        _ = try? await perform(request)
+    }
 
     private func ensureCookieSession() async throws {
         guard !hasCookieSession else { return }

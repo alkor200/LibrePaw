@@ -341,6 +341,7 @@ struct PreviewPetRepository: PetRepository {
         AccountPermissions(isAdministrator: true, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
     }
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
+    func endSession() async {}
 }
 
 struct PreviewAuthenticationService: AuthenticationService {

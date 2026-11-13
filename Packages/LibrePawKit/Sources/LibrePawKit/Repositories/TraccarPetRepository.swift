@@ -114,6 +114,10 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
+    func endSession() async {
+        await client.endSession()
+    }
+
     // MARK: - Home geofences and excursions (see ADR-0014, ADR-0016)
 
     /// Marks a geofence as one LibrePaw manages as a "home", so it can be

@@ -93,4 +93,8 @@ public protocol PetRepository: Sendable {
     /// server-side, same as the rest of ADR-0018. Throws if no user with
     /// that email exists on this server.
     func sharePet(forPetID petID: Int, withEmail email: String) async throws
+
+    /// Ends whatever server-side session this repository opened, called on
+    /// logout. Best-effort, never throws.
+    func endSession() async
 }
