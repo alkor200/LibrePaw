@@ -19,6 +19,12 @@ public actor TraccarClient {
     /// WebSocket requests (see ADR-0012 and ADR-0013). Established lazily, on
     /// first ``fetchData(from:)`` or ``liveUpdates(reconnectDelay:)`` call.
     private var hasCookieSession = false
+    /// The cookie login currently in flight, if any. Actor methods are
+    /// reentrant across `await`, so without this, several callers arriving
+    /// together (a map rendering one pin per pet, the live feed starting
+    /// alongside them) each saw `hasCookieSession == false` and each POSTed
+    /// the password to `/api/session` separately.
+    private var cookieSessionTask: Task<Void, Error>?
     /// Whether ``urlSession`` was created by this client (and so must be
     /// invalidated by it) rather than passed in.
     private let ownsURLSession: Bool
@@ -462,7 +468,19 @@ public actor TraccarClient {
 
     private func ensureCookieSession() async throws {
         guard !hasCookieSession else { return }
+        if let cookieSessionTask {
+            try await cookieSessionTask.value
+            return
+        }
 
+        let task = Task { try await establishCookieSession() }
+        cookieSessionTask = task
+        defer { cookieSessionTask = nil }
+        try await task.value
+        hasCookieSession = true
+    }
+
+    private func establishCookieSession() async throws {
         guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
             throw TraccarError.invalidServerURL
         }
@@ -484,7 +502,6 @@ public actor TraccarClient {
 
         let (data, response) = try await perform(request)
         _ = try validated(data, response)
-        hasCookieSession = true
     }
 
     // MARK: - Transport

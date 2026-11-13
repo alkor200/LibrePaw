@@ -167,6 +167,28 @@ struct TraccarClientTests {
         #expect(requestedPaths.values == ["/api/session", "/api/media/collar-001/device.jpg"])
     }
 
+    @Test("Concurrent fetchData calls share one cookie login instead of each POSTing the password")
+    func concurrentFetchDataSharesOneCookieLogin() async throws {
+        let requestedPaths = LockedArray<String>()
+        MockURLProtocol.requestHandler = { request in
+            requestedPaths.append(request.url?.path ?? "")
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data([0xFF]))
+        }
+
+        let client = makeClient()
+        try await withThrowingTaskGroup(of: Data.self) { group in
+            for index in 0..<5 {
+                group.addTask {
+                    try await client.fetchData(from: URL(string: "https://traccar.example.com/api/media/collar-00\(index)/device.jpg")!)
+                }
+            }
+            try await group.waitForAll()
+        }
+
+        #expect(requestedPaths.values.filter { $0 == "/api/session" }.count == 1)
+    }
+
     @Test("fetchData rejects URLs on a different host than the server")
     func fetchDataRejectsForeignHosts() async throws {
         let foreignURL = URL(string: "https://evil.example.com/steal-credentials")!
