@@ -10,15 +10,26 @@ struct PetMapView: View {
     let locationService: LocationService
     @State private var viewModel: PetMapViewModel
     @State private var camera: MapViewCamera = .default()
-    /// Rendered once per pet (a snapshot of `PetAnnotationView`, photo
-    /// included) and fed to `SymbolStyleLayer` as a per-feature icon.
-    /// Populated by the `.task(id:)` below, keyed on the live set of pet
-    /// ids so a pet that only gets its first position after this view has
-    /// already appeared still gets rendered (a plain `.task` without `id:`
-    /// only ever runs once, against whatever `petsWithPosition` was at
-    /// first appearance, confirmed live: with a `.task` plain, a pet whose
+    /// A snapshot of `PetAnnotationView` per pet (photo included), fed to
+    /// `SymbolStyleLayer` as a per-feature icon. Populated by the
+    /// `.task(id:)` below, keyed on every pet's ``PinRenderKey`` so a pet
+    /// that only gets its first position after this view has already
+    /// appeared still gets rendered (a plain `.task` without `id:` only
+    /// ever runs once, against whatever `petsWithPosition` was at first
+    /// appearance, confirmed live: with a `.task` plain, a pet whose
     /// position arrived after mount kept the fallback icon forever).
     @State private var pinImages: [Int: UIImage] = [:]
+    /// What each of `pinImages` was rendered from. A pin is re-rendered
+    /// whenever its pet's key changes, not just rendered once per pet id,
+    /// otherwise the status ring stayed whatever color it first had (an
+    /// offline pet kept its green ring) and a newly saved photo never
+    /// showed up on the map.
+    @State private var pinRenderKeys: [Int: PinRenderKey] = [:]
+    /// Bumped every time the map disappears, so the next appearance
+    /// re-fetches every photo. Needed because Traccar always names an
+    /// uploaded photo "device.jpg" (see `PetAnnotationView.overrideImage`),
+    /// so a photo changed on another screen leaves `photoURL` untouched.
+    @State private var photoGeneration = 0
     /// Which pet's long-press asked for a navigation app chooser; `nil`
     /// dismisses the dialog.
     @State private var navigationChoicePet: Pet?
@@ -168,9 +179,16 @@ struct PetMapView: View {
         .onChange(of: viewModel.petsWithPosition.map(\.id)) {
             fitCameraToAllPets()
         }
-        .task(id: viewModel.petsWithPosition.map(\.id)) {
-            for pet in viewModel.petsWithPosition where pinImages[pet.id] == nil {
-                pinImages[pet.id] = await renderPinImage(for: pet)
+        .task(id: viewModel.petsWithPosition.map { PinRenderRequest(petID: $0.id, key: pinRenderKey(for: $0)) }) {
+            for pet in viewModel.petsWithPosition {
+                let key = pinRenderKey(for: pet)
+                guard pinRenderKeys[pet.id] != key else { continue }
+                let image = await renderPinImage(for: pet)
+                // A cancelled photo fetch renders without the photo, don't
+                // let that replace a good pin or mark this key as done.
+                guard !Task.isCancelled else { return }
+                pinImages[pet.id] = image
+                pinRenderKeys[pet.id] = key
             }
         }
         .overlay(alignment: .top) {
@@ -201,7 +219,23 @@ struct PetMapView: View {
         .onDisappear {
             viewModel.stopLiveUpdates()
             locationService.stopUpdating()
+            photoGeneration += 1
         }
+    }
+
+    private struct PinRenderKey: Hashable {
+        let status: Pet.Status
+        let photoURL: URL?
+        let photoGeneration: Int
+    }
+
+    private struct PinRenderRequest: Hashable {
+        let petID: Int
+        let key: PinRenderKey
+    }
+
+    private func pinRenderKey(for pet: Pet) -> PinRenderKey {
+        PinRenderKey(status: pet.status, photoURL: pet.photoURL, photoGeneration: photoGeneration)
     }
 
     /// Renders a snapshot of `PetAnnotationView` (fetching the photo once,
