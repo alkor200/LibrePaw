@@ -115,6 +115,10 @@ final class PetDetailViewModel {
     }
 
     private(set) var isRecalculating = false
+    /// Why the last ``recalculate()`` failed, shown as an alert. Unlike the
+    /// ordinary best-effort loads, recalculating is something the user
+    /// explicitly asked for, so a failure needs to say so.
+    var recalculateErrorMessage: String?
 
     /// Discards both the cached excursions and the cached lifetime totals
     /// built from them, then recomputes everything from the pet's entire
@@ -131,9 +135,13 @@ final class PetDetailViewModel {
     func recalculate() async {
         isRecalculating = true
         defer { isRecalculating = false }
-        try? await petRepository.resetExcursionsCache(forPetID: pet.id)
-        try? await petRepository.resetLifetimeStats(forPetID: pet.id)
-        await loadLifetimeStats()
+        do {
+            try await petRepository.resetExcursionsCache(forPetID: pet.id)
+            try await petRepository.resetLifetimeStats(forPetID: pet.id)
+            lifetimeStats = try await petRepository.lifetimeExcursionStats(forPetID: pet.id)
+        } catch {
+            recalculateErrorMessage = error.userFacingMessage
+        }
         await loadTodaysExcursions()
     }
 

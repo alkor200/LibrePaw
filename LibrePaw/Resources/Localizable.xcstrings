@@ -353,6 +353,17 @@
         }
       }
     },
+    "Couldn't Recalculate": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuberechnung fehlgeschlagen"
+          }
+        }
+      }
+    },
     "Couldn't Refresh": {
       "extractionState": "manual",
       "localizations": {

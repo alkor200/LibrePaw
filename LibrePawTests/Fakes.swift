@@ -44,6 +44,8 @@ struct FakePetRepository: PetRepository {
     var failingTrailStarts: Set<Date> = []
     /// Counts ``fetchTrail(forPetID:from:to:)`` calls.
     let trailCalls = CallCounter()
+    /// Thrown from ``lifetimeExcursionStats(forPetID:)`` when set.
+    var lifetimeStatsError: Error?
     /// How many ``currentUserPermissions()`` calls fail before one succeeds.
     var permissionFailuresBeforeSuccess = 0
     private let permissionCalls = CallCounter()
@@ -74,7 +76,10 @@ struct FakePetRepository: PetRepository {
     func deleteHomeGeofence(_ homeID: Int) async throws {}
     func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
     func resetExcursionsCache(forPetID petID: Int) async throws {}
-    func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats { .zero }
+    func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
+        if let lifetimeStatsError { throw lifetimeStatsError }
+        return .zero
+    }
     func resetLifetimeStats(forPetID petID: Int) async throws {}
     func currentUserPermissions() async throws -> AccountPermissions {
         if permissionCalls.next() <= permissionFailuresBeforeSuccess { throw LibrePawError.network("offline") }

@@ -82,6 +82,17 @@ struct PetDetailView: View {
         .onDisappear {
             viewModel.stopLiveUpdates()
         }
+        .alert(
+            "Couldn't Recalculate",
+            isPresented: Binding(
+                get: { viewModel.recalculateErrorMessage != nil },
+                set: { if !$0 { viewModel.recalculateErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.recalculateErrorMessage ?? "")
+        }
         .sheet(isPresented: $isShowingEditPet) {
             EditPetView(pet: viewModel.pet, petRepository: petRepository) { newName in
                 try await viewModel.rename(to: newName)

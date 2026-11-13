@@ -30,4 +30,13 @@ struct PetDetailViewModelTests {
 
         #expect(repository.trailCalls.value == 2)
     }
+
+    @Test("A failed recalculation is reported instead of swallowed")
+    func failedRecalculationIsReported() async {
+        let viewModel = PetDetailViewModel(pet: pet, petRepository: FakePetRepository(lifetimeStatsError: LibrePawError.network("offline")))
+
+        await viewModel.recalculate()
+
+        #expect(viewModel.recalculateErrorMessage != nil)
+    }
 }
