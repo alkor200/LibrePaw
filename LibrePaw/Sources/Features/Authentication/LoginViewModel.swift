@@ -29,6 +29,9 @@ final class LoginViewModel {
     }
 
     func logIn() async {
+        // The Log In button is disabled while this is false, but pressing
+        // Return in the password field calls this directly.
+        guard canSubmit else { return }
         errorMessage = nil
 
         guard let url = normalizedServerURL() else {
@@ -52,7 +55,10 @@ final class LoginViewModel {
         if !raw.contains("://") {
             raw = "https://" + raw
         }
-        guard let url = URL(string: raw), url.host != nil else { return nil }
+        // https only: http is rejected up front (see `usesInsecureConnection`)
+        // and blocked by App Transport Security anyway, and anything else
+        // (ftp://, ws://, ...) isn't a Traccar web address at all.
+        guard let url = URL(string: raw), url.scheme?.lowercased() == "https", url.host != nil else { return nil }
         return url
     }
 }
