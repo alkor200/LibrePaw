@@ -4,7 +4,12 @@ import Foundation
 public enum TraccarError: Error, Sendable, Equatable {
     /// The server rejected the supplied credentials (HTTP 401).
     case invalidCredentials
-    /// The server returned a non-success status code other than 401.
+    /// The credentials are fine, but this account isn't allowed to do this
+    /// particular thing (HTTP 403). Deliberately separate from
+    /// ``invalidCredentials``: a permission problem must never read as
+    /// "wrong password", let alone end the session.
+    case forbidden
+    /// The server returned a non-success status code other than 401/403.
     case server(statusCode: Int)
     /// The response body could not be decoded into the expected type.
     case decoding(String)
@@ -19,6 +24,8 @@ extension TraccarError: LocalizedError {
         switch self {
         case .invalidCredentials:
             "The email or password is incorrect."
+        case .forbidden:
+            "This account isn't allowed to do that on this server."
         case .server(let statusCode):
             "The server responded with an unexpected status (\(statusCode))."
         case .decoding:

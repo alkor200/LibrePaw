@@ -569,8 +569,10 @@ public actor TraccarClient {
         switch response.statusCode {
         case 200..<300:
             return data
-        case 401, 403:
+        case 401:
             throw TraccarError.invalidCredentials
+        case 403:
+            throw TraccarError.forbidden
         default:
             throw TraccarError.server(statusCode: response.statusCode)
         }

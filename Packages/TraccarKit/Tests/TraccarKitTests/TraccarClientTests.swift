@@ -101,6 +101,18 @@ struct TraccarClientTests {
         }
     }
 
+    @Test("A 403 response surfaces as forbidden, not invalidCredentials")
+    func forbiddenIsNotInvalidCredentials() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        await #expect(throws: TraccarError.forbidden) {
+            try await self.makeClient().fetchDevices()
+        }
+    }
+
     @Test("An unexpected status code surfaces as .server")
     func serverErrorIsPropagated() async throws {
         MockURLProtocol.requestHandler = { request in
