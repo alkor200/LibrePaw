@@ -1,0 +1,22 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "CFBundleDisplayName": {
+      "shouldTranslate": false
+    },
+    "CFBundleName": {
+      "shouldTranslate": false
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LibrePaw nutzt deinen Standort, um anzuzeigen, wie weit dein Tier entfernt ist, und dir bei der Suche die Richtung zu ihm zu zeigen."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
