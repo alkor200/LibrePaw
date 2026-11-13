@@ -144,7 +144,7 @@ struct PetDetailView: View {
             localized("Online")
         case .offline, .unknown:
             if let lastSeenAt = viewModel.pet.lastSeenAt {
-                "\(viewModel.pet.status.label) · \(lastSeenAt.formatted(.relative(presentation: .named)))"
+                "\(viewModel.pet.status.label) · \(Formatting.relative(lastSeenAt))"
             } else {
                 viewModel.pet.status.label
             }
@@ -265,29 +265,29 @@ struct PetDetailView: View {
     private var statGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             if let position = viewModel.pet.lastPosition {
-                StatTile(systemImage: "gauge.with.dots.needle.67percent", title: "Speed", value: formattedSpeed(position.speedKilometersPerHour))
+                StatTile(systemImage: "gauge.with.dots.needle.67percent", title: "Speed", value: Formatting.speed(position.speedKilometersPerHour))
             }
             // Grouped with Speed rather than at the end, so the two
             // "right now" tiles share a row, then today's and lifetime's
             // stats each get their own row as a pair.
             if let lastSeenAt = viewModel.pet.lastSeenAt {
-                StatTile(systemImage: "clock", title: "Last Update", value: lastSeenAt.formatted(.relative(presentation: .named)))
+                StatTile(systemImage: "clock", title: "Last Update", value: Formatting.relative(lastSeenAt))
             }
             if let position = viewModel.pet.lastPosition, let battery = position.batteryLevelPercent {
-                StatTile(systemImage: batteryIcon(for: battery), title: "Battery", value: formattedPercent(battery))
+                StatTile(systemImage: batteryIcon(for: battery), title: "Battery", value: Formatting.percent(battery))
             }
             if let totalDistance = viewModel.totalTrailDistanceMeters {
-                StatTile(systemImage: "map.fill", title: "Distance Today", value: formattedDistance(totalDistance))
+                StatTile(systemImage: "map.fill", title: "Distance Today", value: Formatting.distance(totalDistance))
             }
             if let timeAwayToday = viewModel.totalTimeAwayTodaySeconds {
-                StatTile(systemImage: "pawprint.fill", title: "Time Away Today", value: formattedDuration(timeAwayToday))
+                StatTile(systemImage: "pawprint.fill", title: "Time Away Today", value: Formatting.duration(timeAwayToday))
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDistanceMeters > 0 {
-                StatTile(systemImage: "map.fill", title: "Total Distance", value: formattedDistance(lifetimeStats.totalDistanceMeters))
+                StatTile(systemImage: "map.fill", title: "Total Distance", value: Formatting.distance(lifetimeStats.totalDistanceMeters))
                     .contextMenu { recalculateLifetimeStatsButton }
             }
             if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDurationSeconds > 0 {
-                StatTile(systemImage: "pawprint.fill", title: "Total Time Away", value: formattedDuration(lifetimeStats.totalDurationSeconds))
+                StatTile(systemImage: "pawprint.fill", title: "Total Time Away", value: Formatting.duration(lifetimeStats.totalDurationSeconds))
                     .contextMenu { recalculateLifetimeStatsButton }
             }
         }
@@ -353,39 +353,6 @@ struct PetDetailView: View {
     }
 
     // MARK: - Formatting
-
-    private func formattedSpeed(_ kilometersPerHour: Double) -> String {
-        kilometersPerHour.formatted(.number.precision(.fractionLength(0))) + " km/h"
-    }
-
-    private func formattedPercent(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(0))) + "%"
-    }
-
-    private func formattedDistance(_ meters: Double) -> String {
-        if meters < 1000 {
-            meters.formatted(.number.precision(.fractionLength(0))) + " m"
-        } else {
-            (meters / 1000).formatted(.number.precision(.fractionLength(1))) + " km"
-        }
-    }
-
-    private func formattedDuration(_ seconds: TimeInterval) -> String {
-        let totalMinutes = Int(seconds / 60)
-        let days = totalMinutes / (60 * 24)
-        let hours = (totalMinutes / 60) % 24
-        let minutes = totalMinutes % 60
-        let d = localized("duration.days.abbreviation")
-        let h = localized("duration.hours.abbreviation")
-        let m = localized("duration.minutes.abbreviation")
-        if days > 0 {
-            return "\(days)\(d) \(hours)\(h)"
-        } else if hours > 0 {
-            return "\(hours)\(h) \(minutes)\(m)"
-        } else {
-            return "\(minutes)\(m)"
-        }
-    }
 
     private func formattedCoordinate(_ coordinate: Coordinate) -> String {
         String(format: "%.5f, %.5f", coordinate.latitude, coordinate.longitude)

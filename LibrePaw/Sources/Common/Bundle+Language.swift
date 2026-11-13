@@ -14,6 +14,7 @@ import Foundation
 /// shared mutable runtime state to corrupt.
 enum LocalizationBundle {
     nonisolated(unsafe) private static var override: Bundle?
+    nonisolated(unsafe) private static var overrideLanguageCode: String?
 
     /// `languageCode` is e.g. `"de"`, matching an `.lproj` folder name (or
     /// a String Catalog's language id) in the main bundle. `nil` restores
@@ -22,9 +23,18 @@ enum LocalizationBundle {
         guard let languageCode,
               let path = Bundle.main.path(forResource: languageCode, ofType: "lproj") else {
             override = nil
+            overrideLanguageCode = nil
             return
         }
         override = Bundle(path: path)
+        overrideLanguageCode = languageCode
+    }
+
+    /// The locale numbers and dates should be formatted in right now: the
+    /// override's own language when one is active, so e.g. German shows
+    /// "1,2 km" even on an English device, otherwise the device's.
+    static var currentLocale: Locale {
+        overrideLanguageCode.map(Locale.init(identifier:)) ?? .autoupdatingCurrent
     }
 
     /// The bundle `localized(_:_:)` should resolve strings from right now.

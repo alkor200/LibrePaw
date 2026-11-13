@@ -43,7 +43,7 @@ struct PetGridCell: View {
             localized("Online")
         case .offline, .unknown:
             if let lastSeenAt = pet.lastSeenAt {
-                lastSeenAt.formatted(.relative(presentation: .named))
+                Formatting.relative(lastSeenAt)
             } else {
                 pet.status.label
             }

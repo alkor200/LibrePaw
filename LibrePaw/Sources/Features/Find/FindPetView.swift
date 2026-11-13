@@ -106,12 +106,7 @@ struct FindPetView: View {
     }
 
     private var distanceText: String {
-        guard let meters = viewModel.distanceMeters else { return "-" }
-        if meters < 1000 {
-            return meters.formatted(.number.precision(.fractionLength(0))) + " m"
-        } else {
-            return (meters / 1000).formatted(.number.precision(.fractionLength(1))) + " km"
-        }
+        viewModel.distanceMeters.map(Formatting.distance) ?? "-"
     }
 }
 

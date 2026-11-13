@@ -26,7 +26,7 @@ struct ExcursionDetailView: View {
         }
         .padding()
         .background(Color.appBackground)
-        .navigationTitle(viewModel.excursion.startTime.formatted(date: .abbreviated, time: .omitted))
+        .navigationTitle(Formatting.date(viewModel.excursion.startTime))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.loadTrail()
@@ -36,24 +36,24 @@ struct ExcursionDetailView: View {
 
     private var header: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-            statTile(systemImage: "flag.fill", title: "Started", value: timeText(viewModel.excursion.startTime))
+            statTile(systemImage: "flag.fill", title: "Started", value: Formatting.time(viewModel.excursion.startTime))
 
             if viewModel.excursion.isOngoing {
                 statTile(systemImage: "hare.fill", title: "Status", value: localized("Away now"))
             } else if let endTime = viewModel.excursion.endTime {
-                statTile(systemImage: "flag.checkered", title: "Ended", value: timeText(endTime))
+                statTile(systemImage: "flag.checkered", title: "Ended", value: Formatting.time(endTime))
             }
 
             if let distance = viewModel.excursion.distanceMeters {
-                statTile(systemImage: "map.fill", title: "Distance", value: distanceText(distance))
+                statTile(systemImage: "map.fill", title: "Distance", value: Formatting.distance(distance))
             }
 
             if let duration = viewModel.excursion.duration {
-                statTile(systemImage: "clock", title: "Duration", value: durationText(duration))
+                statTile(systemImage: "clock", title: "Duration", value: Formatting.duration(duration))
             }
 
             if let averageSpeedKmh = viewModel.excursion.averageSpeedKilometersPerHour {
-                statTile(systemImage: "gauge.with.dots.needle.67percent", title: "Avg. Speed", value: speedText(averageSpeedKmh))
+                statTile(systemImage: "gauge.with.dots.needle.67percent", title: "Avg. Speed", value: Formatting.speed(averageSpeedKmh, fractionDigits: 1))
             }
         }
     }
@@ -155,28 +155,6 @@ struct ExcursionDetailView: View {
         withAnimation {
             camera = .showcase(shapeCollection: shapeCollection, edgePadding: UIEdgeInsets(top: 24, left: 24, bottom: 24, right: 24))
         }
-    }
-
-    private func timeText(_ date: Date) -> String {
-        date.formatted(date: .omitted, time: .shortened)
-    }
-
-    private func speedText(_ kilometersPerHour: Double) -> String {
-        kilometersPerHour.formatted(.number.precision(.fractionLength(1))) + " km/h"
-    }
-
-    private func durationText(_ seconds: TimeInterval) -> String {
-        let minutes = Int(seconds / 60)
-        if minutes < 60 {
-            return "\(minutes) \(localized("duration.minutes.unit"))"
-        }
-        let h = localized("duration.hours.abbreviation")
-        let m = localized("duration.minutes.abbreviation")
-        return "\(minutes / 60)\(h) \(minutes % 60)\(m)"
-    }
-
-    private func distanceText(_ meters: Double) -> String {
-        meters < 1000 ? "\(Int(meters)) m" : String(format: "%.1f km", meters / 1000)
     }
 }
 

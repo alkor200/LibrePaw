@@ -67,7 +67,7 @@ private struct ExcursionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(excursion.startTime.formatted(date: .abbreviated, time: .shortened))
+                Text(Formatting.dateTime(excursion.startTime))
                     .font(.headline)
                 Spacer()
                 if excursion.isOngoing {
@@ -89,10 +89,10 @@ private struct ExcursionRow: View {
 
             HStack(spacing: 16) {
                 if let duration = excursion.duration {
-                    Label(durationText(duration), systemImage: "clock")
+                    Label(Formatting.duration(duration), systemImage: "clock")
                 }
                 if let distance = excursion.distanceMeters {
-                    Label(distanceText(distance), systemImage: "map.fill")
+                    Label(Formatting.distance(distance), systemImage: "map.fill")
                 }
             }
             .font(.subheadline)
@@ -106,20 +106,6 @@ private struct ExcursionRow: View {
     private var routeText: String? {
         guard let start = homeName(excursion.startHomeID), let end = homeName(excursion.endHomeID), start != end else { return nil }
         return "\(start) → \(end)"
-    }
-
-    private func durationText(_ seconds: TimeInterval) -> String {
-        let minutes = Int(seconds / 60)
-        if minutes < 60 {
-            return "\(minutes) \(localized("duration.minutes.unit"))"
-        }
-        let h = localized("duration.hours.abbreviation")
-        let m = localized("duration.minutes.abbreviation")
-        return "\(minutes / 60)\(h) \(minutes % 60)\(m)"
-    }
-
-    private func distanceText(_ meters: Double) -> String {
-        meters < 1000 ? "\(Int(meters)) m" : String(format: "%.1f km", meters / 1000)
     }
 }
 
