@@ -107,38 +107,18 @@ struct HomesView: View {
         }
     }
 
-    /// Explains who can actually see, and do anything with, what's set up
-    /// here: visibility follows admin status (the one thing ADR-0019 asks
-    /// for in exchange for showing this screen to everyone), while whether
-    /// the account can add/edit/delete at all follows Traccar's own
-    /// `readonly` flag (see ADR-0023). Shown only once ``HomesViewModel/permissions``
-    /// is known, so it never flashes the wrong wording while loading.
+    /// See ``HomeVisibilityNotice``. Shown only once
+    /// ``HomesViewModel/permissions`` is known, so it never flashes the
+    /// wrong wording while loading.
     @ViewBuilder
     private var visibilityNotice: some View {
         if let permissions = viewModel.permissions {
-            if permissions.isAdministrator {
-                visibilityNoticeLabel("As an admin, homes you add here are visible to everyone with access to \(viewModel.pet.name).", systemImage: "person.3.fill")
-            } else if !permissions.canManageHomes {
-                visibilityNoticeLabel("You have read-only access to this account. You can see homes here, but can't add, edit, or delete them.", systemImage: "lock.fill")
-            } else {
-                visibilityNoticeLabel("Homes you add here, and the excursions they create, are only visible to you. Ask an admin to add a home if it should apply to everyone.", systemImage: "eye.slash.fill")
-            }
+            HomeVisibilityNotice(permissions: permissions, petName: viewModel.pet.name, context: .homesList)
+                .padding(12)
+                .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.horizontal)
+                .padding(.top, 8)
         }
-    }
-
-    private func visibilityNoticeLabel(_ text: LocalizedStringKey, systemImage: String) -> some View {
-        Label {
-            Text(text)
-        } icon: {
-            Image(systemName: systemImage)
-        }
-        .font(.footnote)
-        .foregroundStyle(.appSecondaryText)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .padding(.horizontal)
-        .padding(.top, 8)
     }
 }
 

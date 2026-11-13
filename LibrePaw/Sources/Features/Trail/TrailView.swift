@@ -182,20 +182,9 @@ struct TrailView: View {
 
     private func fitCameraToAllTrails() {
         let coordinates = viewModel.trailsByExcursionID.values.flatMap { $0 }.map(\.coordinate.clLocationCoordinate2D)
-        guard !coordinates.isEmpty else { return }
-        // A single-point `.showcase()` is a zero-size bounding box, which
-        // stalled MapLibre's render loop entirely in `PetMapView` (see its
-        // `fitCameraToAllPets()`), so the same single-point case is
-        // centered on directly here too.
-        guard coordinates.count > 1 else {
-            withAnimation {
-                camera = .center(coordinates[0], zoom: 16)
-            }
-            return
-        }
-        let shapeCollection = MLNShapeCollection(shapes: [MLNPointCollectionFeature(coordinates: coordinates, count: UInt(coordinates.count))])
+        guard let fitted = MapViewCamera.fitting(coordinates, edgePadding: UIEdgeInsets(top: 100, left: 40, bottom: 60, right: 40)) else { return }
         withAnimation {
-            camera = .showcase(shapeCollection: shapeCollection, edgePadding: UIEdgeInsets(top: 100, left: 40, bottom: 60, right: 40))
+            camera = fitted
         }
     }
 }

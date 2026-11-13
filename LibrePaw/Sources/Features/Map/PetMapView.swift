@@ -272,22 +272,9 @@ struct PetMapView: View {
 
     private func fitCameraToAllPets() {
         let coordinates = viewModel.petsWithPosition.compactMap { $0.lastPosition?.coordinate.clLocationCoordinate2D }
-        guard !coordinates.isEmpty else { return }
-        // A single coordinate is a zero-size bounding box, a degenerate case
-        // for `.showcase()`'s fit-bounds math (confirmed live: with only one
-        // pet, the map got stuck requesting tiles forever and never
-        // rendered anything past the initial background color). Centering
-        // on it directly, the same way the locate button and
-        // `tabNavigation.mapFocusPet` already do, sidesteps that entirely.
-        guard coordinates.count > 1 else {
-            withAnimation {
-                camera = .center(coordinates[0], zoom: 16)
-            }
-            return
-        }
-        let shapeCollection = MLNShapeCollection(shapes: [MLNPointCollectionFeature(coordinates: coordinates, count: UInt(coordinates.count))])
+        guard let fitted = MapViewCamera.fitting(coordinates, edgePadding: UIEdgeInsets(top: 80, left: 40, bottom: 80, right: 40)) else { return }
         withAnimation {
-            camera = .showcase(shapeCollection: shapeCollection, edgePadding: UIEdgeInsets(top: 80, left: 40, bottom: 80, right: 40))
+            camera = fitted
         }
     }
 }

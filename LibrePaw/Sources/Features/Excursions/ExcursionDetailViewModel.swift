@@ -34,11 +34,8 @@ final class ExcursionDetailViewModel {
         }
     }
 
-    /// "Home → Cabin" when the excursion started and ended at different
-    /// known homes (see ADR-0016), `nil` for an ordinary round trip.
+    /// See ``LibrePawKit/Excursion/routeText(homeName:)``.
     var routeText: String? {
-        guard let startID = excursion.startHomeID, let endID = excursion.endHomeID, startID != endID,
-              let start = homeNamesByID[startID], let end = homeNamesByID[endID] else { return nil }
-        return "\(start) → \(end)"
+        excursion.routeText { homeNamesByID[$0] }
     }
 }
