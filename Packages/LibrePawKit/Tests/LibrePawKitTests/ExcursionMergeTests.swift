@@ -107,6 +107,44 @@ struct ExcursionMergeTests {
         #expect(all.map(\.id) == [1])
         #expect(newCache == cached)
     }
+
+    @Test("A live fetch starting after the watermark restarts coverage there instead of claiming the gap")
+    func liveFetchAfterWatermarkRestartsCoverage() {
+        let now = Date.now
+        let coveredFrom = now.addingTimeInterval(-30 * 86_400)
+        let watermark = now.addingTimeInterval(-4 * 86_400)
+        let cached = CachedExcursions(
+            excursions: [excursion(id: 1, startTime: watermark.addingTimeInterval(-3_600), endTime: watermark)],
+            coveredFrom: coveredFrom,
+            cachedThroughEndTime: watermark
+        )
+        // E.g. a 24-hour Trail window opened four days after the cache was
+        // last updated: liveFetchStart returns `from` itself, so the three
+        // days between the watermark and `liveFrom` were never fetched.
+        let liveFrom = now.addingTimeInterval(-86_400)
+        let fresh = [excursion(id: 2, startTime: now.addingTimeInterval(-7_200), endTime: now.addingTimeInterval(-3_600))]
+
+        let (_, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: fresh, liveFrom: liveFrom)
+
+        #expect(newCache.coveredFrom == liveFrom)
+        #expect(newCache.cachedThroughEndTime == fresh[0].endTime)
+        // And so a later, wider request re-fetches the gap instead of
+        // trusting the advanced watermark.
+        #expect(TraccarPetRepository.liveFetchStart(cached: newCache, from: coveredFrom) == coveredFrom)
+    }
+
+    @Test("A live fetch starting before the cache's own coverage extends coverage back to it")
+    func liveFetchBeforeCoverageExtendsIt() {
+        let now = Date.now
+        let coveredFrom = now.addingTimeInterval(-86_400)
+        let watermark = now.addingTimeInterval(-3_600)
+        let cached = CachedExcursions(excursions: [], coveredFrom: coveredFrom, cachedThroughEndTime: watermark)
+        let liveFrom = now.addingTimeInterval(-7 * 86_400)
+
+        let (_, newCache) = TraccarPetRepository.mergeExcursions(cached: cached, freshExcursions: [], liveFrom: liveFrom)
+
+        #expect(newCache.coveredFrom == liveFrom)
+    }
 }
 
 @Suite("TraccarPetRepository.liveFetchStart")

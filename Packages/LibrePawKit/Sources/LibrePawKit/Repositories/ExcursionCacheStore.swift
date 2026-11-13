@@ -65,6 +65,9 @@ struct UserDefaultsExcursionCacheStore: ExcursionCacheStore, @unchecked Sendable
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {
-        "org.librepaw.excursionsCache.\(serverHost).\(petID)"
+        // v2: caches written before the coverage-gap fix in
+        // `TraccarPetRepository.mergeExcursions` may already be missing
+        // excursions for good, a new key rebuilds every one of them once.
+        "org.librepaw.excursionsCache.v2.\(serverHost).\(petID)"
     }
 }

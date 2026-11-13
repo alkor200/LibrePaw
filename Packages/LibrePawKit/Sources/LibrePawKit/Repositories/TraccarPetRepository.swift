@@ -317,19 +317,6 @@ struct TraccarPetRepository: PetRepository {
         excursionCacheStore.clear(forPetID: petID, serverHost: serverHost)
     }
 
-    /// Pure merge logic, pulled out of `fetchExcursions` so it can be unit
-    /// tested directly with hand-built excursions instead of a live/mocked
-    /// server, the same way `mergeLifetimeStats` is.
-    ///
-    /// `freshExcursions` is whatever this call's live fetch produced for
-    /// whatever portion of the requested range wasn't already covered by
-    /// the cache. Keyed by id (an excursion's own exit event id, stable and
-    /// unique within one server), so re-fetching one already cached, or an
-    /// id appearing in both, never duplicates it, a fresh copy simply wins.
-    /// Only closed excursions (`endTime != nil`) are folded into the
-    /// returned cache and advance `cachedThroughEndTime`, an ongoing one is
-    /// included in `all` (what the caller actually sees) but never
-    /// persisted.
     /// Where to start a live fetch from, given what's already cached. Only
     /// narrows to the watermark when the cache's own coverage already
     /// reaches back to (or before) `from`, never when there's a gap
@@ -346,6 +333,29 @@ struct TraccarPetRepository: PetRepository {
         return from
     }
 
+    /// Pure merge logic, pulled out of `fetchExcursions` so it can be unit
+    /// tested directly with hand-built excursions instead of a live/mocked
+    /// server, the same way `mergeLifetimeStats` is.
+    ///
+    /// `freshExcursions` is whatever this call's live fetch produced for
+    /// whatever portion of the requested range wasn't already covered by
+    /// the cache. Keyed by id (an excursion's own exit event id, stable and
+    /// unique within one server), so re-fetching one already cached, or an
+    /// id appearing in both, never duplicates it, a fresh copy simply wins.
+    /// Only closed excursions (`endTime != nil`) are folded into the
+    /// returned cache and advance `cachedThroughEndTime`, an ongoing one is
+    /// included in `all` (what the caller actually sees) but never
+    /// persisted.
+    ///
+    /// `coveredFrom` only keeps its earlier value when this call's live
+    /// fetch actually connects to what the cache already covered, i.e.
+    /// `liveFrom` is no later than the cache's own watermark (or its own
+    /// coverage start). A request that starts *after* the watermark (e.g.
+    /// a 24-hour Trail window opened days after the cache was last
+    /// updated) leaves a gap between the two that nothing ever fetched,
+    /// so coverage restarts at `liveFrom` instead. Otherwise the advanced
+    /// watermark would make every later, wider request skip that gap
+    /// forever, lifetime stats included.
     static func mergeExcursions(
         cached: CachedExcursions?,
         freshExcursions: [Excursion],
@@ -361,9 +371,16 @@ struct TraccarPetRepository: PetRepository {
             }
         }
 
-        // Whichever is earlier: the cache's own prior coverage start, or
-        // this call's `liveFrom`, the point it just (re-)fetched live from.
-        let coveredFrom = [cached?.coveredFrom, liveFrom].compactMap { $0 }.min()
+        // Whichever is earlier, the cache's own prior coverage start or
+        // this call's `liveFrom`, but only while the two ranges actually
+        // connect, see this function's doc comment.
+        let coveredFrom: Date
+        if let previousCoveredFrom = cached?.coveredFrom,
+           liveFrom <= max(previousCoveredFrom, cached?.cachedThroughEndTime ?? previousCoveredFrom) {
+            coveredFrom = min(previousCoveredFrom, liveFrom)
+        } else {
+            coveredFrom = liveFrom
+        }
 
         let closed = byID.values.filter { $0.endTime != nil }
         let newCache = CachedExcursions(excursions: closed, coveredFrom: coveredFrom, cachedThroughEndTime: watermark)
