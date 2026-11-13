@@ -2,11 +2,18 @@ import Foundation
 import TraccarKit
 
 /// Default, server-backed implementation of ``AuthenticationService``.
-public struct LiveAuthenticationService: AuthenticationService {
+public struct LiveAuthenticationService: AuthenticationService, @unchecked Sendable {
     private let credentialStore: CredentialStore
+    /// Where `TraccarPetRepository`'s caches live, see ``LocalCaches``.
+    private let cacheDefaults: UserDefaults
 
     public init(credentialStore: CredentialStore = KeychainCredentialStore()) {
+        self.init(credentialStore: credentialStore, cacheDefaults: .standard)
+    }
+
+    init(credentialStore: CredentialStore, cacheDefaults: UserDefaults) {
         self.credentialStore = credentialStore
+        self.cacheDefaults = cacheDefaults
     }
 
     public func restoreSession() throws -> StoredSession? {
@@ -29,12 +36,19 @@ public struct LiveAuthenticationService: AuthenticationService {
             throw error.asLibrePawError
         }
 
+        // Starts every account from an empty cache, also covering caches
+        // left behind by a build from before logOut cleared them.
+        LocalCaches.clearAll(in: cacheDefaults)
+
         let session = StoredSession(serverURL: serverURL, email: email, password: password)
         try credentialStore.save(session)
         return session
     }
 
     public func logOut() throws {
+        // First, and regardless of whether the Keychain delete below
+        // succeeds: the cached data belongs to the account signing out.
+        LocalCaches.clearAll(in: cacheDefaults)
         try credentialStore.clear()
     }
 

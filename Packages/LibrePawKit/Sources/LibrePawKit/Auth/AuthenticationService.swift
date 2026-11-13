@@ -16,9 +16,8 @@ public protocol AuthenticationService: Sendable {
     @discardableResult
     func logIn(serverURL: URL, email: String, password: String) async throws -> StoredSession
 
-    /// Clears the persisted session. Does not call the server (Traccar has
-    /// no server-side session to invalidate when using Basic Auth; see
-    /// ADR-0006).
+    /// Clears the persisted session and every cache derived from the
+    /// account's server data.
     func logOut() throws
 
     /// Builds a `PetRepository` that authenticates as the given session.
