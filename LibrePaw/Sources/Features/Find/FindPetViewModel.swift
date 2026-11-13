@@ -49,20 +49,19 @@ final class FindPetViewModel {
 
     /// Subscribes to Traccar's live feed (see ADR-0013) so the pet's position,
     /// and therefore the arrow and distance, update in near real time.
+    /// Best-effort: keeps showing the last known position rather than
+    /// surfacing a feed error on this screen, while ``LivePetFeed`` retries.
     private func startLiveUpdates() {
         guard liveUpdatesTask == nil else { return }
+        let petID = pet.id
+        let petRepository = petRepository
         liveUpdatesTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                for try await pets in self.petRepository.livePetUpdates() {
-                    guard !Task.isCancelled else { break }
-                    if let updated = pets.first(where: { $0.id == self.pet.id }) {
-                        self.pet = updated
-                    }
+            await LivePetFeed.run(petRepository) { pets in
+                guard let self else { return false }
+                if let updated = pets.first(where: { $0.id == petID }) {
+                    self.pet = updated
                 }
-            } catch {
-                // Best-effort: keep showing the last known position rather
-                // than surfacing a transient feed error on this screen.
+                return true
             }
         }
     }

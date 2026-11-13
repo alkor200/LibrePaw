@@ -18,21 +18,19 @@ final class PetMapViewModel {
     }
 
     /// Subscribes to Traccar's live feed (see ADR-0013) until
-    /// ``stopLiveUpdates()`` is called. The stream itself handles
-    /// reconnection on transient drops.
+    /// ``stopLiveUpdates()`` is called, retrying on its own after a failure
+    /// (see ``LivePetFeed``), the error capsule clears with the next update.
     func startLiveUpdates() {
         guard liveUpdatesTask == nil else { return }
+        let petRepository = petRepository
         liveUpdatesTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                for try await updatedPets in self.petRepository.livePetUpdates() {
-                    self.pets = updatedPets
-                    self.errorMessage = nil
-                }
-            } catch {
-                if !Task.isCancelled {
-                    self.errorMessage = error.localizedDescription
-                }
+            await LivePetFeed.run(petRepository) { updatedPets in
+                guard let self else { return false }
+                self.pets = updatedPets
+                self.errorMessage = nil
+                return true
+            } onError: { error in
+                self?.errorMessage = error.localizedDescription
             }
         }
     }

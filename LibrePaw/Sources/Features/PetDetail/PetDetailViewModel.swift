@@ -45,18 +45,18 @@ final class PetDetailViewModel {
     func startLiveUpdates() {
         guard liveUpdatesTask == nil else { return }
         let petID = pet.id
+        let petRepository = petRepository
+        // Best-effort: a failing feed just means the header/"View on Map"
+        // go stale until it recovers on its own (see ``LivePetFeed``), not
+        // worth surfacing as an error on top of this screen's other,
+        // already-best-effort loads.
         liveUpdatesTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                for try await pets in self.petRepository.livePetUpdates() {
-                    guard let updated = pets.first(where: { $0.id == petID }) else { continue }
+            await LivePetFeed.run(petRepository) { pets in
+                guard let self else { return false }
+                if let updated = pets.first(where: { $0.id == petID }) {
                     self.pet = updated
                 }
-            } catch {
-                // Best-effort: a dropped feed just means the header/"View
-                // on Map" go stale until it reconnects on its own
-                // (ADR-0013), not worth surfacing as an error on top of
-                // this screen's other, already-best-effort loads.
+                return true
             }
         }
     }

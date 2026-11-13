@@ -19,22 +19,28 @@ final class PetListViewModel {
     }
 
     /// Subscribes to Traccar's live feed (see ADR-0013) until
-    /// ``stopLiveUpdates()`` is called. The stream itself handles
-    /// reconnection on transient drops.
+    /// ``stopLiveUpdates()`` is called, retrying on its own after a failure
+    /// (see ``LivePetFeed``). A failure only replaces the screen with an
+    /// error while there's nothing loaded yet, an already-loaded list stays
+    /// up (if briefly stale) while the feed retries.
     func startLiveUpdates() {
         guard liveUpdatesTask == nil else { return }
+        let petRepository = petRepository
         liveUpdatesTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                for try await pets in self.petRepository.livePetUpdates() {
-                    self.state = .loaded(self.sorted(pets))
-                }
-            } catch {
-                if !Task.isCancelled {
-                    self.state = .failed(error.localizedDescription)
-                }
+            await LivePetFeed.run(petRepository) { pets in
+                guard let self else { return false }
+                self.state = .loaded(self.sorted(pets))
+                return true
+            } onError: { error in
+                guard let self, !self.hasLoadedPets else { return }
+                self.state = .failed(error.localizedDescription)
             }
         }
+    }
+
+    private var hasLoadedPets: Bool {
+        if case .loaded = state { return true }
+        return false
     }
 
     func stopLiveUpdates() {
