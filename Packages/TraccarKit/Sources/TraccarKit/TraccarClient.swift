@@ -107,12 +107,22 @@ public actor TraccarClient {
 
     /// Updates an existing geofence in place (e.g. moving "home" to a new
     /// location keeps the same geofence id, so device links are unaffected).
+    ///
+    /// `attributes` are merged into the geofence's existing ones rather
+    /// than replacing them, and every other field (`description`,
+    /// `calendarId`, ...) is carried over as-is: `PUT /api/geofences/{id}`
+    /// replaces every column, same as for devices (see
+    /// ``updateObject(at:mutate:)``), so sending only what LibrePaw models
+    /// would blank out anything set elsewhere, e.g. in Traccar's own web UI.
     public func updateGeofence(id: Int, name: String, area: String, attributes: [String: JSONValue]) async throws {
-        let _: TraccarGeofence = try await sendJSON(
-            method: "PUT",
-            "/api/geofences/\(id)",
-            body: UpdatedTraccarGeofence(id: id, name: name, area: area, attributes: attributes)
-        )
+        let newAttributes = try JSONSerialization.jsonObject(with: encoder.encode(attributes)) as? [String: Any] ?? [:]
+        try await updateObject(at: "/api/geofences/\(id)") { geofenceObject in
+            geofenceObject["name"] = name
+            geofenceObject["area"] = area
+            var mergedAttributes = geofenceObject["attributes"] as? [String: Any] ?? [:]
+            mergedAttributes.merge(newAttributes) { _, new in new }
+            geofenceObject["attributes"] = mergedAttributes
+        }
     }
 
     /// Links a geofence to a device, so the device's crossings of it
@@ -247,7 +257,7 @@ public actor TraccarClient {
     /// since `PUT /api/devices/{id}` replaces every column, `name` is set on
     /// the untouched raw object fetched first rather than built from scratch.
     public func updateDeviceName(deviceId: Int, name: String) async throws {
-        try await updateDeviceObject(deviceId: deviceId) { deviceObject in
+        try await updateObject(at: "/api/devices/\(deviceId)") { deviceObject in
             deviceObject["name"] = name
         }
     }
@@ -268,25 +278,26 @@ public actor TraccarClient {
     }
 
     private func mergeDeviceAttribute(deviceId: Int, key: String, stringValue: String) async throws {
-        try await updateDeviceObject(deviceId: deviceId) { deviceObject in
+        try await updateObject(at: "/api/devices/\(deviceId)") { deviceObject in
             var attributes = deviceObject["attributes"] as? [String: Any] ?? [:]
             attributes[key] = stringValue
             deviceObject["attributes"] = attributes
         }
     }
 
-    /// Fetches a device as its raw JSON object, applies `mutate` to it, and
-    /// `PUT`s the whole thing back. `PUT /api/devices/{id}` replaces every
-    /// column on the server (confirmed against Traccar's
-    /// `BaseObjectResource`, which deserializes the body and writes it with
-    /// `Columns.Exclude("id")`), so omitting a field Traccar stores, `phone`,
-    /// `model`, `contact`, `groupId`, `calendarId`, `expirationTime`, would
-    /// silently blank it out. Round-tripping the untouched raw object avoids
-    /// that regardless of which fields exist on a given server version, and
-    /// regardless of which single field a given caller actually wants to
-    /// change.
-    private func updateDeviceObject(deviceId: Int, mutate: (inout [String: Any]) -> Void) async throws {
-        let url = try makeURL("/api/devices/\(deviceId)")
+    /// Fetches an object (a device, a geofence) as its raw JSON, applies
+    /// `mutate` to it, and `PUT`s the whole thing back. `PUT` on any of
+    /// Traccar's object endpoints replaces every column on the server
+    /// (confirmed against Traccar's `BaseObjectResource`, which
+    /// deserializes the body and writes it with `Columns.Exclude("id")`),
+    /// so omitting a field Traccar stores, a device's `phone`, `model`,
+    /// `contact`, `groupId`, `calendarId`, `expirationTime`, a geofence's
+    /// `description` or `calendarId`, would silently blank it out.
+    /// Round-tripping the untouched raw object avoids that regardless of
+    /// which fields exist on a given server version, and regardless of
+    /// which single field a given caller actually wants to change.
+    private func updateObject(at path: String, mutate: (inout [String: Any]) -> Void) async throws {
+        let url = try makeURL(path)
 
         var getRequest = URLRequest(url: url)
         getRequest.setValue(credentials.basicAuthHeaderValue, forHTTPHeaderField: "Authorization")
@@ -295,7 +306,7 @@ public actor TraccarClient {
         let validDeviceData = try validated(deviceData, deviceResponse)
 
         guard var deviceObject = try JSONSerialization.jsonObject(with: validDeviceData) as? [String: Any] else {
-            throw TraccarError.decoding("Device JSON was not an object.")
+            throw TraccarError.decoding("Object JSON was not an object.")
         }
         mutate(&deviceObject)
 

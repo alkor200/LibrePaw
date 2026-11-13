@@ -301,6 +301,49 @@ struct TraccarClientTests {
         #expect(attributes?["scentrailHome"] as? Bool == true)
     }
 
+    @Test("updateGeofence PUTs the geofence back whole, merging attributes instead of replacing them")
+    func updateGeofencePreservesEveryOtherField() async throws {
+        let requests = LockedArray<URLRequest>()
+
+        let existingGeofenceJSON = """
+        {
+            "id": 30, "name": "Home", "description": "Set up in the Traccar web UI",
+            "area": "CIRCLE (51.31 12.42, 50.0)", "calendarId": 4,
+            "attributes": {"scentrailHome": true, "color": "#ff0000", "speedLimit": 5}
+        }
+        """
+
+        MockURLProtocol.requestHandler = { request in
+            requests.append(request)
+            guard let url = request.url, url.path == "/api/geofences/30" else { throw TraccarError.invalidServerURL }
+            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            if request.httpMethod == "PUT" {
+                return (response, request.bodyData)
+            }
+            return (response, Data(existingGeofenceJSON.utf8))
+        }
+
+        try await makeClient().updateGeofence(
+            id: 30,
+            name: "Garden",
+            area: "CIRCLE (51.32 12.43, 80.0)",
+            attributes: ["scentrailHome": .bool(true)]
+        )
+
+        let putRequest = try #require(requests.values.last)
+        #expect(putRequest.httpMethod == "PUT")
+        let putBody = try JSONSerialization.jsonObject(with: putRequest.bodyData) as? [String: Any]
+
+        #expect(putBody?["name"] as? String == "Garden")
+        #expect(putBody?["area"] as? String == "CIRCLE (51.32 12.43, 80.0)")
+        #expect(putBody?["description"] as? String == "Set up in the Traccar web UI")
+        #expect(putBody?["calendarId"] as? Int == 4)
+        let attributes = putBody?["attributes"] as? [String: Any]
+        #expect(attributes?["scentrailHome"] as? Bool == true)
+        #expect(attributes?["color"] as? String == "#ff0000")
+        #expect(attributes?["speedLimit"] as? Int == 5)
+    }
+
     @Test("decodeSocketMessage parses a positions-only update (verified wire format)")
     func decodeSocketMessageParsesPositionsUpdate() async throws {
         let json = """

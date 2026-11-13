@@ -24,14 +24,6 @@ struct NewTraccarGeofence: Encodable, Sendable {
     let attributes: [String: JSONValue]
 }
 
-/// An update to an existing geofence via `PUT /api/geofences/{id}`.
-struct UpdatedTraccarGeofence: Encodable, Sendable {
-    let id: Int
-    let name: String
-    let area: String
-    let attributes: [String: JSONValue]
-}
-
 /// Links a device to a geofence via `POST /api/permissions`. This alone does
 /// **not** make the geofence visible to any user, see
 /// ``UserGeofencePermission`` and ADR-0017.
