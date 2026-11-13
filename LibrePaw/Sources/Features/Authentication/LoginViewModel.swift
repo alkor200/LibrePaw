@@ -13,6 +13,11 @@ final class LoginViewModel {
 
     init(appSession: AppSession) {
         self.appSession = appSession
+        if let expiredSession = appSession.expiredSession {
+            serverURLString = expiredSession.serverURL.absoluteString
+            email = expiredSession.email
+            errorMessage = localized("The server no longer accepts this account's password, e.g. because it was changed. Please sign in again.")
+        }
     }
 
     var usesInsecureConnection: Bool {

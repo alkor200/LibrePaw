@@ -1080,6 +1080,17 @@
         }
       }
     },
+    "The server no longer accepts this account's password, e.g. because it was changed. Please sign in again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server akzeptiert das Passwort dieses Kontos nicht mehr, z. B. weil es geändert wurde. Bitte melde dich erneut an."
+          }
+        }
+      }
+    },
     "This looks like a car or train ride, it isn't counted in your totals.": {
       "extractionState": "manual",
       "localizations": {

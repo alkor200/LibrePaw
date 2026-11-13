@@ -33,7 +33,13 @@ final class FakeAuthenticationService: AuthenticationService, @unchecked Sendabl
 }
 
 struct FakePetRepository: PetRepository {
-    func fetchPets() async throws -> [Pet] { [] }
+    /// Thrown from ``fetchPets()`` instead of returning, when set.
+    var error: Error?
+
+    func fetchPets() async throws -> [Pet] {
+        if let error { throw error }
+        return []
+    }
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] { [] }
     func fetchPhoto(for pet: Pet) async throws -> Data? { nil }
     func setPhoto(forPetID petID: Int, jpegData: Data) async throws {}
