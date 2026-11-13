@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted, amends [ADR-0019](0019-reenable-non-admin-homes-with-a-visibility-notice.md).
+Superseded by [ADR-0023](0023-follow-traccars-own-permission-model.md). Originally accepted as an amendment to [ADR-0019](0019-reenable-non-admin-homes-with-a-visibility-notice.md).
 
 ## Context
 
