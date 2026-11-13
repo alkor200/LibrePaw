@@ -333,15 +333,18 @@ public actor TraccarClient {
     }
 
     /// Fetches raw bytes (e.g. a device image under `/api/media/...`) from
-    /// this server. `url` must be on the same host as this client's
-    /// `serverURL`, credentials are never sent elsewhere.
+    /// this server. `url` must have the same scheme, host and port as this
+    /// client's `serverURL`, credentials are never sent elsewhere, not even
+    /// to a different service on the same machine.
     ///
     /// Unlike every other endpoint, Traccar's media files ignore HTTP Basic
     /// Auth entirely and require a cookie-based session (verified against a
     /// live server, see ADR-0012). This method establishes one lazily, on
     /// first use, and transparently re-establishes it once if it has expired.
     public func fetchData(from url: URL) async throws -> Data {
-        guard url.host == credentials.serverURL.host, url.scheme == credentials.serverURL.scheme else {
+        guard url.host == credentials.serverURL.host,
+              url.scheme == credentials.serverURL.scheme,
+              url.port == credentials.serverURL.port else {
             throw TraccarError.invalidServerURL
         }
 

@@ -185,6 +185,15 @@ struct TraccarClientTests {
         }
     }
 
+    @Test("fetchData rejects a same-host URL on a different port")
+    func fetchDataRejectsOtherPorts() async throws {
+        let otherPortURL = URL(string: "https://traccar.example.com:8443/steal-credentials")!
+
+        await #expect(throws: TraccarError.invalidServerURL) {
+            try await self.makeClient().fetchData(from: otherPortURL)
+        }
+    }
+
     @Test("updateDeviceImage uploads the image, then PUTs the device back whole with only deviceImage changed")
     func updateDeviceImagePreservesEveryOtherField() async throws {
         let requests = LockedArray<URLRequest>()
