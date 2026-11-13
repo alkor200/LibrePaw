@@ -186,13 +186,7 @@ public actor TraccarClient {
     public func fetchCurrentUser() async throws -> TraccarUser {
         try await ensureCookieSession()
 
-        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
-            throw TraccarError.invalidServerURL
-        }
-        components.path = (components.path as NSString).appendingPathComponent("/api/session")
-        guard let url = components.url else {
-            throw TraccarError.invalidServerURL
-        }
+        let url = try makeURL("/api/session")
 
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -327,11 +321,20 @@ public actor TraccarClient {
         _ = try validated(putData, putResponse)
     }
 
-    private func makeURL(_ path: String) throws -> URL {
+    /// `path` appended to the server URL's own path (so a Traccar served
+    /// under a sub-path keeps working), plus `queryItems` if any. `scheme`
+    /// overrides the server URL's own, for the WebSocket endpoint.
+    private func makeURL(_ path: String, queryItems: [URLQueryItem] = [], scheme: String? = nil) throws -> URL {
         guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
             throw TraccarError.invalidServerURL
         }
         components.path = (components.path as NSString).appendingPathComponent(path)
+        if !queryItems.isEmpty {
+            components.queryItems = queryItems
+        }
+        if let scheme {
+            components.scheme = scheme
+        }
         guard let url = components.url else {
             throw TraccarError.invalidServerURL
         }
@@ -421,14 +424,7 @@ public actor TraccarClient {
     }
 
     private func makeWebSocketTask() throws -> URLSessionWebSocketTask {
-        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
-            throw TraccarError.invalidServerURL
-        }
-        components.scheme = components.scheme == "http" ? "ws" : "wss"
-        components.path = (components.path as NSString).appendingPathComponent("/api/socket")
-        guard let url = components.url else {
-            throw TraccarError.invalidServerURL
-        }
+        let url = try makeURL("/api/socket", scheme: credentials.serverURL.scheme == "http" ? "ws" : "wss")
         return urlSession.webSocketTask(with: url)
     }
 
@@ -481,13 +477,7 @@ public actor TraccarClient {
     }
 
     private func establishCookieSession() async throws {
-        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
-            throw TraccarError.invalidServerURL
-        }
-        components.path = (components.path as NSString).appendingPathComponent("/api/session")
-        guard let url = components.url else {
-            throw TraccarError.invalidServerURL
-        }
+        let url = try makeURL("/api/session")
 
         var formComponents = URLComponents()
         formComponents.queryItems = [
@@ -512,16 +502,7 @@ public actor TraccarClient {
     // MARK: - Transport
 
     private func getJSON<T: Decodable>(_ path: String, queryItems: [URLQueryItem] = []) async throws -> T {
-        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
-            throw TraccarError.invalidServerURL
-        }
-        components.path = (components.path as NSString).appendingPathComponent(path)
-        if !queryItems.isEmpty {
-            components.queryItems = queryItems
-        }
-        guard let url = components.url else {
-            throw TraccarError.invalidServerURL
-        }
+        let url = try makeURL(path, queryItems: queryItems)
 
         var request = URLRequest(url: url)
         request.setValue(credentials.basicAuthHeaderValue, forHTTPHeaderField: "Authorization")
@@ -551,13 +532,7 @@ public actor TraccarClient {
     }
 
     private func sendNoBody(method: String, _ path: String) async throws {
-        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
-            throw TraccarError.invalidServerURL
-        }
-        components.path = (components.path as NSString).appendingPathComponent(path)
-        guard let url = components.url else {
-            throw TraccarError.invalidServerURL
-        }
+        let url = try makeURL(path)
 
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -568,13 +543,7 @@ public actor TraccarClient {
     }
 
     private func send<Body: Encodable>(method: String, _ path: String, body: Body) async throws -> Data {
-        guard var components = URLComponents(url: credentials.serverURL, resolvingAgainstBaseURL: false) else {
-            throw TraccarError.invalidServerURL
-        }
-        components.path = (components.path as NSString).appendingPathComponent(path)
-        guard let url = components.url else {
-            throw TraccarError.invalidServerURL
-        }
+        let url = try makeURL(path)
 
         var request = URLRequest(url: url)
         request.httpMethod = method
