@@ -42,6 +42,8 @@ struct FakePetRepository: PetRepository {
     /// being the only thing ``fetchTrail(forPetID:from:to:)`` gets to
     /// tell excursions apart by.
     var failingTrailStarts: Set<Date> = []
+    /// Counts ``fetchTrail(forPetID:from:to:)`` calls.
+    let trailCalls = CallCounter()
     /// How many ``currentUserPermissions()`` calls fail before one succeeds.
     var permissionFailuresBeforeSuccess = 0
     private let permissionCalls = CallCounter()
@@ -52,6 +54,7 @@ struct FakePetRepository: PetRepository {
         return []
     }
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] {
+        _ = trailCalls.next()
         if failingTrailStarts.contains(from) { throw LibrePawError.network("offline") }
         return []
     }
@@ -87,4 +90,5 @@ final class CallCounter: @unchecked Sendable {
     private var count = 0
     /// 1 for the first call, 2 for the second, ...
     func next() -> Int { lock.withLock { count += 1; return count } }
+    var value: Int { lock.withLock { count } }
 }

@@ -24,6 +24,9 @@ final class PetDetailViewModel {
 
     private let petRepository: PetRepository
     private var liveUpdatesTask: Task<Void, Never>?
+    /// When ``loadIfStale(maxAge:)`` last finished a full load, `nil` before
+    /// the first one (or while it's still running).
+    private var lastLoadedAt: Date?
 
     init(pet: Pet, petRepository: PetRepository) {
         self.pet = pet
@@ -67,6 +70,30 @@ final class PetDetailViewModel {
     }
 
     /// Loads today's position history so the detail map can draw a trail.
+    /// Everything this screen shows besides the live pet itself, loaded
+    /// side by side, but only when the last full load is older than
+    /// `maxAge`.
+    ///
+    /// The view calls this from `.task`, which runs again every time a
+    /// pushed screen (Trail, Excursions, Homes, ...) pops back here.
+    /// Reloading unconditionally meant re-fetching today's trail, the
+    /// lifetime stats and today's excursion events on every single
+    /// return, even seconds after the last load. Permissions don't change
+    /// while signed in, so they're only ever loaded until they succeed.
+    func loadIfStale(maxAge: TimeInterval = 60) async {
+        if let lastLoadedAt, Date.now.timeIntervalSince(lastLoadedAt) < maxAge { return }
+        async let trail: Void = loadTodaysTrail()
+        async let stats: Void = loadLifetimeStats()
+        async let excursions: Void = loadTodaysExcursions()
+        async let permissions: Void = permissions == nil ? loadPermissions() : ()
+        _ = await (trail, stats, excursions, permissions)
+        // A load cut short (e.g. tapping into a sub-screen right away)
+        // doesn't count, the next appearance should try again.
+        if !Task.isCancelled {
+            lastLoadedAt = .now
+        }
+    }
+
     func loadTodaysTrail() async {
         isLoadingTrail = true
         trailErrorMessage = nil

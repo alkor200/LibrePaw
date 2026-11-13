@@ -74,16 +74,7 @@ struct PetDetailView: View {
             }
         }
         .task {
-            await viewModel.loadTodaysTrail()
-        }
-        .task {
-            await viewModel.loadLifetimeStats()
-        }
-        .task {
-            await viewModel.loadTodaysExcursions()
-        }
-        .task {
-            await viewModel.loadPermissions()
+            await viewModel.loadIfStale()
         }
         .task {
             viewModel.startLiveUpdates()
