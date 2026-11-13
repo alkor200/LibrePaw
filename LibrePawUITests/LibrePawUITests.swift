@@ -12,6 +12,9 @@ final class LibrePawUITests: XCTestCase {
 
     func testAppLaunchesToTheLoginScreen() throws {
         let app = XCUIApplication()
+        // See LibrePawApp.resetStateLaunchArgument, the UI test target
+        // can't reference the app's own symbols directly.
+        app.launchArguments = ["-UITestResetState"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["LibrePaw"].waitForExistence(timeout: 5))
