@@ -113,6 +113,19 @@ struct TraccarClientTests {
         }
     }
 
+    @Test("liveUpdates finishes with invalidCredentials instead of retrying a rejected login")
+    func liveUpdatesStopsOnRejectedCredentials() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        let stream = makeClient().liveUpdates(reconnectDelay: .milliseconds(1))
+        await #expect(throws: TraccarError.invalidCredentials) {
+            for try await _ in stream {}
+        }
+    }
+
     @Test("An unexpected status code surfaces as .server")
     func serverErrorIsPropagated() async throws {
         MockURLProtocol.requestHandler = { request in

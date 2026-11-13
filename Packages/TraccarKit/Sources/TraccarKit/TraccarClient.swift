@@ -359,9 +359,12 @@ public actor TraccarClient {
     /// server, see ADR-0012 and ADR-0013).
     ///
     /// Transient connection drops are retried automatically after
-    /// `reconnectDelay`, so this stream only finishes (with an error) when
-    /// the initial cookie session itself cannot be established, or when the
-    /// caller cancels consumption of the stream.
+    /// `reconnectDelay`, so this stream only finishes when the caller
+    /// cancels consumption of it, or (throwing
+    /// ``TraccarError/invalidCredentials``) when the server rejects the
+    /// credentials themselves, e.g. after a password change. Retrying that
+    /// would only re-send a known-bad password every few seconds, forever,
+    /// which is also exactly what trips a server's brute-force lockout.
     public nonisolated func liveUpdates(reconnectDelay: Duration = .seconds(5)) -> AsyncThrowingStream<TraccarSocketUpdate, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
@@ -378,6 +381,9 @@ public actor TraccarClient {
                                 continuation.yield(update)
                             }
                         }
+                    } catch TraccarError.invalidCredentials {
+                        continuation.finish(throwing: TraccarError.invalidCredentials)
+                        return
                     } catch {
                         if Task.isCancelled { break }
                         await self.invalidateCookieSession()
