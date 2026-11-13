@@ -44,6 +44,10 @@ struct FakePetRepository: PetRepository {
     var failingTrailStarts: Set<Date> = []
     /// Counts ``fetchTrail(forPetID:from:to:)`` calls.
     let trailCalls = CallCounter()
+    /// Thrown from ``sharePet(forPetID:withEmail:)`` when set.
+    var sharePetError: Error?
+    /// Whether ``currentUserPermissions()`` reports a read-only account.
+    var isReadOnly = false
     /// Thrown from ``lifetimeExcursionStats(forPetID:)`` when set.
     var lifetimeStatsError: Error?
     /// How many ``currentUserPermissions()`` calls fail before one succeeds.
@@ -83,9 +87,11 @@ struct FakePetRepository: PetRepository {
     func resetLifetimeStats(forPetID petID: Int) async throws {}
     func currentUserPermissions() async throws -> AccountPermissions {
         if permissionCalls.next() <= permissionFailuresBeforeSuccess { throw LibrePawError.network("offline") }
-        return AccountPermissions(isAdministrator: false, canManageHomes: true, canManageDevice: true, canViewExcursions: true)
+        return AccountPermissions(isAdministrator: false, canManageHomes: !isReadOnly, canManageDevice: !isReadOnly, canViewExcursions: true)
     }
-    func sharePet(forPetID petID: Int, withEmail email: String) async throws {}
+    func sharePet(forPetID petID: Int, withEmail email: String) async throws {
+        if let sharePetError { throw sharePetError }
+    }
     func endSession() async {}
 }
 
