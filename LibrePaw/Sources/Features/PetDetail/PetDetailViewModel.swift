@@ -18,8 +18,11 @@ final class PetDetailViewModel {
     /// Gates the "Share `<Pet>`" action, the "Edit `<Pet>`" row (name and
     /// photo), and the Trail/Excursions rows, each straight off what
     /// Traccar's own permission flags allow the signed-in account to do (see
-    /// ADR-0018, ADR-0023). `nil` until ``loadPermissions()`` resolves, every
-    /// gated affordance stays hidden until then.
+    /// ADR-0018, ADR-0023). `nil` until ``loadPermissions()`` resolves. Edit
+    /// and Share stay hidden until then, Trail and Excursions are shown
+    /// right away and only removed if this turns out to deny them, so
+    /// nothing shifts under the user's finger once it arrives (see
+    /// `PetDetailView.actionsCard`).
     private(set) var permissions: AccountPermissions?
 
     private let petRepository: PetRepository

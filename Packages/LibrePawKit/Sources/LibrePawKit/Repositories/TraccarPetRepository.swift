@@ -6,6 +6,10 @@ struct TraccarPetRepository: PetRepository {
     let client: TraccarClient
     var lifetimeStatsStore: LifetimeStatsStore = UserDefaultsLifetimeStatsStore()
     var excursionCacheStore: ExcursionCacheStore = UserDefaultsExcursionCacheStore()
+    /// One per repository, i.e. per signed-in session (see
+    /// `LiveAuthenticationService.makePetRepository`), shared by every copy
+    /// of this struct.
+    var permissionsCache = AccountPermissionsCache()
 
     func fetchPets() async throws -> [Pet] {
         do {
@@ -223,17 +227,21 @@ struct TraccarPetRepository: PetRepository {
 
     // MARK: - Permissions and pet sharing (see ADR-0017, ADR-0018, ADR-0023)
 
+    /// Loaded once per session, see ``AccountPermissionsCache``.
     func currentUserPermissions() async throws -> AccountPermissions {
-        do {
-            let user = try await client.fetchCurrentUser()
-            return AccountPermissions(
-                isAdministrator: user.administrator,
-                canManageHomes: user.administrator || !user.readonly,
-                canManageDevice: user.administrator || (!user.readonly && !user.deviceReadonly),
-                canViewExcursions: user.administrator || !user.disableReports
-            )
-        } catch let error as TraccarError {
-            throw error.asLibrePawError
+        let client = client
+        return try await permissionsCache.value {
+            do {
+                let user = try await client.fetchCurrentUser()
+                return AccountPermissions(
+                    isAdministrator: user.administrator,
+                    canManageHomes: user.administrator || !user.readonly,
+                    canManageDevice: user.administrator || (!user.readonly && !user.deviceReadonly),
+                    canViewExcursions: user.administrator || !user.disableReports
+                )
+            } catch let error as TraccarError {
+                throw error.asLibrePawError
+            }
         }
     }
 

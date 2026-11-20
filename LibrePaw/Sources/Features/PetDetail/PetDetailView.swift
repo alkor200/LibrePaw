@@ -203,8 +203,15 @@ struct PetDetailView: View {
             // Trail and Excursions are both built from Traccar's reports
             // endpoint, hidden together rather than leading somewhere that
             // would just error, when the account has reports disabled (see
-            // ADR-0023).
-            if viewModel.permissions?.canViewExcursions == true {
+            // ADR-0023). Already shown while the permissions are still
+            // loading, and only removed once they turn out to deny it,
+            // rather than inserted once they arrive: that pushed every row
+            // below them down a moment after the screen appeared, often
+            // mid-tap, so taps on Homes or Trail right after opening the
+            // screen silently did nothing. The rare account without
+            // reports that taps in that first moment gets the destination's
+            // own error instead.
+            if viewModel.permissions?.canViewExcursions != false {
                 Divider().padding(.leading, 44).overlay(Color.appBorder)
 
                 NavigationLink(value: PetDetailRoute.trail) {
