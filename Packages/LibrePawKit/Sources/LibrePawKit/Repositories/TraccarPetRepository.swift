@@ -496,6 +496,26 @@ struct TraccarPetRepository: PetRepository {
     /// while still closing an excursion promptly once sleep mode fires.
     static let quietGapAfterHomeProximity: TimeInterval = 5 * 60
 
+    /// How long the trail has to go silent *away* from home before
+    /// `splitIntoExcursions` stops waiting for the walk to continue and
+    /// ends it at the last fix instead, see ADR-0030. Unlike near home,
+    /// the Mictrack never sleeps on its own out there, so a gap this long
+    /// means an empty battery or no network at all, not a pause. Long
+    /// enough that an ordinary dead spot (a tunnel, a stretch of forest)
+    /// mid-walk doesn't cut a walk in two, short enough that a battery
+    /// dying on the evening walk doesn't stretch that walk until the
+    /// tracker is next switched on, confirmed live: Phoebe's 2026-11-15
+    /// evening walk read as 23 hours long.
+    static let lostSignalGap: TimeInterval = 2 * 3_600
+
+    /// A closed excursion this short that never got clearly away from
+    /// home (beyond radius plus ``homeProximitySlackMeters``) is GPS
+    /// jitter at the fence, not a walk: confirmed live, an exit at 50m
+    /// from a 40m home and an enter at 33m exactly one minute later,
+    /// which the `minimumExcursionDuration` filter (strictly under 60
+    /// seconds) let through.
+    static let maximumJitterDuration: TimeInterval = 5 * 60
+
     /// Only re-fetches excursions that ended after the last cached run -
     /// completed excursions' distance/duration get folded into the persisted
     /// totals once and never recomputed; an ongoing excursion (if any) is
@@ -620,6 +640,12 @@ struct TraccarPetRepository: PetRepository {
     ///   right before it that are already outside the home's own radius
     ///   (see `nextDepartureIndex`). No such position, no further segment:
     ///   the pet stayed home.
+    /// - A segment also ends at its last fix before the tracker goes silent
+    ///   for ``lostSignalGap`` away from home (ADR-0030), marked
+    ///   `endedWithLostSignal`. Once the tracker reports again, a new
+    ///   segment starts as soon as the trail is clearly away from home.
+    /// - A closed segment shorter than ``maximumJitterDuration`` that never
+    ///   got clearly away from home is jitter at the fence and dropped.
     /// - A segment that never got clearly away before its pause, and is
     ///   followed by a departure, wasn't a trip of its own: an exit that
     ///   was only GPS jitter at the fence (confirmed live, Phoebe "left" at
@@ -660,16 +686,46 @@ struct TraccarPetRepository: PetRepository {
             ).flatMap { pause in
                 shouldPreferHomecoming((sorted[pause.index].fixTime, pause.homeID), overFetchedEndTime: enter?.eventTime) ? pause : nil
             }
+            let lostSignal = lostSignalIndex(in: sorted, from: segmentStartIndex, homes: homes, trailEndTime: trailEndTime)
+
+            if let lostSignal, pause.map({ lostSignal < $0.index }) ?? true {
+                // The tracker went silent away from home (see
+                // `lostSignalGap`): the walk ends at its last fix, nobody
+                // knows when the pet really got home.
+                excursions.append(excursion(
+                    id: segmentID,
+                    startTime: segmentStartTime,
+                    endTime: sorted[lostSignal].fixTime,
+                    positions: sorted[segmentStartIndex...lostSignal],
+                    startHomeID: segmentStartHomeID,
+                    endHomeID: nil,
+                    endedWithLostSignal: true
+                ))
+                // Whatever the tracker reports once it's back is a walk of
+                // its own if it's clearly away from home by then, the pet
+                // can't have been out all that time.
+                guard let departureIndex = nextDepartureIndex(in: sorted, after: lostSignal, homes: homes) else {
+                    return excursions
+                }
+                segmentID = -sorted[departureIndex].id
+                segmentStartHomeID = nil
+                segmentStartTime = sorted[departureIndex].fixTime
+                segmentStartIndex = departureIndex
+                continue
+            }
 
             guard let pause else {
-                excursions.append(excursion(
+                let segment = excursion(
                     id: segmentID,
                     startTime: segmentStartTime,
                     endTime: enter?.eventTime,
                     positions: sorted[min(segmentStartIndex, sorted.count)...],
                     startHomeID: segmentStartHomeID,
                     endHomeID: enter?.geofenceId
-                ))
+                )
+                if !isJitter(segment, positions: sorted[min(segmentStartIndex, sorted.count)...], homes: homes) {
+                    excursions.append(segment)
+                }
                 return excursions
             }
 
@@ -677,14 +733,17 @@ struct TraccarPetRepository: PetRepository {
             let segmentWentAway = sorted[segmentStartIndex...pause.index].contains { !isNearAnyHome($0, homes: homes) }
 
             if segmentWentAway || departureIndex == nil {
-                excursions.append(excursion(
+                let segment = excursion(
                     id: segmentID,
                     startTime: segmentStartTime,
                     endTime: sorted[pause.index].fixTime,
                     positions: sorted[segmentStartIndex...pause.index],
                     startHomeID: segmentStartHomeID,
                     endHomeID: pause.homeID
-                ))
+                )
+                if !isJitter(segment, positions: sorted[segmentStartIndex...pause.index], homes: homes) {
+                    excursions.append(segment)
+                }
             }
 
             guard let departureIndex else { return excursions }
@@ -698,6 +757,32 @@ struct TraccarPetRepository: PetRepository {
             segmentStartTime = sorted[departureIndex].fixTime
             segmentStartIndex = departureIndex
         }
+    }
+
+    /// The first position from `startIndex` on that is away from every
+    /// home (beyond radius plus slack, near home a silence is the tracker
+    /// asleep, see `homecomingPauseIndex`) and followed by at least
+    /// ``lostSignalGap`` of silence, measured against `trailEndTime` for
+    /// the last position.
+    private static func lostSignalIndex(
+        in sorted: [TraccarPosition],
+        from startIndex: Int,
+        homes: [HomeGeofence],
+        trailEndTime: Date
+    ) -> Int? {
+        guard startIndex < sorted.count else { return nil }
+        return (startIndex..<sorted.count).first { index in
+            let nextTime = index + 1 < sorted.count ? sorted[index + 1].fixTime : trailEndTime
+            return !isNearAnyHome(sorted[index], homes: homes)
+                && nextTime.timeIntervalSince(sorted[index].fixTime) >= lostSignalGap
+        }
+    }
+
+    /// Closed, shorter than ``maximumJitterDuration``, and never clearly
+    /// away from home: GPS jitter at the fence, not a walk.
+    private static func isJitter(_ excursion: Excursion, positions: ArraySlice<TraccarPosition>, homes: [HomeGeofence]) -> Bool {
+        guard let duration = excursion.duration, duration < maximumJitterDuration else { return false }
+        return positions.allSatisfy { isNearAnyHome($0, homes: homes) }
     }
 
     /// Where the trail next leaves home for real after `pauseIndex`: the
@@ -729,7 +814,8 @@ struct TraccarPetRepository: PetRepository {
         endTime: Date?,
         positions: ArraySlice<TraccarPosition>,
         startHomeID: Int?,
-        endHomeID: Int?
+        endHomeID: Int?,
+        endedWithLostSignal: Bool = false
     ) -> Excursion {
         let coordinates = positions.map { Coordinate(latitude: $0.latitude, longitude: $0.longitude) }
         var distance: Double?
@@ -744,7 +830,8 @@ struct TraccarPetRepository: PetRepository {
             endCoordinate: coordinates.last,
             distanceMeters: distance,
             startHomeID: startHomeID,
-            endHomeID: endHomeID
+            endHomeID: endHomeID,
+            endedWithLostSignal: endedWithLostSignal
         )
     }
 

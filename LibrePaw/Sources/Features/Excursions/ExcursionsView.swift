@@ -74,6 +74,10 @@ private struct ExcursionRow: View {
                     Label("Away now", systemImage: "hare.fill")
                         .font(.caption.bold())
                         .foregroundStyle(.orange)
+                } else if excursion.endedWithLostSignal {
+                    Label("Signal lost", systemImage: "antenna.radiowaves.left.and.right.slash")
+                        .font(.caption.bold())
+                        .foregroundStyle(.appSecondaryText)
                 } else if excursion.isLikelyVehicleTrip {
                     Label("Car ride?", systemImage: "car.fill")
                         .font(.caption.bold())

@@ -215,6 +215,169 @@ struct SplitIntoExcursionsTests {
     }
 }
 
+/// Shaped like Phoebe's 2026-11-15/16 trail (see ADR-0030): the battery
+/// died a few minutes into the evening walk, the tracker was only switched
+/// on again the next evening, already out on the next walk. Same made-up
+/// home location as above, only times and distances are real.
+@Suite("TraccarPetRepository.splitIntoExcursions, lost signal and fence jitter")
+struct LostSignalAndJitterTests {
+    private let homeCenter = Coordinate(latitude: 51.3091, longitude: 12.4178)
+    private let home = HomeGeofence(id: 24, name: "Home", center: Coordinate(latitude: 51.3091, longitude: 12.4178), radiusMeters: 40)
+    private let day = Date(timeIntervalSince1970: 1_794_729_600) // 2026-11-15 00:00 UTC
+
+    private func time(_ hour: Int, _ minute: Int, _ second: Int = 0, nextDay: Bool = false) -> Date {
+        day.addingTimeInterval(TimeInterval((nextDay ? 86_400 : 0) + hour * 3_600 + minute * 60 + second))
+    }
+
+    private func position(_ id: Int, _ fixTime: Date, meters: Double) -> TraccarPosition {
+        TraccarPosition(
+            id: id,
+            deviceId: 1,
+            fixTime: fixTime,
+            latitude: homeCenter.latitude + meters / 111_320,
+            longitude: homeCenter.longitude,
+            speed: 0,
+            course: 0,
+            address: nil,
+            attributes: [:]
+        )
+    }
+
+    private func event(_ id: Int, _ type: String, _ time: Date) -> TraccarEvent {
+        TraccarEvent(id: id, type: type, eventTime: time, deviceId: 1, geofenceId: 24)
+    }
+
+    private var walkUntilBatteryDied: [TraccarPosition] {
+        [
+            position(2473, time(21, 6, 46), meters: 74),
+            position(2474, time(21, 7, 16), meters: 117),
+            position(2475, time(21, 7, 46), meters: 129),
+            position(2480, time(21, 10, 50), meters: 252),
+            position(2488, time(21, 13, 51), meters: 329)
+        ]
+    }
+
+    private var nextEveningsWalk: [TraccarPosition] {
+        [
+            position(2492, time(20, 19, 33, nextDay: true), meters: 149),
+            position(2512, time(20, 30, 6, nextDay: true), meters: 395),
+            position(2528, time(20, 38, 39, nextDay: true), meters: 579),
+            position(2544, time(20, 46, 42, nextDay: true), meters: 156),
+            position(2548, time(20, 49, 13, nextDay: true), meters: 65),
+            position(2550, time(20, 50, 13, nextDay: true), meters: 31)
+        ]
+    }
+
+    @Test("A walk whose battery died ends at its last fix, and the next walk after the silence is its own")
+    func batteryDiedMidWalk() throws {
+        let exit = event(390, TraccarEvent.EventType.geofenceExit, time(21, 6, 46))
+        let enter = event(403, TraccarEvent.EventType.geofenceEnter, time(20, 50, 13, nextDay: true))
+
+        let excursions = TraccarPetRepository.splitIntoExcursions(
+            exit: exit,
+            enter: enter,
+            trail: walkUntilBatteryDied + nextEveningsWalk,
+            homes: [home],
+            trailEndTime: enter.eventTime
+        )
+
+        try #require(excursions.count == 2)
+        #expect(excursions[0].id == 390)
+        #expect(excursions[0].endTime == time(21, 13, 51))
+        #expect(excursions[0].endedWithLostSignal)
+        #expect(excursions[0].endHomeID == nil)
+
+        #expect(excursions[1].id == -2492)
+        #expect(excursions[1].startTime == time(20, 19, 33, nextDay: true))
+        #expect(excursions[1].endTime == enter.eventTime)
+        #expect(!excursions[1].endedWithLostSignal)
+    }
+
+    @Test("While the pair is still open, a walk silent for longer than lostSignalGap is closed at its last fix")
+    func openPairClosesOnceSilentLongEnough() {
+        let exit = event(390, TraccarEvent.EventType.geofenceExit, time(21, 6, 46))
+
+        let excursions = TraccarPetRepository.splitIntoExcursions(
+            exit: exit,
+            enter: nil,
+            trail: walkUntilBatteryDied,
+            homes: [home],
+            trailEndTime: time(23, 30)
+        )
+
+        #expect(excursions.map(\.id) == [390])
+        #expect(excursions.first?.endTime == time(21, 13, 51))
+        #expect(excursions.first?.endedWithLostSignal == true)
+    }
+
+    @Test("Shortly after the tracker went silent away from home, the walk is still ongoing")
+    func openPairStillOngoingAfterShortSilence() {
+        let exit = event(390, TraccarEvent.EventType.geofenceExit, time(21, 6, 46))
+
+        let excursions = TraccarPetRepository.splitIntoExcursions(
+            exit: exit,
+            enter: nil,
+            trail: walkUntilBatteryDied,
+            homes: [home],
+            trailEndTime: time(21, 45)
+        )
+
+        #expect(excursions.map(\.id) == [390])
+        #expect(excursions.first?.isOngoing == true)
+    }
+
+    @Test("An ordinary dead spot mid-walk, well under lostSignalGap, doesn't cut the walk in two")
+    func shortDeadSpotMidWalkKeepsOneWalk() {
+        let exit = event(1, TraccarEvent.EventType.geofenceExit, time(10, 0))
+        let enter = event(2, TraccarEvent.EventType.geofenceEnter, time(11, 30))
+        let trail = [
+            position(10, time(10, 0), meters: 60),
+            position(11, time(10, 2), meters: 200),
+            position(12, time(10, 15), meters: 900),
+            // 40 minutes without a fix, far from home.
+            position(13, time(10, 55), meters: 1_200),
+            position(14, time(11, 28), meters: 90),
+            position(15, time(11, 30), meters: 20)
+        ]
+
+        let excursions = TraccarPetRepository.splitIntoExcursions(exit: exit, enter: enter, trail: trail, homes: [home], trailEndTime: enter.eventTime)
+
+        #expect(excursions.map(\.id) == [1])
+        #expect(excursions.first?.endTime == enter.eventTime)
+        #expect(excursions.first?.endedWithLostSignal == false)
+    }
+
+    @Test("An exit and enter a minute apart that never got clearly away is fence jitter, not a walk")
+    func fenceJitterIsDropped() {
+        let exit = event(404, TraccarEvent.EventType.geofenceExit, time(20, 54, 17))
+        let enter = event(405, TraccarEvent.EventType.geofenceEnter, time(20, 55, 17))
+        let trail = [
+            position(2553, time(20, 54, 17), meters: 50),
+            position(2554, time(20, 55, 17), meters: 33)
+        ]
+
+        let excursions = TraccarPetRepository.splitIntoExcursions(exit: exit, enter: enter, trail: trail, homes: [home], trailEndTime: enter.eventTime)
+
+        #expect(excursions.isEmpty)
+    }
+
+    @Test("A short outing that stays near home but lasts longer than jitter is kept")
+    func longerOutingNearHomeIsKept() {
+        let exit = event(1, TraccarEvent.EventType.geofenceExit, time(12, 0))
+        let enter = event(2, TraccarEvent.EventType.geofenceEnter, time(12, 9))
+        let trail = [
+            position(10, time(12, 0), meters: 50),
+            position(11, time(12, 3), meters: 110),
+            position(12, time(12, 6), meters: 120),
+            position(13, time(12, 9), meters: 30)
+        ]
+
+        let excursions = TraccarPetRepository.splitIntoExcursions(exit: exit, enter: enter, trail: trail, homes: [home], trailEndTime: enter.eventTime)
+
+        #expect(excursions.map(\.id) == [1])
+    }
+}
+
 @Suite("TraccarPetRepository.mergeExcursions with provisional excursions")
 struct ProvisionalExcursionMergeTests {
     @Test("An excursion split out of a still-open pair is shown but neither cached nor advancing the watermark")

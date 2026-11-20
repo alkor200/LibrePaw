@@ -15,6 +15,9 @@ struct ExcursionDetailView: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            if viewModel.excursion.endedWithLostSignal {
+                lostSignalBanner
+            }
             if viewModel.excursion.isLikelyVehicleTrip {
                 vehicleTripBanner
             }
@@ -60,6 +63,18 @@ struct ExcursionDetailView: View {
 
     private var vehicleTripBanner: some View {
         Label("This looks like a car or train ride, it isn't counted in your totals.", systemImage: "car.fill")
+            .font(.footnote)
+            .foregroundStyle(.appSecondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(.appSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    /// See `Excursion.endedWithLostSignal`: the end shown is only where the
+    /// tracker was last heard from, worth saying so rather than letting a
+    /// seven-minute "walk" look like the whole story.
+    private var lostSignalBanner: some View {
+        Label("The tracker stopped reporting here, e.g. because its battery ran out. The walk itself probably went on longer.", systemImage: "antenna.radiowaves.left.and.right.slash")
             .font(.footnote)
             .foregroundStyle(.appSecondaryText)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -217,6 +217,7 @@ Key decisions, each recorded as an ADR:
 | [0027](docs/adr/0027-filter-out-degenerate-near-instant-excursions.md) | Filter out degenerate, near-instant excursions (exit immediately followed by enter) |
 | [0028](docs/adr/0028-maplibre-and-openfreemap-instead-of-mapkit.md) | Replace MapKit with MapLibre Native and OpenFreeMap |
 | [0029](docs/adr/0029-split-exit-enter-pairs-at-homecoming-pauses.md) | Split one exit/enter pair into several excursions at homecoming pauses |
+| [0030](docs/adr/0030-end-excursions-on-lost-signal-and-drop-fence-jitter.md) | End an excursion when the tracker goes silent away from home, drop fence jitter |
 
 ## Contributing
 

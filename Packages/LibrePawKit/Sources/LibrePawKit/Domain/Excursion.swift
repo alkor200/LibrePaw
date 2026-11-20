@@ -20,6 +20,11 @@ public struct Excursion: Identifiable, Sendable, Hashable, Codable {
     /// back to another.
     public let startHomeID: Int?
     public let endHomeID: Int?
+    /// `true` when this excursion didn't end with the pet coming home, but
+    /// with the tracker going silent far from home for hours (empty
+    /// battery, no network, see ADR-0030). `endTime` is then the last fix
+    /// before that silence, the walk itself may well have gone on longer.
+    public let endedWithLostSignal: Bool
 
     public init(
         id: Int,
@@ -29,7 +34,8 @@ public struct Excursion: Identifiable, Sendable, Hashable, Codable {
         endCoordinate: Coordinate?,
         distanceMeters: Double?,
         startHomeID: Int? = nil,
-        endHomeID: Int? = nil
+        endHomeID: Int? = nil,
+        endedWithLostSignal: Bool = false
     ) {
         self.id = id
         self.startTime = startTime
@@ -39,6 +45,7 @@ public struct Excursion: Identifiable, Sendable, Hashable, Codable {
         self.distanceMeters = distanceMeters
         self.startHomeID = startHomeID
         self.endHomeID = endHomeID
+        self.endedWithLostSignal = endedWithLostSignal
     }
 
     public var isOngoing: Bool { endTime == nil }

@@ -56,9 +56,9 @@ struct UserDefaultsLifetimeStatsStore: LifetimeStatsStore, @unchecked Sendable {
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {
-        // v3 (and v2 before it): rebuilt together with the excursions
-        // cache (see its own key), totals folded from a cache missing
-        // walks would stay short forever.
-        "org.librepaw.lifetimeStats.v3.\(serverHost).\(petID)"
+        // v4 (and v3, v2 before it): rebuilt together with the excursions
+        // cache (see its own key), totals folded from wrongly computed
+        // excursions would stay wrong forever.
+        "org.librepaw.lifetimeStats.v4.\(serverHost).\(petID)"
     }
 }

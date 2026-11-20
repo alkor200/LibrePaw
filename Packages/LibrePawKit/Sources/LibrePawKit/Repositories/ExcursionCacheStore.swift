@@ -92,11 +92,11 @@ struct UserDefaultsExcursionCacheStore: ExcursionCacheStore, @unchecked Sendable
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {
-        // v3: caches written before `splitIntoExcursions` can hold a walk
-        // closed at a homecoming pause as final while its exit/enter pair
-        // was still open, with the watermark past the exit, so the next
-        // walk is missing for good. v2 was the same for the coverage-gap
-        // fix. A new key rebuilds every one of them once.
-        "org.librepaw.excursionsCache.v3.\(serverHost).\(petID)"
+        // v4: caches written before ADR-0030 hold a walk whose tracker
+        // died on the way as one excursion lasting until it was next
+        // switched on, and fence jitter as a one-minute walk. v3 was the
+        // same for `splitIntoExcursions` (ADR-0029), v2 for the
+        // coverage-gap fix. A new key rebuilds every one of them once.
+        "org.librepaw.excursionsCache.v4.\(serverHost).\(petID)"
     }
 }

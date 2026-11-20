@@ -1070,6 +1070,17 @@
         }
       }
     },
+    "Signal lost": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signal verloren"
+          }
+        }
+      }
+    },
     "Speed": {
       "extractionState": "manual",
       "localizations": {
@@ -1176,6 +1187,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Die Antwort des Servers konnte nicht verarbeitet werden."
+          }
+        }
+      }
+    },
+    "The tracker stopped reporting here, e.g. because its battery ran out. The walk itself probably went on longer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Tracker hat sich hier zuletzt gemeldet, z. B. weil sein Akku leer war. Der Spaziergang ging vermutlich noch weiter."
           }
         }
       }
