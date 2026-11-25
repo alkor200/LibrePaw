@@ -3,15 +3,17 @@ import SwiftUI
 /// A battery drawn like the one in the iPhone's status bar: an outline
 /// with a terminal nub, filled up to the level, and the percentage itself
 /// inside it. Red below 20 %, the same threshold `PetGridCell`'s badge
-/// uses.
+/// uses. An estimated level gets a "≈" in front of the number, inside the
+/// battery too, which is a little wider for it.
 struct BatteryGauge: View {
     /// 0 to 100.
     let percent: Double
+    var isEstimate = false
     var height: CGFloat = 14
 
     private var level: Double { min(100, max(0, percent)) / 100 }
     private var isLow: Bool { percent < 20 }
-    private var width: CGFloat { height * 2.1 }
+    private var width: CGFloat { height * (isEstimate ? 2.5 : 2.1) }
 
     var body: some View {
         HStack(spacing: height * 0.1) {
@@ -22,7 +24,7 @@ struct BatteryGauge: View {
                     .fill(isLow ? Color.red.opacity(0.45) : Color.appSecondaryText.opacity(0.45))
                     .padding(2)
                     .frame(width: max(height * 0.3, width * level))
-                Text("\(Int(percent.rounded()))")
+                Text((isEstimate ? "≈" : "") + "\(Int(percent.rounded()))")
                     .font(.system(size: height * 0.72, weight: .bold).monospacedDigit())
                     .foregroundStyle(isLow ? Color.red : Color.appText)
                     .frame(width: width)
@@ -41,6 +43,7 @@ struct BatteryGauge: View {
     VStack(spacing: 12) {
         BatteryGauge(percent: 100)
         BatteryGauge(percent: 48)
+        BatteryGauge(percent: 48, isEstimate: true)
         BatteryGauge(percent: 12)
     }
     .padding()
