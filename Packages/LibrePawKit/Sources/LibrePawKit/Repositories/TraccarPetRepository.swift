@@ -11,6 +11,14 @@ struct TraccarPetRepository: PetRepository {
     /// of this struct.
     var permissionsCache = AccountPermissionsCache()
     var routeCacheStore: RouteCacheStore = FileRouteCacheStore()
+    var batteryCurveStore: BatteryCurveStore = UserDefaultsBatteryCurveStore()
+
+    /// How much voltage history ``batteryCurve(forPetID:)`` learns from:
+    /// a few weeks holds several full discharges for a tracker charged
+    /// every few days, while staying a single request.
+    static let batteryHistoryWindow: TimeInterval = 45 * 86_400
+    /// How long a learned battery curve is reused before relearning it.
+    static let batteryCurveMaximumAge: TimeInterval = 86_400
 
     /// How long ago a range has to have ended before its position history
     /// counts as final and gets cached: a tracker that lost its connection
@@ -246,6 +254,28 @@ struct TraccarPetRepository: PetRepository {
     }
 
     // MARK: - Permissions and pet sharing (see ADR-0017, ADR-0018, ADR-0023)
+
+    func batteryCurve(forPetID petID: Int) async -> BatteryCurve {
+        let serverHost = client.serverURL.host ?? ""
+        if let cached = batteryCurveStore.load(forPetID: petID, serverHost: serverHost),
+           Date.now.timeIntervalSince(cached.computedAt) < Self.batteryCurveMaximumAge {
+            return cached.curve ?? .generic
+        }
+        let now = Date.now
+        guard let positions = try? await client.fetchPositionHistory(
+            deviceId: petID,
+            from: now.addingTimeInterval(-Self.batteryHistoryWindow),
+            to: now
+        ) else {
+            return batteryCurveStore.load(forPetID: petID, serverHost: serverHost)?.curve ?? .generic
+        }
+        let samples = positions.compactMap { position in
+            position.batteryVoltage.map { BatteryCalibration.Sample(time: position.fixTime, volts: $0) }
+        }
+        let curve = BatteryCalibration.curve(from: samples)
+        batteryCurveStore.save(CachedBatteryCurve(curve: curve, computedAt: now), forPetID: petID, serverHost: serverHost)
+        return curve ?? .generic
+    }
 
     /// Loaded once per session, see ``AccountPermissionsCache``.
     func currentUserPermissions() async throws -> AccountPermissions {

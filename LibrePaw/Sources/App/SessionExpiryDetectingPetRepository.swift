@@ -105,6 +105,10 @@ struct SessionExpiryDetectingPetRepository: PetRepository {
         try await checked { try await base.sharePet(forPetID: petID, withEmail: email) }
     }
 
+    func batteryCurve(forPetID petID: Int) async -> BatteryCurve {
+        await base.batteryCurve(forPetID: petID)
+    }
+
     func endSession() async {
         await base.endSession()
     }

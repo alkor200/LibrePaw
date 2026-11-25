@@ -26,13 +26,14 @@ public struct PetPosition: Identifiable, Sendable, Hashable, Codable {
     public let batteryVoltage: Double?
 
     /// What to show for the battery: the reported percentage when there is
-    /// one, otherwise one estimated from `batteryVoltage` (see
-    /// ``BatteryEstimate``), flagged as such.
-    public var battery: BatteryReading? {
+    /// one, otherwise one estimated from `batteryVoltage` with `curve`
+    /// (this tracker's own, see ``PetRepository/batteryCurve(forPetID:)``),
+    /// flagged as such.
+    public func battery(using curve: BatteryCurve = .generic) -> BatteryReading? {
         if let batteryLevelPercent {
             return BatteryReading(percent: batteryLevelPercent, isEstimate: false)
         }
-        return batteryVoltage.map { BatteryReading(percent: BatteryEstimate.percent(forVoltage: $0), isEstimate: true) }
+        return batteryVoltage.map { BatteryReading(percent: curve.percent(forVoltage: $0), isEstimate: true) }
     }
 
     public init(

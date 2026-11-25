@@ -91,6 +91,13 @@ public protocol PetRepository: Sendable {
     /// ADR-0023).
     func currentUserPermissions() async throws -> AccountPermissions
 
+    /// The curve to estimate this pet's battery level from its voltage
+    /// with, learned from its own recent voltage history (see
+    /// ``BatteryCalibration``), or ``BatteryCurve/generic`` while there's no
+    /// full discharge on record yet or it can't be loaded. Never throws,
+    /// the battery level is a best-effort extra.
+    func batteryCurve(forPetID petID: Int) async -> BatteryCurve
+
     /// Shares a pet with another Traccar user, found by email, admin-only
     /// server-side, same as the rest of ADR-0018. Throws if no user with
     /// that email exists on this server.

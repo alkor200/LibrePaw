@@ -13,7 +13,8 @@ enum LocalCaches {
     /// earlier, no longer read key versions included.
     static let keyPrefixes = [
         "org.librepaw.excursionsCache.",
-        "org.librepaw.lifetimeStats."
+        "org.librepaw.lifetimeStats.",
+        "org.librepaw.batteryCurve."
     ]
 
     static func clearAll(in defaults: UserDefaults, routesDirectory: URL = FileRouteCacheStore.defaultDirectory) {

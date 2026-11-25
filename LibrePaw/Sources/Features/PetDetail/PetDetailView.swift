@@ -285,9 +285,9 @@ struct PetDetailView: View {
             if let lastSeenAt = viewModel.pet.lastSeenAt {
                 StatTile(systemImage: "clock", title: "Last Update", value: Formatting.relative(lastSeenAt))
             }
-            if let battery = viewModel.pet.lastPosition?.battery {
+            if let battery = viewModel.pet.lastPosition?.battery(using: viewModel.batteryCurve) {
                 // "≈" for a level estimated from the voltage, see
-                // `BatteryEstimate`.
+                // `BatteryCurve`.
                 StatTile(
                     systemImage: batteryIcon(for: battery.percent),
                     title: "Battery",

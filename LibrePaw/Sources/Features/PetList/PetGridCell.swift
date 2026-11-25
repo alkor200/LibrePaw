@@ -6,13 +6,20 @@ import LibrePawKit
 struct PetGridCell: View {
     let pet: Pet
     let petRepository: PetRepository
+    /// See `PetRepository.batteryCurve`, cached there, so cheap to ask for
+    /// on every appearance.
+    @State private var batteryCurve: BatteryCurve = .generic
 
     var body: some View {
         VStack(spacing: 8) {
             ZStack(alignment: .bottomTrailing) {
                 PetAnnotationView(pet: pet, petRepository: petRepository, size: 84)
+                    .task(id: pet.id) {
+                        guard pet.lastPosition?.batteryLevelPercent == nil, pet.lastPosition?.batteryVoltage != nil else { return }
+                        batteryCurve = await petRepository.batteryCurve(forPetID: pet.id)
+                    }
 
-                if let battery = pet.lastPosition?.battery?.percent {
+                if let battery = pet.lastPosition?.battery(using: batteryCurve)?.percent {
                     Image(systemName: batteryIcon(for: battery))
                         .font(.caption2)
                         .foregroundStyle(battery < 20 ? .red : .appSecondaryText)

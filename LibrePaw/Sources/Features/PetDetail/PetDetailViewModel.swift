@@ -24,6 +24,9 @@ final class PetDetailViewModel {
     /// nothing shifts under the user's finger once it arrives (see
     /// `PetDetailView.actionsCard`).
     private(set) var permissions: AccountPermissions?
+    /// This pet's tracker's own voltage-to-charge curve, for a tracker that
+    /// reports only its battery voltage (see `PetRepository.batteryCurve`).
+    private(set) var batteryCurve: BatteryCurve = .generic
 
     private let petRepository: PetRepository
     private var liveUpdatesTask: Task<Void, Never>?
@@ -89,12 +92,17 @@ final class PetDetailViewModel {
         async let stats: Void = loadLifetimeStats()
         async let excursions: Void = loadTodaysExcursions()
         async let permissions: Void = permissions == nil ? loadPermissions() : ()
-        _ = await (trail, stats, excursions, permissions)
+        async let battery: Void = loadBatteryCurve()
+        _ = await (trail, stats, excursions, permissions, battery)
         // A load cut short (e.g. tapping into a sub-screen right away)
         // doesn't count, the next appearance should try again.
         if !Task.isCancelled {
             lastLoadedAt = .now
         }
+    }
+
+    func loadBatteryCurve() async {
+        batteryCurve = await petRepository.batteryCurve(forPetID: pet.id)
     }
 
     func loadTodaysTrail() async {

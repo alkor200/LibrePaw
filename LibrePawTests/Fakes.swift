@@ -92,6 +92,7 @@ struct FakePetRepository: PetRepository {
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {
         if let sharePetError { throw sharePetError }
     }
+    func batteryCurve(forPetID petID: Int) async -> BatteryCurve { .generic }
     func endSession() async {}
 }
 
