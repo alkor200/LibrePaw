@@ -13,7 +13,7 @@ public struct Coordinate: Sendable, Hashable, Codable {
 }
 
 /// One GPS fix for a pet.
-public struct PetPosition: Identifiable, Sendable, Hashable {
+public struct PetPosition: Identifiable, Sendable, Hashable, Codable {
     public let id: Int
     public let petID: Int
     public let coordinate: Coordinate

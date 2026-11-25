@@ -2,9 +2,9 @@ import Foundation
 
 /// Everything `TraccarPetRepository` derives from one account's server
 /// data and keeps on the device between launches: cached excursions
-/// (start/end coordinates, home ids) and lifetime totals.
+/// (start/end coordinates, home ids), lifetime totals and routes.
 ///
-/// Neither store's keys include the account, only server host and pet
+/// None of their keys include the account, only server host and pet
 /// id, so whatever one account cached would otherwise surface for the
 /// next account to sign in to the same server, including excursions
 /// against homes only the first account could see.
@@ -16,9 +16,10 @@ enum LocalCaches {
         "org.librepaw.lifetimeStats."
     ]
 
-    static func clearAll(in defaults: UserDefaults) {
+    static func clearAll(in defaults: UserDefaults, routesDirectory: URL = FileRouteCacheStore.defaultDirectory) {
         for key in defaults.dictionaryRepresentation().keys where keyPrefixes.contains(where: key.hasPrefix) {
             defaults.removeObject(forKey: key)
         }
+        try? FileManager.default.removeItem(at: routesDirectory)
     }
 }

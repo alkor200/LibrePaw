@@ -10,6 +10,13 @@ struct TraccarPetRepository: PetRepository {
     /// `LiveAuthenticationService.makePetRepository`), shared by every copy
     /// of this struct.
     var permissionsCache = AccountPermissionsCache()
+    var routeCacheStore: RouteCacheStore = FileRouteCacheStore()
+
+    /// How long ago a range has to have ended before its position history
+    /// counts as final and gets cached: a tracker that lost its connection
+    /// uploads buffered positions late, so a range that only just ended
+    /// can still gain positions for a while.
+    static let routeCacheMinimumAge: TimeInterval = 3_600
 
     func fetchPets() async throws -> [Pet] {
         do {
@@ -29,12 +36,25 @@ struct TraccarPetRepository: PetRepository {
         }
     }
 
+    /// Served from `routeCacheStore` when `to` lies at least
+    /// ``routeCacheMinimumAge`` in the past, the history of such a range
+    /// doesn't change anymore, so only a range still running (today's
+    /// trail, an ongoing excursion) or that only just ended is fetched live
+    /// every time.
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] {
+        let serverHost = client.serverURL.host ?? ""
+        let isFinal = Date.now.timeIntervalSince(to) >= Self.routeCacheMinimumAge
+        if isFinal, let cached = routeCacheStore.load(forPetID: petID, serverHost: serverHost, from: from, to: to) {
+            return cached
+        }
         do {
             let positions = try await client.fetchPositionHistory(deviceId: petID, from: from, to: to)
-            return positions
                 .sorted { $0.fixTime < $1.fixTime }
                 .map(PetMapping.position(from:))
+            if isFinal {
+                routeCacheStore.save(positions, forPetID: petID, serverHost: serverHost, from: from, to: to)
+            }
+            return positions
         } catch let error as TraccarError {
             throw error.asLibrePawError
         }
