@@ -15,6 +15,7 @@ struct TrailView: View {
     @State private var viewModel: TrailViewModel
     @State private var camera: MapViewCamera = .default()
     @State private var pendingPush: Excursion?
+    @State private var isPickingCustomRange = false
     @Environment(\.colorScheme) private var colorScheme
 
     init(viewModel: TrailViewModel, petRepository: PetRepository) {
@@ -107,10 +108,7 @@ struct TrailView: View {
                 ContentUnavailableView(
                     "No Trail Yet",
                     systemImage: "point.topleft.down.curvedto.point.bottomright.up",
-                    // Not `.window.label.lowercased()`: German capitalizes
-                    // nouns mid-sentence ("24 Stunden"), lowercasing it
-                    // would misspell the translation.
-                    description: Text("\(viewModel.pet.name) hasn't been on an excursion in the last \(viewModel.window.label).")
+                    description: emptyDescription
                 )
             } else if let errorMessage = viewModel.errorMessage {
                 ContentUnavailableView {
@@ -137,18 +135,62 @@ struct TrailView: View {
                 petRepository: petRepository
             ))
         }
-        .task(id: viewModel.window) {
+        .task(id: viewModel.loadKey) {
             await reload()
+        }
+        .sheet(isPresented: $isPickingCustomRange) {
+            CustomTrailRangeSheet(range: viewModel.customRange) { range in
+                viewModel.customRange = range
+                viewModel.window = .custom
+            }
+            .presentationDetents([.medium])
         }
     }
 
+    /// Not `.window.label.lowercased()`: German capitalizes nouns
+    /// mid-sentence ("24 Stunden"), lowercasing it would misspell the
+    /// translation.
+    private var emptyDescription: Text {
+        if viewModel.window == .custom {
+            Text("\(viewModel.pet.name) wasn't on any excursion between \(Formatting.date(viewModel.customRange.lowerBound)) and \(Formatting.date(viewModel.customRange.upperBound)).")
+        } else {
+            Text("\(viewModel.pet.name) hasn't been on an excursion in the last \(viewModel.window.label).")
+        }
+    }
+
+    /// The presets as segments, plus a calendar button for a custom range.
+    /// While a custom range is active no segment is selected (`.custom`
+    /// has no tag among them), and the range itself shows underneath,
+    /// tappable to change it.
     private var windowPicker: some View {
-        Picker("Window", selection: $viewModel.window) {
-            ForEach(TrailWindow.allCases) { window in
-                Text(window.label).tag(window)
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Picker("Window", selection: $viewModel.window) {
+                    ForEach(TrailWindow.presets) { window in
+                        Text(window.label).tag(window)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Button {
+                    isPickingCustomRange = true
+                } label: {
+                    Image(systemName: viewModel.window == .custom ? "calendar.circle.fill" : "calendar")
+                        .font(.title3)
+                }
+                .accessibilityLabel(Text("Custom Range"))
+            }
+
+            if viewModel.window == .custom {
+                Button {
+                    isPickingCustomRange = true
+                } label: {
+                    Label("\(Formatting.date(viewModel.customRange.lowerBound)) to \(Formatting.date(viewModel.customRange.upperBound))", systemImage: "calendar")
+                        .font(.footnote.bold())
+                        .foregroundStyle(.appText)
+                }
             }
         }
-        .pickerStyle(.segmented)
         .padding(8)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding()
@@ -185,6 +227,43 @@ struct TrailView: View {
         guard let fitted = MapViewCamera.fitting(coordinates, edgePadding: UIEdgeInsets(top: 100, left: 40, bottom: 60, right: 40)) else { return }
         withAnimation {
             camera = fitted
+        }
+    }
+}
+
+/// Picks the first and last day of a custom Trail range, both included,
+/// never in the future, and the first never after the last.
+private struct CustomTrailRangeSheet: View {
+    let onApply: (ClosedRange<Date>) -> Void
+    @State private var from: Date
+    @State private var to: Date
+    @Environment(\.dismiss) private var dismiss
+
+    init(range: ClosedRange<Date>, onApply: @escaping (ClosedRange<Date>) -> Void) {
+        self.onApply = onApply
+        _from = State(initialValue: range.lowerBound)
+        _to = State(initialValue: range.upperBound)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                DatePicker("From", selection: $from, in: ...to, displayedComponents: .date)
+                DatePicker("To", selection: $to, in: from...Date.now, displayedComponents: .date)
+            }
+            .navigationTitle("Custom Range")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply") {
+                        onApply(from...to)
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }

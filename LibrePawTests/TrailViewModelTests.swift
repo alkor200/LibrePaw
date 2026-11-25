@@ -33,3 +33,52 @@ struct TrailViewModelTests {
         }
     }
 }
+
+@Suite("TrailViewModel.interval")
+@MainActor
+struct TrailIntervalTests {
+    private let pet = Pet(id: 1, name: "Buddy", species: nil, status: .online, lastSeenAt: nil, lastPosition: nil)
+    private let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Berlin")!
+        return calendar
+    }()
+
+    private func date(_ day: Int, _ hour: Int = 12) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour))!
+    }
+
+    @Test("A preset reaches back from now")
+    func presetReachesBackFromNow() {
+        let viewModel = TrailViewModel(pet: pet, petRepository: FakePetRepository())
+        viewModel.window = .sevenDays
+        let now = date(20)
+
+        let interval = viewModel.interval(now: now, calendar: calendar)
+
+        #expect(interval.from == now.addingTimeInterval(-7 * 86_400))
+        #expect(interval.to == now)
+    }
+
+    @Test("A custom range covers its first and last day entirely")
+    func customRangeCoversWholeDays() {
+        let viewModel = TrailViewModel(pet: pet, petRepository: FakePetRepository())
+        viewModel.window = .custom
+        viewModel.customRange = date(10, 15)...date(12, 9)
+
+        let interval = viewModel.interval(now: date(20), calendar: calendar)
+
+        #expect(interval.from == date(10, 0))
+        #expect(interval.to == date(13, 0))
+    }
+
+    @Test("A custom range ending today stops at now")
+    func customRangeEndingTodayStopsAtNow() {
+        let viewModel = TrailViewModel(pet: pet, petRepository: FakePetRepository())
+        viewModel.window = .custom
+        viewModel.customRange = date(15)...date(20)
+        let now = date(20, 14)
+
+        #expect(viewModel.interval(now: now, calendar: calendar).to == now)
+    }
+}

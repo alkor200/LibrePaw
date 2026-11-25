@@ -2,9 +2,14 @@ import Foundation
 import LibrePawKit
 
 /// How far back `TrailView` looks for excursions to show, user-adjustable,
-/// default 24 hours (see ADR-0020).
-enum TrailWindow: CaseIterable, Identifiable {
+/// default 24 hours (see ADR-0020), or any range of whole days the user
+/// picks (`custom`, see ``TrailViewModel/customRange``).
+enum TrailWindow: Hashable, Identifiable {
     case oneDay, threeDays, sevenDays, thirtyDays
+    case custom
+
+    /// The ones offered as segments, `custom` has its own button.
+    static let presets: [TrailWindow] = [.oneDay, .threeDays, .sevenDays, .thirtyDays]
 
     var id: Self { self }
 
@@ -14,15 +19,18 @@ enum TrailWindow: CaseIterable, Identifiable {
         case .threeDays: localized("3 Days")
         case .sevenDays: localized("7 Days")
         case .thirtyDays: localized("30 Days")
+        case .custom: localized("Custom Range")
         }
     }
 
-    var timeInterval: TimeInterval {
+    /// How far back from now a preset reaches, `nil` for `custom`.
+    var timeInterval: TimeInterval? {
         switch self {
         case .oneDay: 86_400
         case .threeDays: 3 * 86_400
         case .sevenDays: 7 * 86_400
         case .thirtyDays: 30 * 86_400
+        case .custom: nil
         }
     }
 }
@@ -37,6 +45,32 @@ enum TrailWindow: CaseIterable, Identifiable {
 final class TrailViewModel {
     let pet: Pet
     var window: TrailWindow = .oneDay
+    /// The days shown while `window` is `.custom`, first through last, both
+    /// included. Defaults to the last seven days until the user picks one.
+    var customRange: ClosedRange<Date> = (Calendar.current.date(byAdding: .day, value: -6, to: .now) ?? .now)...Date.now
+
+    /// Everything a load depends on, for `TrailView`'s `.task(id:)`: a new
+    /// custom range has to reload just like switching presets does.
+    struct LoadKey: Hashable {
+        let window: TrailWindow
+        let customRange: ClosedRange<Date>?
+    }
+
+    var loadKey: LoadKey {
+        LoadKey(window: window, customRange: window == .custom ? customRange : nil)
+    }
+
+    /// The span `window` currently covers: a preset reaches back from
+    /// `now`, a custom range runs from the start of its first day to the
+    /// end of its last, but never past `now`.
+    func interval(now: Date = .now, calendar: Calendar = .current) -> (from: Date, to: Date) {
+        if let timeInterval = window.timeInterval {
+            return (now.addingTimeInterval(-timeInterval), now)
+        }
+        let from = calendar.startOfDay(for: customRange.lowerBound)
+        let endOfLastDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: customRange.upperBound)) ?? now
+        return (from, min(endOfLastDay, now))
+    }
 
     private(set) var excursions: [Excursion] = []
     private(set) var trailsByExcursionID: [Int: [PetPosition]] = [:]
@@ -77,9 +111,8 @@ final class TrailViewModel {
         defer { if !Task.isCancelled { isLoading = false } }
 
         do {
-            let now = Date.now
-            let from = now.addingTimeInterval(-window.timeInterval)
-            let fetchedExcursions = try await petRepository.fetchExcursions(forPetID: pet.id, from: from, to: now)
+            let (from, to) = interval()
+            let fetchedExcursions = try await petRepository.fetchExcursions(forPetID: pet.id, from: from, to: to)
             guard !Task.isCancelled else { return }
 
             let fetchedTrails = try await Self.loadTrails(for: fetchedExcursions, petID: pet.id, petRepository: petRepository)
