@@ -571,6 +571,7 @@ struct TraccarPetRepository: PetRepository {
         var totalDistance = cached?.totalDistanceMeters ?? 0
         var totalDuration = cached?.totalDurationSeconds ?? 0
         var newWatermark = originalWatermark
+        var firstStart = cached?.firstExcursionStartTime
 
         for excursion in recentExcursions {
             guard let endTime = excursion.endTime else { continue }
@@ -581,6 +582,7 @@ struct TraccarPetRepository: PetRepository {
             if !excursion.isLikelyVehicleTrip {
                 totalDistance += excursion.distanceMeters ?? 0
                 totalDuration += excursion.duration ?? 0
+                firstStart = min(firstStart ?? excursion.startTime, excursion.startTime)
             }
             if newWatermark == nil || endTime > newWatermark! {
                 newWatermark = endTime
@@ -590,15 +592,20 @@ struct TraccarPetRepository: PetRepository {
         let newCache = CachedLifetimeStats(
             totalDistanceMeters: totalDistance,
             totalDurationSeconds: totalDuration,
-            cachedThroughEndTime: newWatermark
+            cachedThroughEndTime: newWatermark,
+            firstExcursionStartTime: firstStart
         )
 
         if let ongoing = recentExcursions.first(where: { $0.isOngoing }) {
             totalDistance += ongoing.distanceMeters ?? 0
             totalDuration += Date.now.timeIntervalSince(ongoing.startTime)
+            firstStart = min(firstStart ?? ongoing.startTime, ongoing.startTime)
         }
 
-        return (LifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration), newCache)
+        return (
+            LifetimeStats(totalDistanceMeters: totalDistance, totalDurationSeconds: totalDuration, firstExcursionStartTime: firstStart),
+            newCache
+        )
     }
 
     /// Every excursion one exit/enter pair stands for, see

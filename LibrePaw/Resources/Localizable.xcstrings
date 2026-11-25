@@ -199,6 +199,17 @@
         }
       }
     },
+    "Avg. Distance per Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø Strecke pro Tag"
+          }
+        }
+      }
+    },
     "Avg. Speed": {
       "extractionState": "manual",
       "localizations": {
@@ -206,6 +217,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ø-Geschwindigkeit"
+          }
+        }
+      }
+    },
+    "Avg. Time Away per Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø Unterwegs pro Tag"
           }
         }
       }

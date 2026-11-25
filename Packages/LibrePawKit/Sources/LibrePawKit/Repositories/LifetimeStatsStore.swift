@@ -9,6 +9,9 @@ struct CachedLifetimeStats: Codable, Sendable, Equatable {
     /// End time of the most recent *completed* excursion folded into the
     /// totals above. `nil` means nothing has been cached yet.
     var cachedThroughEndTime: Date?
+    /// Start of the earliest excursion folded into the totals above, see
+    /// ``LifetimeStats/firstExcursionStartTime``.
+    var firstExcursionStartTime: Date? = nil
 }
 
 protocol LifetimeStatsStore: Sendable {
@@ -56,9 +59,10 @@ struct UserDefaultsLifetimeStatsStore: LifetimeStatsStore, @unchecked Sendable {
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {
-        // v4 (and v3, v2 before it): rebuilt together with the excursions
-        // cache (see its own key), totals folded from wrongly computed
-        // excursions would stay wrong forever.
-        "org.librepaw.lifetimeStats.v4.\(serverHost).\(petID)"
+        // v5: totals cached before `firstExcursionStartTime` existed can't
+        // tell when the first excursion was, rebuilt once from the
+        // (unchanged) excursions cache. v4, v3 and v2 were rebuilt together
+        // with the excursions cache (see its own key).
+        "org.librepaw.lifetimeStats.v5.\(serverHost).\(petID)"
     }
 }

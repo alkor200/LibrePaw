@@ -302,6 +302,14 @@ struct PetDetailView: View {
                 StatTile(systemImage: "pawprint.fill", title: "Total Time Away", value: Formatting.duration(lifetimeStats.totalDurationSeconds))
                     .contextMenu { recalculateLifetimeStatsButton }
             }
+            // Spread over every day since the first walk, see
+            // `LifetimeStats.dailyAverages`.
+            if let averages = viewModel.lifetimeStats?.dailyAverages(), averages.distanceMeters > 0 {
+                StatTile(systemImage: "chart.bar.fill", title: "Avg. Distance per Day", value: Formatting.distance(averages.distanceMeters))
+                    .contextMenu { recalculateLifetimeStatsButton }
+                StatTile(systemImage: "calendar", title: "Avg. Time Away per Day", value: Formatting.duration(averages.durationSeconds))
+                    .contextMenu { recalculateLifetimeStatsButton }
+            }
         }
     }
 

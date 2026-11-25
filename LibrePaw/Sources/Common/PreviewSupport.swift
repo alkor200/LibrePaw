@@ -332,7 +332,7 @@ struct PreviewPetRepository: PetRepository {
     func resetExcursionsCache(forPetID petID: Int) async throws {}
 
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
-        LifetimeStats(totalDistanceMeters: 46_800, totalDurationSeconds: 3600 * 15.5)
+        LifetimeStats(totalDistanceMeters: 46_800, totalDurationSeconds: 3600 * 15.5, firstExcursionStartTime: .now.addingTimeInterval(-3600 * 24 * 14))
     }
 
     func resetLifetimeStats(forPetID petID: Int) async throws {}
