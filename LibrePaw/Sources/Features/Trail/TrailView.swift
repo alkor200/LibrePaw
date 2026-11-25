@@ -151,7 +151,9 @@ struct TrailView: View {
     /// mid-sentence ("24 Stunden"), lowercasing it would misspell the
     /// translation.
     private var emptyDescription: Text {
-        if viewModel.window == .custom {
+        if viewModel.window == .allTime {
+            Text("\(viewModel.pet.name) hasn't been on an excursion yet.")
+        } else if viewModel.window == .custom {
             Text("\(viewModel.pet.name) wasn't on any excursion between \(Formatting.date(viewModel.customRange.lowerBound)) and \(Formatting.date(viewModel.customRange.upperBound)).")
         } else {
             Text("\(viewModel.pet.name) hasn't been on an excursion in the last \(viewModel.window.label).")
@@ -167,7 +169,7 @@ struct TrailView: View {
             HStack(spacing: 8) {
                 Picker("Window", selection: $viewModel.window) {
                     ForEach(TrailWindow.presets) { window in
-                        Text(window.label).tag(window)
+                        Text(window.segmentLabel).tag(window)
                     }
                 }
                 .pickerStyle(.segmented)

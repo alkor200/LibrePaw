@@ -48,6 +48,16 @@ struct TrailIntervalTests {
         calendar.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour))!
     }
 
+    @Test("All Time is the default and reaches back to the very beginning")
+    func allTimeIsDefault() {
+        let viewModel = TrailViewModel(pet: pet, petRepository: FakePetRepository())
+        let now = date(20)
+
+        #expect(viewModel.window == .allTime)
+        #expect(viewModel.interval(now: now, calendar: calendar).from == .distantPast)
+        #expect(viewModel.interval(now: now, calendar: calendar).to == now)
+    }
+
     @Test("A preset reaches back from now")
     func presetReachesBackFromNow() {
         let viewModel = TrailViewModel(pet: pet, petRepository: FakePetRepository())

@@ -2,19 +2,22 @@ import Foundation
 import LibrePawKit
 
 /// How far back `TrailView` looks for excursions to show, user-adjustable,
-/// default 24 hours (see ADR-0020), or any range of whole days the user
-/// picks (`custom`, see ``TrailViewModel/customRange``).
+/// default every excursion ever (`allTime`), or any range of whole days
+/// the user picks (`custom`, see ``TrailViewModel/customRange``). The
+/// default used to be 24 hours (ADR-0020), from before routes were cached,
+/// when a long window still took a while to load.
 enum TrailWindow: Hashable, Identifiable {
-    case oneDay, threeDays, sevenDays, thirtyDays
+    case allTime, oneDay, threeDays, sevenDays, thirtyDays
     case custom
 
     /// The ones offered as segments, `custom` has its own button.
-    static let presets: [TrailWindow] = [.oneDay, .threeDays, .sevenDays, .thirtyDays]
+    static let presets: [TrailWindow] = [.allTime, .oneDay, .threeDays, .sevenDays, .thirtyDays]
 
     var id: Self { self }
 
     var label: String {
         switch self {
+        case .allTime: localized("All Time")
         case .oneDay: localized("24 Hours")
         case .threeDays: localized("3 Days")
         case .sevenDays: localized("7 Days")
@@ -23,9 +26,23 @@ enum TrailWindow: Hashable, Identifiable {
         }
     }
 
-    /// How far back from now a preset reaches, `nil` for `custom`.
+    /// Shorter than ``label`` where it has to be, for the segmented picker:
+    /// with five segments plus the custom range button, "24 Stunden" got
+    /// truncated in German.
+    var segmentLabel: String {
+        switch self {
+        case .allTime: localized("All")
+        case .oneDay: localized("24 h")
+        default: label
+        }
+    }
+
+    /// How far back from now a preset reaches, `nil` for `custom` and
+    /// `allTime`, which ``TrailViewModel/interval(now:calendar:)`` handles
+    /// itself.
     var timeInterval: TimeInterval? {
         switch self {
+        case .allTime: nil
         case .oneDay: 86_400
         case .threeDays: 3 * 86_400
         case .sevenDays: 7 * 86_400
@@ -44,7 +61,7 @@ enum TrailWindow: Hashable, Identifiable {
 @MainActor
 final class TrailViewModel {
     let pet: Pet
-    var window: TrailWindow = .oneDay
+    var window: TrailWindow = .allTime
     /// The days shown while `window` is `.custom`, first through last, both
     /// included. Defaults to the last seven days until the user picks one.
     var customRange: ClosedRange<Date> = (Calendar.current.date(byAdding: .day, value: -6, to: .now) ?? .now)...Date.now
@@ -64,6 +81,9 @@ final class TrailViewModel {
     /// `now`, a custom range runs from the start of its first day to the
     /// end of its last, but never past `now`.
     func interval(now: Date = .now, calendar: Calendar = .current) -> (from: Date, to: Date) {
+        if window == .allTime {
+            return (.distantPast, now)
+        }
         if let timeInterval = window.timeInterval {
             return (now.addingTimeInterval(-timeInterval), now)
         }

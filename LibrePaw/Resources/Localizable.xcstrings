@@ -23,6 +23,19 @@
         }
       }
     },
+    "%@ hasn't been on an excursion yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ war noch auf keinem Ausflug."
+          }
+        }
+      }
+    },
+    "%@ m radius": {},
+    "%@ meters radius": {},
     "%@ to %@": {
       "extractionState": "manual",
       "localizations": {
@@ -100,6 +113,17 @@
         }
       }
     },
+    "24 h": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 Std."
+          }
+        }
+      }
+    },
     "3 Days": {
       "extractionState": "manual",
       "localizations": {
@@ -162,6 +186,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zuhause hinzufügen"
+          }
+        }
+      }
+    },
+    "All": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle"
+          }
+        }
+      }
+    },
+    "All Time": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle"
           }
         }
       }
@@ -885,6 +931,7 @@
       }
     },
     "Navigate to %@": {
+      "extractionState": "stale",
       "localizations": {
         "de": {
           "stringUnit": {
