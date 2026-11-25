@@ -4,9 +4,14 @@
 // environment variable, Xcode reads this file directly at build time, so
 // `xcodegen generate` never resets it.
 //
-// Find your team id with:
-//   security find-identity -v -p codesigning
-// (the parenthesized id after "Apple Development: you@example.com") or in
-// Xcode → Settings → Accounts → your account → your team.
+// Find your team id in Xcode: select the LibrePaw target, Signing &
+// Capabilities, pick your team, then look up DEVELOPMENT_TEAM under Build
+// Settings (or in LibrePaw.xcodeproj/project.pbxproj).
+//
+// Not the parenthesized id `security find-identity -v -p codesigning`
+// prints after "Apple Development: you@example.com": that's your
+// certificate's own id, which for a free Personal Team differs from the
+// team id, and Xcode then falls back to a team you have to fix by hand
+// after every `xcodegen generate`.
 
 DEVELOPMENT_TEAM = YOUR_TEAM_ID
