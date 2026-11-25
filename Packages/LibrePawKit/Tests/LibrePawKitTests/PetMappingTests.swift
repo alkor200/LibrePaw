@@ -32,7 +32,7 @@ struct PetMappingTests {
             speed: 10, // knots
             course: 180,
             address: "Berlin",
-            attributes: ["batteryLevel": .double(76)]
+            attributes: ["batteryLevel": .double(76), "battery": .double(3.711)]
         )
 
         let pet = PetMapping.pet(from: device, latestPosition: position, serverURL: serverURL)
@@ -44,6 +44,7 @@ struct PetMappingTests {
         #expect(pet.lastSeenAt == lastUpdate)
         #expect(pet.lastPosition?.coordinate.latitude == 52.5)
         #expect(pet.lastPosition?.batteryLevelPercent == 76)
+        #expect(pet.lastPosition?.batteryVoltage == 3.711)
         // 10 knots == 18.52 km/h
         #expect(pet.lastPosition?.speedKilometersPerHour.isApproximatelyEqual(to: 18.52) == true)
     }

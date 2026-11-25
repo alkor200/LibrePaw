@@ -41,4 +41,11 @@ public struct TraccarPosition: Decodable, Sendable, Identifiable, Equatable {
     public var batteryLevel: Double? {
         attributes["batteryLevel"]?.doubleValue
     }
+
+    /// Battery voltage, for trackers that report only that and no
+    /// percentage, e.g. the Mictrack MT710 over Traccar's `tlt2h` protocol.
+    /// Traccar's own convention is the `battery` attribute, in volts.
+    public var batteryVoltage: Double? {
+        attributes["battery"]?.doubleValue
+    }
 }

@@ -285,8 +285,14 @@ struct PetDetailView: View {
             if let lastSeenAt = viewModel.pet.lastSeenAt {
                 StatTile(systemImage: "clock", title: "Last Update", value: Formatting.relative(lastSeenAt))
             }
-            if let position = viewModel.pet.lastPosition, let battery = position.batteryLevelPercent {
-                StatTile(systemImage: batteryIcon(for: battery), title: "Battery", value: Formatting.percent(battery))
+            if let battery = viewModel.pet.lastPosition?.battery {
+                // "≈" for a level estimated from the voltage, see
+                // `BatteryEstimate`.
+                StatTile(
+                    systemImage: batteryIcon(for: battery.percent),
+                    title: "Battery",
+                    value: (battery.isEstimate ? "≈ " : "") + Formatting.percent(battery.percent)
+                )
             }
             if let totalDistance = viewModel.totalTrailDistanceMeters {
                 StatTile(systemImage: "map.fill", title: "Distance Today", value: Formatting.distance(totalDistance))

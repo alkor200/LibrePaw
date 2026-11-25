@@ -20,7 +20,20 @@ public struct PetPosition: Identifiable, Sendable, Hashable, Codable {
     public let recordedAt: Date
     public let speedKilometersPerHour: Double
     public let address: String?
+    /// The tracker's own reported battery percentage, if it reports one.
     public let batteryLevelPercent: Double?
+    /// The tracker's reported battery voltage, if it reports one.
+    public let batteryVoltage: Double?
+
+    /// What to show for the battery: the reported percentage when there is
+    /// one, otherwise one estimated from `batteryVoltage` (see
+    /// ``BatteryEstimate``), flagged as such.
+    public var battery: BatteryReading? {
+        if let batteryLevelPercent {
+            return BatteryReading(percent: batteryLevelPercent, isEstimate: false)
+        }
+        return batteryVoltage.map { BatteryReading(percent: BatteryEstimate.percent(forVoltage: $0), isEstimate: true) }
+    }
 
     public init(
         id: Int,
@@ -29,7 +42,8 @@ public struct PetPosition: Identifiable, Sendable, Hashable, Codable {
         recordedAt: Date,
         speedKilometersPerHour: Double,
         address: String?,
-        batteryLevelPercent: Double?
+        batteryLevelPercent: Double?,
+        batteryVoltage: Double? = nil
     ) {
         self.id = id
         self.petID = petID
@@ -38,5 +52,6 @@ public struct PetPosition: Identifiable, Sendable, Hashable, Codable {
         self.speedKilometersPerHour = speedKilometersPerHour
         self.address = address
         self.batteryLevelPercent = batteryLevelPercent
+        self.batteryVoltage = batteryVoltage
     }
 }

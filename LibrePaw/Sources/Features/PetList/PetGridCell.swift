@@ -12,7 +12,7 @@ struct PetGridCell: View {
             ZStack(alignment: .bottomTrailing) {
                 PetAnnotationView(pet: pet, petRepository: petRepository, size: 84)
 
-                if let battery = pet.lastPosition?.batteryLevelPercent {
+                if let battery = pet.lastPosition?.battery?.percent {
                     Image(systemName: batteryIcon(for: battery))
                         .font(.caption2)
                         .foregroundStyle(battery < 20 ? .red : .appSecondaryText)

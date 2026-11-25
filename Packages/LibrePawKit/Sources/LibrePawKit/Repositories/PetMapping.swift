@@ -46,7 +46,8 @@ enum PetMapping {
             recordedAt: position.fixTime,
             speedKilometersPerHour: position.speed * 1.852, // Traccar reports speed in knots.
             address: position.address,
-            batteryLevelPercent: position.batteryLevel
+            batteryLevelPercent: position.batteryLevel,
+            batteryVoltage: position.batteryVoltage
         )
     }
 }
