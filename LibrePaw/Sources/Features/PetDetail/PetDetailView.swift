@@ -152,10 +152,16 @@ struct PetDetailView: View {
     @ViewBuilder
     private var batteryCaption: some View {
         if let battery = viewModel.pet.lastPosition?.battery(using: viewModel.batteryCurve) {
-            Label((battery.isEstimate ? "≈ " : "") + Formatting.percent(battery.percent), systemImage: batteryIcon(for: battery.percent))
-                .foregroundStyle(battery.percent < 20 ? .red : .appSecondaryText)
-                .accessibilityLabel(Text("Battery"))
-                .accessibilityValue(Text((battery.isEstimate ? "≈ " : "") + Formatting.percent(battery.percent)))
+            HStack(spacing: 3) {
+                if battery.isEstimate {
+                    Text("≈")
+                        .foregroundStyle(.appSecondaryText)
+                }
+                BatteryGauge(percent: battery.percent, height: 16)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("Battery"))
+            .accessibilityValue(Text((battery.isEstimate ? "≈ " : "") + Formatting.percent(battery.percent)))
         }
     }
 
