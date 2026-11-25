@@ -29,6 +29,9 @@ struct PetDetailView: View {
     /// right after a successful edit, see its doc comment for why the fetch
     /// alone can't be relied on to notice the change.
     @State private var justSavedPhoto: UIImage?
+    /// Briefly `true` after a long press copied the location row, for its
+    /// "Copied" confirmation and haptic.
+    @State private var didCopyLocation = false
 
     init(viewModel: PetDetailViewModel, petRepository: PetRepository, locationService: LocationService) {
         self.petRepository = petRepository
@@ -341,24 +344,47 @@ struct PetDetailView: View {
 
     // MARK: - Location
 
+    /// A long press copies whatever the row shows (the address, or the
+    /// coordinates when there is none), e.g. to paste into another maps app
+    /// or a message.
     @ViewBuilder
     private var locationRow: some View {
         if let address = viewModel.pet.lastPosition?.address, !address.isEmpty {
-            Label(address, systemImage: "mappin.and.ellipse")
-                .font(.subheadline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            locationLabel(address, copying: address)
         } else if let coordinate = viewModel.pet.lastPosition?.coordinate {
             // Traccar only reports an address when a geocoder is configured
             // server-side, fall back to coordinates so this row is never empty.
-            Label(formattedCoordinate(coordinate), systemImage: "mappin.and.ellipse")
-                .font(.subheadline)
+            locationLabel(formattedCoordinate(coordinate), copying: formattedCoordinate(coordinate))
                 .foregroundStyle(.appSecondaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+    }
+
+    private func locationLabel(_ text: String, copying copyText: String) -> some View {
+        HStack {
+            Label(text, systemImage: "mappin.and.ellipse")
+            Spacer()
+            if didCopyLocation {
+                Label("Copied", systemImage: "checkmark")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tint)
+                    .transition(.opacity)
+            }
+        }
+        .font(.subheadline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onLongPressGesture {
+            UIPasteboard.general.string = copyText
+            withAnimation { didCopyLocation = true }
+            Task {
+                try? await Task.sleep(for: .seconds(1.5))
+                withAnimation { didCopyLocation = false }
+            }
+        }
+        .sensoryFeedback(.success, trigger: didCopyLocation) { _, copied in copied }
+        .accessibilityHint(Text("Long press to copy"))
     }
 
     // MARK: - Formatting

@@ -287,6 +287,17 @@
         }
       }
     },
+    "Copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiert"
+          }
+        }
+      }
+    },
     "Could not reach the server: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -759,6 +770,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abmelden?"
+          }
+        }
+      }
+    },
+    "Long press to copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lange drücken zum Kopieren"
           }
         }
       }
