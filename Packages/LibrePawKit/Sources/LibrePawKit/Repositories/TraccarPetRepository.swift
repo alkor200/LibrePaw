@@ -365,6 +365,9 @@ struct TraccarPetRepository: PetRepository {
     func resetExcursionsCache(forPetID petID: Int) async throws {
         let serverHost = client.serverURL.host ?? ""
         excursionCacheStore.clear(forPetID: petID, serverHost: serverHost)
+        // Keyed by time range, so routes of excursions whose range changes
+        // on recomputation would otherwise stay behind unused.
+        routeCacheStore.clear(forPetID: petID, serverHost: serverHost)
     }
 
     /// Where to start a live fetch from, given what's already cached. Uses

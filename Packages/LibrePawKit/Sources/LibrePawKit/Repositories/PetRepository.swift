@@ -66,7 +66,9 @@ public protocol PetRepository: Sendable {
     /// them from scratch instead of trusting what was cached before. For
     /// recovering from a bad cached excursion, e.g. one a since-fixed bug
     /// had closed wrong, fixing the bug alone doesn't retroactively correct
-    /// an already-cached one.
+    /// an already-cached one. Also discards the pet's cached routes, which
+    /// are keyed by time range and so would otherwise stay behind for
+    /// excursions whose range just changed.
     func resetExcursionsCache(forPetID petID: Int) async throws
 
     /// Total distance and time away across every excursion the pet has ever

@@ -47,4 +47,18 @@ struct RouteCacheStoreTests {
 
         #expect(store.load(forPetID: 1, serverHost: "traccar.example.com", from: from, to: to) == nil)
     }
+
+    @Test("Clearing one pet's routes leaves other pets' alone")
+    func clearsOnlyThatPet() {
+        let store = makeStore()
+        let from = Date(timeIntervalSince1970: 1_794_000_000)
+        let to = from.addingTimeInterval(3_600)
+        store.save([position(1)], forPetID: 1, serverHost: "traccar.example.com", from: from, to: to)
+        store.save([position(2)], forPetID: 2, serverHost: "traccar.example.com", from: from, to: to)
+
+        store.clear(forPetID: 1, serverHost: "traccar.example.com")
+
+        #expect(store.load(forPetID: 1, serverHost: "traccar.example.com", from: from, to: to) == nil)
+        #expect(store.load(forPetID: 2, serverHost: "traccar.example.com", from: from, to: to) != nil)
+    }
 }

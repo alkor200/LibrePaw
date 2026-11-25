@@ -8,6 +8,8 @@ import Foundation
 protocol RouteCacheStore: Sendable {
     func load(forPetID petID: Int, serverHost: String, from: Date, to: Date) -> [PetPosition]?
     func save(_ positions: [PetPosition], forPetID petID: Int, serverHost: String, from: Date, to: Date)
+    /// Every route cached for this pet.
+    func clear(forPetID petID: Int, serverHost: String)
 }
 
 /// One JSON file per route in the Caches directory, not `UserDefaults`
@@ -38,13 +40,20 @@ struct FileRouteCacheStore: RouteCacheStore {
         try? data.write(to: url, options: .atomic)
     }
 
+    func clear(forPetID petID: Int, serverHost: String) {
+        try? FileManager.default.removeItem(at: petDirectory(forPetID: petID, serverHost: serverHost))
+    }
+
+    private func petDirectory(forPetID petID: Int, serverHost: String) -> URL {
+        directory
+            .appendingPathComponent(serverHost, isDirectory: true)
+            .appendingPathComponent(String(petID), isDirectory: true)
+    }
+
     /// Millisecond timestamps, the precision Traccar's event and position
     /// times come with, so the same excursion always maps to the same file.
     private func fileURL(forPetID petID: Int, serverHost: String, from: Date, to: Date) -> URL {
         let name = "\(Int64(from.timeIntervalSince1970 * 1_000))-\(Int64(to.timeIntervalSince1970 * 1_000)).json"
-        return directory
-            .appendingPathComponent(serverHost, isDirectory: true)
-            .appendingPathComponent(String(petID), isDirectory: true)
-            .appendingPathComponent(name)
+        return petDirectory(forPetID: petID, serverHost: serverHost).appendingPathComponent(name)
     }
 }
