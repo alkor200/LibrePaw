@@ -136,11 +136,27 @@ struct PetDetailView: View {
             Text(viewModel.pet.name)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text(statusCaption)
-                .font(.subheadline)
-                .foregroundStyle(viewModel.pet.status.tintColor)
+            HStack(spacing: 10) {
+                Text(statusCaption)
+                    .foregroundStyle(viewModel.pet.status.tintColor)
+                batteryCaption
+            }
+            .font(.subheadline)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Next to the status rather than as a stat tile, it's as much "how is
+    /// the tracker right now" as online/offline and the last report. "≈"
+    /// for a level estimated from the voltage, see `BatteryCurve`.
+    @ViewBuilder
+    private var batteryCaption: some View {
+        if let battery = viewModel.pet.lastPosition?.battery(using: viewModel.batteryCurve) {
+            Label((battery.isEstimate ? "≈ " : "") + Formatting.percent(battery.percent), systemImage: batteryIcon(for: battery.percent))
+                .foregroundStyle(battery.percent < 20 ? .red : .appSecondaryText)
+                .accessibilityLabel(Text("Battery"))
+                .accessibilityValue(Text((battery.isEstimate ? "≈ " : "") + Formatting.percent(battery.percent)))
+        }
     }
 
     private var statusCaption: String {
@@ -284,15 +300,6 @@ struct PetDetailView: View {
             // stats each get their own row as a pair.
             if let lastSeenAt = viewModel.pet.lastSeenAt {
                 StatTile(systemImage: "clock", title: "Last Update", value: Formatting.relative(lastSeenAt))
-            }
-            if let battery = viewModel.pet.lastPosition?.battery(using: viewModel.batteryCurve) {
-                // "≈" for a level estimated from the voltage, see
-                // `BatteryCurve`.
-                StatTile(
-                    systemImage: batteryIcon(for: battery.percent),
-                    title: "Battery",
-                    value: (battery.isEstimate ? "≈ " : "") + Formatting.percent(battery.percent)
-                )
             }
             if let totalDistance = viewModel.totalTrailDistanceMeters {
                 StatTile(systemImage: "map.fill", title: "Distance Today", value: Formatting.distance(totalDistance))
