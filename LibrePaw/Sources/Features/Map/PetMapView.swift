@@ -251,7 +251,7 @@ struct PetMapView: View {
         // clipped at the circle's edge (confirmed live: a visibly
         // pixelated, cut-off ring around the pin).
         let renderer = ImageRenderer(content: PetAnnotationView(pet: pet, petRepository: petRepository, overrideImage: photo).padding(6))
-        renderer.scale = await UIScreen.main.scale
+        renderer.scale = UIScreen.main.scale
         renderer.isOpaque = false
         return renderer.uiImage ?? Self.fallbackPinImage
     }
