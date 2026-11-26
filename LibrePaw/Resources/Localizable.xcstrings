@@ -34,8 +34,6 @@
         }
       }
     },
-    "%@ m radius": {},
-    "%@ meters radius": {},
     "%@ to %@": {
       "extractionState": "manual",
       "localizations": {
