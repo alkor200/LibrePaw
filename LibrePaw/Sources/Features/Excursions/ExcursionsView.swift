@@ -4,8 +4,8 @@ import LibrePawKit
 /// A pet's excursions as a calendar: a month grid, a week of 24-hour
 /// bars, and a single day's timeline, switchable at the top, with a
 /// summary of what's shown and arrows to move back and forth. Tapping a
-/// day in the month or week opens that day, tapping an excursion in the
-/// day opens its detail.
+/// day in the month or week pushes that day as a screen of its own (this
+/// view again, day only), tapping an excursion in a day opens its detail.
 struct ExcursionsView: View {
     let petRepository: PetRepository
     @State private var viewModel: ExcursionsViewModel
@@ -28,14 +28,33 @@ struct ExcursionsView: View {
                     .disabled(viewModel.isShowingToday)
                 }
             }
-            .navigationDestination(for: Excursion.self) { excursion in
-                ExcursionDetailView(viewModel: ExcursionDetailViewModel(
-                    excursion: excursion,
-                    petID: viewModel.pet.id,
-                    petRepository: petRepository
-                ))
-            }
+            .modifier(Destinations(viewModel: viewModel, petRepository: petRepository))
             .task { await viewModel.load() }
+    }
+
+    /// Registered by the calendar itself only, not again by each day it
+    /// opens, SwiftUI uses just one destination per type on a stack.
+    private struct Destinations: ViewModifier {
+        let viewModel: ExcursionsViewModel
+        let petRepository: PetRepository
+
+        func body(content: Content) -> some View {
+            if viewModel.isOpenedDay {
+                content
+            } else {
+                content
+                    .navigationDestination(for: Excursion.self) { excursion in
+                        ExcursionDetailView(viewModel: ExcursionDetailViewModel(
+                            excursion: excursion,
+                            petID: viewModel.pet.id,
+                            petRepository: petRepository
+                        ))
+                    }
+                    .navigationDestination(for: OpenedDay.self) { day in
+                        ExcursionsView(viewModel: viewModel.viewModel(forOpenedDay: day.date), petRepository: petRepository)
+                    }
+            }
+        }
     }
 
     @ViewBuilder
@@ -61,12 +80,14 @@ struct ExcursionsView: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 16) {
-                    Picker("View", selection: $viewModel.mode.animation()) {
-                        ForEach(ExcursionCalendarMode.allCases) { mode in
-                            Text(mode.label).tag(mode)
+                    if !viewModel.isOpenedDay {
+                        Picker("View", selection: $viewModel.mode.animation()) {
+                            ForEach(ExcursionCalendarMode.allCases) { mode in
+                                Text(mode.label).tag(mode)
+                            }
                         }
+                        .pickerStyle(.segmented)
                     }
-                    .pickerStyle(.segmented)
 
                     periodHeader
                     summary
@@ -157,6 +178,11 @@ struct ExcursionsView: View {
     }
 }
 
+/// A day tapped in the month or week, pushed onto the navigation stack.
+private struct OpenedDay: Hashable {
+    let date: Date
+}
+
 // MARK: - Month
 
 /// The shown month as a grid of days, each with its distance and a dot per
@@ -186,9 +212,7 @@ private struct MonthGrid: View {
             }
             ForEach(Array(viewModel.monthGrid.joined().enumerated()), id: \.offset) { _, day in
                 if let day {
-                    Button {
-                        withAnimation { viewModel.show(day: day) }
-                    } label: {
+                    NavigationLink(value: OpenedDay(date: day)) {
                         MonthDayCell(
                             day: day,
                             totals: viewModel.totals(on: day),
@@ -263,9 +287,7 @@ private struct WeekRows: View {
     var body: some View {
         VStack(spacing: 8) {
             ForEach(viewModel.shownDays, id: \.self) { day in
-                Button {
-                    withAnimation { viewModel.show(day: day) }
-                } label: {
+                NavigationLink(value: OpenedDay(date: day)) {
                     row(day)
                 }
                 .buttonStyle(.plain)

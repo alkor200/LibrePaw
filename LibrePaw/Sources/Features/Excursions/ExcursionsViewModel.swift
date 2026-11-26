@@ -49,15 +49,41 @@ final class ExcursionsViewModel {
 
     private let petRepository: PetRepository
     let calendar: Calendar
+    /// A single day opened from the month or week, pushed as a screen of
+    /// its own (so back and the edge swipe return to where it was opened
+    /// from), without the picker to switch views.
+    let isOpenedDay: Bool
 
     init(pet: Pet, petRepository: PetRepository, now: Date = .now, calendar: Calendar = .current) {
         self.pet = pet
         self.petRepository = petRepository
         self.calendar = calendar
         self.anchor = calendar.startOfDay(for: now)
+        self.isOpenedDay = false
+    }
+
+    private init(openedDay day: Date, from parent: ExcursionsViewModel) {
+        pet = parent.pet
+        petRepository = parent.petRepository
+        calendar = parent.calendar
+        anchor = parent.calendar.startOfDay(for: day)
+        mode = .day
+        isOpenedDay = true
+        excursions = parent.excursions
+        homeNamesByID = parent.homeNamesByID
+        isLoading = false
+    }
+
+    /// The screen for a day tapped in the month or week, starting with
+    /// the excursions already loaded here.
+    func viewModel(forOpenedDay day: Date) -> ExcursionsViewModel {
+        ExcursionsViewModel(openedDay: day, from: self)
     }
 
     func load() async {
+        // An opened day starts with its parent's excursions, a reload
+        // would only flash the same data.
+        guard !isOpenedDay else { return }
         isLoading = true
         defer { isLoading = false }
         await performLoad()
@@ -101,11 +127,7 @@ final class ExcursionsViewModel {
         anchor = calendar.startOfDay(for: now)
     }
 
-    /// Zooms into one day, e.g. after tapping it in the month or week.
-    func show(day: Date) {
-        anchor = calendar.startOfDay(for: day)
-        mode = .day
-    }
+
 
     /// The month, week or day currently shown.
     var shownInterval: DateInterval {

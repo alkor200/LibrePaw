@@ -67,6 +67,9 @@
         }
       }
     },
+    "%@ · %@": {
+      "shouldTranslate": false
+    },
     "%@'s Homes": {
       "extractionState": "manual",
       "localizations": {

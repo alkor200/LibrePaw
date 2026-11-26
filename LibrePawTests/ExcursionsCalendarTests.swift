@@ -88,12 +88,16 @@ struct ExcursionsCalendarTests {
         #expect(viewModel.shownDays.count == 7)
     }
 
-    @Test("Tapping a day zooms into it")
-    func showDay() async {
-        let viewModel = await makeViewModel()
-        viewModel.show(day: date(3, 15))
+    @Test("A tapped day opens as its own day screen with the excursions already loaded")
+    func openedDay() async {
+        let viewModel = await makeViewModel([walk(1, from: date(3, 8), minutes: 30, meters: 1_500)])
+        let day = viewModel.viewModel(forOpenedDay: date(3, 15))
 
-        #expect(viewModel.mode == .day)
-        #expect(viewModel.anchor == date(3))
+        #expect(day.isOpenedDay)
+        #expect(day.mode == .day)
+        #expect(day.anchor == date(3))
+        #expect(!day.isLoading)
+        #expect(day.excursions(on: date(3)).map(\.id) == [1])
+        #expect(viewModel.mode == .month)
     }
 }
