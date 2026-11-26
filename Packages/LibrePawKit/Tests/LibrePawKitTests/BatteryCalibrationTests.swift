@@ -36,7 +36,7 @@ struct BatteryCalibrationTests {
         let curve = try #require(BatteryCalibration.curve(from: samples))
 
         #expect(curve.cycleCount == 1)
-        let runtime = curve.averageRuntime ?? -1
+        let runtime = curve.averageActiveRuntime ?? -1
         #expect(abs(runtime - 100 * 3_600) < 1, "got \(runtime / 3_600) h")
         #expect(curve.percent(forVoltage: 3.0) == 0)
         #expect(curve.percent(forVoltage: 4.1) == 100)
@@ -74,10 +74,38 @@ struct BatteryCalibrationTests {
         let curve = try #require(BatteryCalibration.curve(from: samples))
 
         #expect(curve.cycleCount == 1)
-        let runtime = curve.averageRuntime ?? -1
+        let runtime = curve.averageActiveRuntime ?? -1
         #expect(abs(runtime - 100 * 3_600) < 1, "got \(runtime / 3_600) h")
         #expect(worstDeviationFromStraightLine(samples, curve: curve) < 3)
         #expect(BatteryCalibration.discharges(samples).count == 1)
+    }
+
+    @Test("A charge is measured in active time, hours on standby at home don't count")
+    func standbyDoesNotCount() throws {
+        // Ten walks of one hour each, a report every 5 minutes, the voltage
+        // falling only then, with 11 hours of silence (standby at home)
+        // after each.
+        var samples: [BatteryCalibration.Sample] = []
+        var time = start
+        var volts = 4.1
+        for _ in 0..<10 {
+            for _ in 0...12 {
+                samples.append(BatteryCalibration.Sample(time: time, volts: volts))
+                time = time.addingTimeInterval(5 * 60)
+                volts -= 0.9 / 130
+            }
+            time = time.addingTimeInterval(11 * 3_600)
+        }
+
+        let curve = try #require(BatteryCalibration.curve(from: samples))
+
+        let runtime = try #require(curve.averageActiveRuntime)
+        #expect(abs(runtime - 10 * 3_600) < 3_600, "got \(runtime / 3_600) h")
+        // Half way down in voltage, half of the walking time is left, not
+        // half of the five and a half days on the clock.
+        let left = try #require(curve.activeTimeLeft(forVoltage: 3.65))
+        #expect(abs(left - 5 * 3_600) < 1.5 * 3_600, "got \(left / 3_600) h")
+        #expect(BatteryCurve.generic.activeTimeLeft(forVoltage: 3.8) == nil)
     }
 
     @Test("Smoothing never reaches back across a charge")

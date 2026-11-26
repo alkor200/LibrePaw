@@ -20,6 +20,12 @@ enum Formatting {
 
     /// "42 min" under an hour, "3h 5m" under a day, "2d 4h" beyond that
     /// (unit abbreviations localized).
+    /// A battery's estimated time left, rounded to a quarter of an hour,
+    /// it's an estimate, minutes would claim more than it knows.
+    static func batteryTimeLeft(_ seconds: TimeInterval) -> String {
+        duration(max(15 * 60, (seconds / (15 * 60)).rounded() * 15 * 60))
+    }
+
     static func duration(_ seconds: TimeInterval) -> String {
         let totalMinutes = Int(seconds / 60)
         let days = totalMinutes / (60 * 24)

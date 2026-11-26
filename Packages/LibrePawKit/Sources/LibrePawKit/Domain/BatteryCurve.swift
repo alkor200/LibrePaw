@@ -30,19 +30,33 @@ public struct BatteryCurve: Sendable, Hashable, Codable {
         public let percent: Double
     }
 
-    /// Ascending by voltage, percentages never decreasing.
+    /// Ascending by voltage, percentages never decreasing. A percentage is
+    /// the share of a charge's *active* time still left, see
+    /// ``BatteryCalibration``.
     public let points: [Point]
     /// How many full discharges this curve was learned from, 0 for
     /// ``generic``.
     public let cycleCount: Int
-    /// How long a full charge lasted on average across those discharges,
-    /// `nil` for ``generic``.
-    public let averageRuntime: TimeInterval?
+    /// How much active time (the tracker awake and reporting, i.e. mostly
+    /// the pet being out, see ``BatteryCalibration/activeGap``) a full
+    /// charge lasted on average across those discharges, `nil` for
+    /// ``generic``.
+    public let averageActiveRuntime: TimeInterval?
 
-    public init(points: [Point], cycleCount: Int, averageRuntime: TimeInterval? = nil) {
+    public init(points: [Point], cycleCount: Int, averageActiveRuntime: TimeInterval? = nil) {
         self.points = points
         self.cycleCount = cycleCount
-        self.averageRuntime = averageRuntime
+        self.averageActiveRuntime = averageActiveRuntime
+    }
+
+    /// Roughly how much more active time the battery has at `volts`, `nil`
+    /// for ``generic``, which knows nothing about this tracker's runtime.
+    public func activeTimeLeft(forVoltage volts: Double) -> TimeInterval? {
+        activeTimeLeft(atPercent: percent(forVoltage: volts))
+    }
+
+    public func activeTimeLeft(atPercent percent: Double) -> TimeInterval? {
+        averageActiveRuntime.map { $0 * percent / 100 }
     }
 
     /// A typical single-cell Li-ion discharge, for a tracker without a full
@@ -88,15 +102,18 @@ public struct BatteryCurve: Sendable, Hashable, Codable {
 /// Only full discharges are learned from: starting at least
 /// ``fullVoltage`` and running down to ``emptyVoltage`` or below (raw),
 /// i.e. until the tracker switched itself off, the last report that low
-/// being its end. For each, every voltage on
-/// a fixed grid is mapped to the share of that discharge's runtime still
-/// left once the smoothed voltage first fell to it. Several discharges are
-/// averaged, the lowest smoothed voltages reached become 0 % and the
-/// starting voltages 100 %.
+/// being its end. For each, every voltage on a fixed grid is mapped to the
+/// share of that discharge's *active* time still left once the smoothed
+/// voltage first fell to it. Several discharges are averaged, the lowest
+/// smoothed voltages reached become 0 % and the starting voltages 100 %.
 ///
-/// Measured on time rather than energy, so the result reads as "how much
-/// of a charge's runtime is left", and the level shown with it, from the
-/// smoothed voltage too, falls about evenly over a charge.
+/// Active time, not time on the clock: a tracker like the MT710 goes to
+/// standby at home and reports every few seconds while out, and nearly all
+/// of a charge goes to the latter. On a real MT710 two full charges lasted
+/// 118 and 137 hours on the clock but 9.8 and 9.9 hours of active time,
+/// and at the same voltage both had about the same active time left. So
+/// the level stays put while the pet is home and falls while it's out,
+/// and what's left reads as "enough for about so many hours out".
 public enum BatteryCalibration {
     public struct Sample: Sendable, Hashable {
         public let time: Date
@@ -108,6 +125,9 @@ public enum BatteryCalibration {
         }
     }
 
+    /// A gap between two reports up to this long counts as active time,
+    /// longer ones as standby.
+    public static let activeGap: TimeInterval = 30 * 60
     static let chargeJump = 0.3
     static let chargeConfirmationWindow: TimeInterval = 3 * 3_600
     /// Picked against two real MT710 discharges: shorter windows let single
@@ -118,6 +138,7 @@ public enum BatteryCalibration {
     static let emptyVoltage = 3.35
     /// Shorter discharges are noise, not a real charge running out.
     static let minimumRuntime: TimeInterval = 6 * 3_600
+    static let minimumActiveRuntime: TimeInterval = 3_600
     static let gridStep = 0.05
 
     /// `nil` without a single full discharge in `samples`.
@@ -132,22 +153,25 @@ public enum BatteryCalibration {
             // itself off.
             guard let start = discharge.first, start.volts >= fullVoltage,
                   let end = discharge.last(where: { $0.volts <= emptyVoltage }) else { continue }
-            let runtime = end.time.timeIntervalSince(start.time)
-            guard runtime >= minimumRuntime else { continue }
+            guard end.time.timeIntervalSince(start.time) >= minimumRuntime,
+                  let endIndex = discharge.lastIndex(of: end) else { continue }
+            let activeClock = activeTime(discharge)
+            let runtime = activeClock[endIndex]
+            guard runtime >= minimumActiveRuntime else { continue }
 
             var runningMin = Double.infinity
-            var firstTimeAtOrBelow: [Int: Date] = [:]
-            for sample in smoothedDischarge(discharge) where sample.time <= end.time {
+            var firstActiveTimeAtOrBelow: [Int: TimeInterval] = [:]
+            for (index, sample) in smoothedDischarge(discharge).enumerated() where index <= endIndex {
                 runningMin = min(runningMin, sample.volts)
-                for index in gridIndices(downTo: runningMin, below: start.volts) where firstTimeAtOrBelow[index] == nil {
-                    firstTimeAtOrBelow[index] = sample.time
+                for gridIndex in gridIndices(downTo: runningMin, below: start.volts) where firstActiveTimeAtOrBelow[gridIndex] == nil {
+                    firstActiveTimeAtOrBelow[gridIndex] = activeClock[index]
                 }
             }
             fullVoltages.append(start.volts)
             emptyVoltages.append(runningMin)
             runtimes.append(runtime)
-            for (index, time) in firstTimeAtOrBelow {
-                fractionsByGridIndex[index, default: []].append(end.time.timeIntervalSince(time) / runtime)
+            for (gridIndex, activeTime) in firstActiveTimeAtOrBelow {
+                fractionsByGridIndex[gridIndex, default: []].append((runtime - activeTime) / runtime)
             }
         }
         guard !emptyVoltages.isEmpty else { return nil }
@@ -167,8 +191,21 @@ public enum BatteryCalibration {
         return BatteryCurve(
             points: points,
             cycleCount: emptyVoltages.count,
-            averageRuntime: runtimes.reduce(0, +) / Double(runtimes.count)
+            averageActiveRuntime: runtimes.reduce(0, +) / Double(runtimes.count)
         )
+    }
+
+    /// The active time elapsed at each sample since the discharge's first,
+    /// gaps up to ``activeGap`` counted, longer ones (standby) not.
+    private static func activeTime(_ discharge: [Sample]) -> [TimeInterval] {
+        var elapsed: TimeInterval = 0
+        var clock: [TimeInterval] = [0]
+        for (previous, sample) in zip(discharge, discharge.dropFirst()) {
+            let gap = sample.time.timeIntervalSince(previous.time)
+            if gap <= activeGap { elapsed += gap }
+            clock.append(elapsed)
+        }
+        return clock
     }
 
     /// `samples` with each voltage replaced by the median of the samples in

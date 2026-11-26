@@ -35,8 +35,8 @@ struct UserDefaultsBatteryCurveStore: BatteryCurveStore, @unchecked Sendable {
     }
 
     private func key(forPetID petID: Int, serverHost: String) -> String {
-        // v2: curves cached before `BatteryCurve.averageRuntime` existed
-        // lack it, relearned once.
-        "org.librepaw.batteryCurve.v3.\(serverHost).\(petID)"
+        // v4: curves cached before they were learned over active time
+        // rather than time on the clock, relearned once.
+        "org.librepaw.batteryCurve.v4.\(serverHost).\(petID)"
     }
 }

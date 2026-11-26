@@ -202,17 +202,6 @@
         }
       }
     },
-    "A full charge lasts about %@.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eine volle Ladung hält etwa %@."
-          }
-        }
-      }
-    },
     "Account": {
       "extractionState": "manual",
       "localizations": {
@@ -862,6 +851,17 @@
         }
       }
     },
+    "Enough for about %@ out and about": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reicht noch für etwa %@ unterwegs"
+          }
+        }
+      }
+    },
     "Enter a valid server address, e.g. traccar.example.com": {
       "extractionState": "manual",
       "localizations": {
@@ -880,39 +880,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gib die E-Mail-Adresse des Traccar-Kontos ein, mit dem du %@ teilen möchtest."
-          }
-        }
-      }
-    },
-    "Estimated from the tracker's voltage with a typical battery curve, until it has run empty once.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geschätzt aus der Spannung des Trackers mit einer typischen Akkukurve, bis er einmal leer gelaufen ist."
-          }
-        }
-      }
-    },
-    "Estimated from the tracker's voltage, learned from %lld full discharges in the last 45 days.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geschätzt aus der Spannung des Trackers, gelernt aus %lld vollständigen Entladungen der letzten 45 Tage."
-          }
-        }
-      }
-    },
-    "Estimated from the tracker's voltage, learned from one full discharge in the last 45 days.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geschätzt aus der Spannung des Trackers, gelernt aus einer vollständigen Entladung der letzten 45 Tage."
           }
         }
       }
@@ -979,6 +946,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Von"
+          }
+        }
+      }
+    },
+    "Full charge: about %@ out and about": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volle Ladung: etwa %@ unterwegs"
           }
         }
       }

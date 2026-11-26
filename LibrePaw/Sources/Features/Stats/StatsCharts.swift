@@ -226,17 +226,11 @@ struct BatterySection: View {
             .frame(height: 170)
 
             VStack(alignment: .leading, spacing: 4) {
-                if let runtime = curve.averageRuntime {
-                    Label("A full charge lasts about \(Formatting.duration(runtime)).", systemImage: "bolt.fill")
+                if let timeLeft = history.last.flatMap({ isEstimated ? curve.activeTimeLeft(atPercent: $0.percent) : nil }) {
+                    Label("Enough for about \(Formatting.batteryTimeLeft(timeLeft)) out and about", systemImage: "figure.walk")
                 }
-                if isEstimated {
-                    if curve.cycleCount == 1 {
-                        Text("Estimated from the tracker's voltage, learned from one full discharge in the last 45 days.")
-                    } else if curve.cycleCount > 1 {
-                        Text("Estimated from the tracker's voltage, learned from \(curve.cycleCount) full discharges in the last 45 days.")
-                    } else {
-                        Text("Estimated from the tracker's voltage with a typical battery curve, until it has run empty once.")
-                    }
+                if let runtime = curve.averageActiveRuntime {
+                    Label("Full charge: about \(Formatting.batteryTimeLeft(runtime)) out and about", systemImage: "bolt.fill")
                 }
             }
             .font(.caption)
