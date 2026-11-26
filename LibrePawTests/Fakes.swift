@@ -44,6 +44,8 @@ struct FakePetRepository: PetRepository {
     var failingTrailStarts: Set<Date> = []
     /// Counts ``fetchTrail(forPetID:from:to:)`` calls.
     let trailCalls = CallCounter()
+    /// Returned from ``fetchTrail(forPetID:from:to:)``.
+    var trail: [PetPosition] = []
     /// Thrown from ``sharePet(forPetID:withEmail:)`` when set.
     var sharePetError: Error?
     /// Whether ``currentUserPermissions()`` reports a read-only account.
@@ -68,7 +70,7 @@ struct FakePetRepository: PetRepository {
     func fetchTrail(forPetID petID: Int, from: Date, to: Date) async throws -> [PetPosition] {
         _ = trailCalls.next()
         if failingTrailStarts.contains(from) { throw LibrePawError.network("offline") }
-        return []
+        return trail
     }
     func fetchPhoto(for pet: Pet) async throws -> Data? { nil }
     func setPhoto(forPetID petID: Int, jpegData: Data) async throws {}

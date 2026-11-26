@@ -18,17 +18,29 @@ struct BatteryCalibrationTests {
         }
     }
 
-    @Test("A linear discharge yields a linear curve from empty to full")
+    /// The level shown over `samples` with `curve`, read from the smoothed
+    /// voltage like the app does, against how much of the runtime is left.
+    private func worstDeviationFromStraightLine(_ samples: [BatteryCalibration.Sample], curve: BatteryCurve) -> Double {
+        let smoothed = BatteryCalibration.smoothed(samples)
+        guard let first = smoothed.first, let last = smoothed.last else { return .infinity }
+        let runtime = last.time.timeIntervalSince(first.time)
+        return smoothed.map { sample in
+            let left = 100 * (1 - sample.time.timeIntervalSince(first.time) / runtime)
+            return abs(curve.percent(forVoltage: sample.volts) - left)
+        }.max() ?? .infinity
+    }
+
+    @Test("A linear discharge yields a curve the level falls evenly with")
     func linearDischargeYieldsLinearCurve() throws {
-        let curve = try #require(BatteryCalibration.curve(from: linearDischarge()))
+        let samples = linearDischarge()
+        let curve = try #require(BatteryCalibration.curve(from: samples))
 
         #expect(curve.cycleCount == 1)
         let runtime = curve.averageRuntime ?? -1
         #expect(abs(runtime - 100 * 3_600) < 1, "got \(runtime / 3_600) h")
-        #expect(curve.percent(forVoltage: 3.2) == 0)
+        #expect(curve.percent(forVoltage: 3.0) == 0)
         #expect(curve.percent(forVoltage: 4.1) == 100)
-        // Half way in voltage is half way in runtime here.
-        #expect(abs(curve.percent(forVoltage: 3.65) - 50) < 2)
+        #expect(worstDeviationFromStraightLine(samples, curve: curve) < 3)
     }
 
     @Test("Without a full discharge on record there's nothing to learn")
@@ -47,19 +59,36 @@ struct BatteryCalibrationTests {
         let curve = try #require(BatteryCalibration.curve(from: linearDischarge() + linearDischarge(from: 150)))
 
         #expect(curve.cycleCount == 2)
-        #expect(abs(curve.percent(forVoltage: 3.65) - 50) < 2)
+        #expect(worstDeviationFromStraightLine(linearDischarge(), curve: curve) < 3)
     }
 
-    @Test("A voltage recovering while idle doesn't count as charge coming back")
-    func recoveryUsesRunningMinimum() throws {
+    @Test("A sag under load that recovers is neither a charge nor the battery running low")
+    func sagsAreIgnored() throws {
         var samples = linearDischarge()
-        // A brief rebound mid-way, below the charge threshold.
-        samples[100] = BatteryCalibration.Sample(time: samples[100].time, volts: samples[100].volts + 0.2)
+        // Like a real MT710: the voltage drops by 0.4 V for an hour while
+        // the modem is busy, then comes back. Twice, once early, once late.
+        for index in [60, 61, 150, 151] {
+            samples[index] = BatteryCalibration.Sample(time: samples[index].time, volts: samples[index].volts - 0.4)
+        }
 
         let curve = try #require(BatteryCalibration.curve(from: samples))
 
         #expect(curve.cycleCount == 1)
-        #expect(abs(curve.percent(forVoltage: 3.65) - 50) < 2)
+        let runtime = curve.averageRuntime ?? -1
+        #expect(abs(runtime - 100 * 3_600) < 1, "got \(runtime / 3_600) h")
+        #expect(worstDeviationFromStraightLine(samples, curve: curve) < 3)
+        #expect(BatteryCalibration.discharges(samples).count == 1)
+    }
+
+    @Test("Smoothing never reaches back across a charge")
+    func smoothingRestartsAtCharge() {
+        let samples = linearDischarge() + linearDischarge(from: 150)
+        let smoothed = BatteryCalibration.smoothed(samples)
+
+        #expect(smoothed.count == samples.count)
+        // The first report after charging reads full, not a median with
+        // the empty battery before.
+        #expect(smoothed[201].volts == 4.1)
     }
 
     @Test("A reported percentage wins, a voltage alone is estimated with the given curve")

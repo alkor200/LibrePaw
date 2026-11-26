@@ -143,7 +143,7 @@ struct PetDetailView: View {
     /// for a level estimated from the voltage, see `BatteryCurve`.
     @ViewBuilder
     private var batteryCaption: some View {
-        if let battery = viewModel.pet.lastPosition?.battery(using: viewModel.batteryCurve) {
+        if let battery = viewModel.battery {
             BatteryGauge(percent: battery.percent, isEstimate: battery.isEstimate, height: 16)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text("Battery"))

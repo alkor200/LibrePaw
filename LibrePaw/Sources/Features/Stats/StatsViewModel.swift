@@ -110,11 +110,30 @@ final class StatsViewModel {
         guard let from = Calendar.current.date(byAdding: .day, value: -Self.batteryHistoryDays, to: now),
               let positions = try? await petRepository.fetchTrail(forPetID: pet.id, from: from, to: now) else { return }
 
+        // A reported percentage as is, a voltage smoothed first (see
+        // `BatteryCalibration.smoothed`), a single report's voltage sags
+        // whenever the tracker is busy.
+        let voltages = positions.compactMap { position in
+            position.batteryLevelPercent == nil
+                ? position.batteryVoltage.map { BatteryCalibration.Sample(time: position.recordedAt, volts: $0) }
+                : nil
+        }
+        let smoothedVolts = Dictionary(
+            BatteryCalibration.smoothed(voltages).map { ($0.time, $0.volts) },
+            uniquingKeysWith: { _, latest in latest }
+        )
         var latestPerHour: [Date: BatteryPoint] = [:]
         for position in positions {
-            guard let reading = position.battery(using: curve) else { continue }
+            let percent: Double
+            if let reported = position.batteryLevelPercent {
+                percent = reported
+            } else if let volts = smoothedVolts[position.recordedAt] {
+                percent = curve.percent(forVoltage: volts)
+            } else {
+                continue
+            }
             let hour = Calendar.current.dateInterval(of: .hour, for: position.recordedAt)?.start ?? position.recordedAt
-            latestPerHour[hour] = BatteryPoint(time: hour, percent: reading.percent)
+            latestPerHour[hour] = BatteryPoint(time: hour, percent: percent)
         }
         batteryHistory = latestPerHour.values.sorted { $0.time < $1.time }
     }

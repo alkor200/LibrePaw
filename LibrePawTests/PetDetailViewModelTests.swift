@@ -30,4 +30,26 @@ struct PetDetailViewModelTests {
 
         #expect(repository.batteryCurveCalls.value == 2)
     }
+
+    @Test("The battery level is read from the recent reports' median, not a single sag")
+    func batteryIgnoresSag() async throws {
+        let now = Date.now
+        func position(minutesAgo: Double, volts: Double) -> PetPosition {
+            PetPosition(id: Int(minutesAgo), petID: 1, coordinate: Coordinate(latitude: 0, longitude: 0),
+                        recordedAt: now.addingTimeInterval(-minutesAgo * 60), speedKilometersPerHour: 0,
+                        address: nil, batteryLevelPercent: nil, batteryVoltage: volts)
+        }
+        var repository = FakePetRepository()
+        repository.trail = [position(minutesAgo: 120, volts: 3.8), position(minutesAgo: 60, volts: 3.8)]
+        // The latest report sagged while the tracker was sending.
+        let sagging = Pet(id: 1, name: "Buddy", species: nil, status: .online, lastSeenAt: now,
+                          lastPosition: position(minutesAgo: 0, volts: 3.4))
+        let viewModel = PetDetailViewModel(pet: sagging, petRepository: repository)
+
+        await viewModel.loadIfStale()
+
+        let battery = try #require(viewModel.battery)
+        #expect(battery.isEstimate)
+        #expect(battery.percent == BatteryCurve.generic.percent(forVoltage: 3.8))
+    }
 }

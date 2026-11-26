@@ -7,6 +7,11 @@ public struct BatteryReading: Sendable, Hashable {
     /// `true` when derived from the voltage rather than reported by the
     /// tracker, the app shows it as approximate.
     public let isEstimate: Bool
+
+    public init(percent: Double, isEstimate: Bool) {
+        self.percent = percent
+        self.isEstimate = isEstimate
+    }
 }
 
 /// Maps a single-cell lithium battery's voltage to its remaining charge,
@@ -70,18 +75,28 @@ public struct BatteryCurve: Sendable, Hashable, Codable {
 
 /// Learns a tracker's ``BatteryCurve`` from its own voltage history.
 ///
-/// Splits the history into discharges at every charge (the voltage
-/// jumping up by more than ``chargeJump`` between two reports) and keeps
-/// only full ones: starting at least ``fullVoltage`` and running down to
-/// ``emptyVoltage`` or below, i.e. until the tracker switched itself off.
-/// For each, every voltage on a fixed grid is mapped to the share of that
-/// discharge's runtime still left once the voltage first fell to it, the
-/// running minimum, since the voltage recovers a little whenever the
-/// tracker idles. Several discharges are averaged, the lowest voltages
-/// reached become 0 % and the starting voltages 100 %.
+/// The voltage a tracker reports is noisy: it sags by up to 0.4 V for a
+/// while whenever the modem or GPS draws current and recovers after,
+/// confirmed on a real MT710 (3.80, 3.37, then 3.76 V within an hour). So
+/// the history is first split into discharges at every charge, counting
+/// only a jump of more than ``chargeJump`` that *holds* (the median of the
+/// next ``chargeConfirmationWindow`` stays that far above the median of
+/// the one before, a sag recovering doesn't), and each discharge is
+/// smoothed with a running median over ``smoothingWindow`` (see
+/// ``smoothed(_:)``).
+///
+/// Only full discharges are learned from: starting at least
+/// ``fullVoltage`` and running down to ``emptyVoltage`` or below (raw),
+/// i.e. until the tracker switched itself off, the last report that low
+/// being its end. For each, every voltage on
+/// a fixed grid is mapped to the share of that discharge's runtime still
+/// left once the smoothed voltage first fell to it. Several discharges are
+/// averaged, the lowest smoothed voltages reached become 0 % and the
+/// starting voltages 100 %.
 ///
 /// Measured on time rather than energy, so the result reads as "how much
-/// of a charge's runtime is left", which is what a pet owner wants to know.
+/// of a charge's runtime is left", and the level shown with it, from the
+/// smoothed voltage too, falls about evenly over a charge.
 public enum BatteryCalibration {
     public struct Sample: Sendable, Hashable {
         public let time: Date
@@ -94,6 +109,11 @@ public enum BatteryCalibration {
     }
 
     static let chargeJump = 0.3
+    static let chargeConfirmationWindow: TimeInterval = 3 * 3_600
+    /// Picked against two real MT710 discharges: shorter windows let single
+    /// sags through (the level hopping up by up to 8 points), longer ones
+    /// don't track a straight line any better and lag more.
+    public static let smoothingWindow: TimeInterval = 9 * 3_600
     static let fullVoltage = 4.0
     static let emptyVoltage = 3.35
     /// Shorter discharges are noise, not a real charge running out.
@@ -102,39 +122,30 @@ public enum BatteryCalibration {
 
     /// `nil` without a single full discharge in `samples`.
     public static func curve(from samples: [Sample]) -> BatteryCurve? {
-        let sorted = samples.sorted { $0.time < $1.time }
-        var discharges: [[Sample]] = []
-        var current: [Sample] = []
-        for sample in sorted {
-            if let previous = current.last, sample.volts - previous.volts > chargeJump {
-                discharges.append(current)
-                current = []
-            }
-            current.append(sample)
-        }
-        discharges.append(current)
-
         var fractionsByGridIndex: [Int: [Double]] = [:]
         var fullVoltages: [Double] = []
         var emptyVoltages: [Double] = []
         var runtimes: [TimeInterval] = []
-        for discharge in discharges {
+        for discharge in discharges(samples) {
+            // The last report at or below empty, not the lowest one, a sag
+            // shortly before can dip lower than where the tracker switched
+            // itself off.
             guard let start = discharge.first, start.volts >= fullVoltage,
-                  let end = discharge.min(by: { $0.volts < $1.volts }), end.volts <= emptyVoltage else { continue }
+                  let end = discharge.last(where: { $0.volts <= emptyVoltage }) else { continue }
             let runtime = end.time.timeIntervalSince(start.time)
             guard runtime >= minimumRuntime else { continue }
-            fullVoltages.append(start.volts)
-            emptyVoltages.append(end.volts)
-            runtimes.append(runtime)
 
             var runningMin = Double.infinity
             var firstTimeAtOrBelow: [Int: Date] = [:]
-            for sample in discharge where sample.time <= end.time {
+            for sample in smoothedDischarge(discharge) where sample.time <= end.time {
                 runningMin = min(runningMin, sample.volts)
                 for index in gridIndices(downTo: runningMin, below: start.volts) where firstTimeAtOrBelow[index] == nil {
                     firstTimeAtOrBelow[index] = sample.time
                 }
             }
+            fullVoltages.append(start.volts)
+            emptyVoltages.append(runningMin)
+            runtimes.append(runtime)
             for (index, time) in firstTimeAtOrBelow {
                 fractionsByGridIndex[index, default: []].append(end.time.timeIntervalSince(time) / runtime)
             }
@@ -158,6 +169,62 @@ public enum BatteryCalibration {
             cycleCount: emptyVoltages.count,
             averageRuntime: runtimes.reduce(0, +) / Double(runtimes.count)
         )
+    }
+
+    /// `samples` with each voltage replaced by the median of the samples in
+    /// the ``smoothingWindow`` up to it, never reaching back across a
+    /// charge. What a level should be read from, a single report's voltage
+    /// says more about what the tracker was doing at that moment than about
+    /// its charge.
+    public static func smoothed(_ samples: [Sample]) -> [Sample] {
+        discharges(samples).flatMap(smoothedDischarge)
+    }
+
+    /// Split at every charge, oldest first.
+    static func discharges(_ samples: [Sample]) -> [[Sample]] {
+        let sorted = samples.sorted { $0.time < $1.time }
+        var discharges: [[Sample]] = []
+        var current: [Sample] = []
+        for (index, sample) in sorted.enumerated() {
+            if let previous = current.last, sample.volts - previous.volts > chargeJump, isCharge(at: index, in: sorted) {
+                discharges.append(current)
+                current = []
+            }
+            current.append(sample)
+        }
+        if !current.isEmpty { discharges.append(current) }
+        return discharges
+    }
+
+    /// Whether the jump up to `sorted[index]` holds rather than being a
+    /// sag recovering.
+    private static func isCharge(at index: Int, in sorted: [Sample]) -> Bool {
+        let time = sorted[index].time
+        // At least the report right before, a tracker usually charges
+        // after it ran empty and stayed off for a while.
+        var before = sorted[..<index].reversed().prefix { time.timeIntervalSince($0.time) <= chargeConfirmationWindow }.map(\.volts)
+        if before.isEmpty { before = [sorted[index - 1].volts] }
+        let after = sorted[index...].prefix { $0.time.timeIntervalSince(time) <= chargeConfirmationWindow }.map(\.volts)
+        guard let medianBefore = median(before), let medianAfter = median(after) else { return false }
+        return medianAfter - medianBefore > chargeJump
+    }
+
+    private static func smoothedDischarge(_ discharge: [Sample]) -> [Sample] {
+        var windowStart = 0
+        return discharge.enumerated().map { index, sample in
+            while sample.time.timeIntervalSince(discharge[windowStart].time) > smoothingWindow {
+                windowStart += 1
+            }
+            let volts = median(discharge[windowStart...index].map(\.volts)) ?? sample.volts
+            return Sample(time: sample.time, volts: volts)
+        }
+    }
+
+    private static func median(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        let middle = sorted.count / 2
+        return sorted.count.isMultiple(of: 2) ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
     }
 
     /// Grid voltages (as multiples of `gridStep`) a running minimum of

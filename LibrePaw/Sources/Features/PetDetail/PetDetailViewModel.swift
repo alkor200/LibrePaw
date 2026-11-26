@@ -22,6 +22,11 @@ final class PetDetailViewModel {
     /// This pet's tracker's own voltage-to-charge curve, for a tracker that
     /// reports only its battery voltage (see `PetRepository.batteryCurve`).
     private(set) var batteryCurve: BatteryCurve = .generic
+    /// The tracker's voltage reports over the last
+    /// `BatteryCalibration.smoothingWindow`, so ``battery`` can read the
+    /// level from their median rather than from the latest report alone,
+    /// which sags whenever the tracker is busy.
+    private var recentVoltages: [BatteryCalibration.Sample] = []
 
     private let petRepository: PetRepository
     private var liveUpdatesTask: Task<Void, Never>?
@@ -92,6 +97,33 @@ final class PetDetailViewModel {
 
     func loadBatteryCurve() async {
         batteryCurve = await petRepository.batteryCurve(forPetID: pet.id)
+        guard pet.lastPosition?.batteryLevelPercent == nil, pet.lastPosition?.batteryVoltage != nil else { return }
+        let now = Date.now
+        // Best-effort, without it the level is read from the latest report.
+        guard let positions = try? await petRepository.fetchTrail(
+            forPetID: pet.id,
+            from: now.addingTimeInterval(-BatteryCalibration.smoothingWindow),
+            to: now
+        ) else { return }
+        recentVoltages = positions.compactMap { position in
+            position.batteryVoltage.map { BatteryCalibration.Sample(time: position.recordedAt, volts: $0) }
+        }
+    }
+
+    /// The level to show: the tracker's own percentage when it reports
+    /// one, otherwise estimated from its smoothed voltage, the recent
+    /// reports plus whatever the live feed delivered since.
+    var battery: BatteryReading? {
+        guard let position = pet.lastPosition else { return nil }
+        guard position.batteryLevelPercent == nil, let volts = position.batteryVoltage else {
+            return position.battery(using: batteryCurve)
+        }
+        var samples = recentVoltages
+        if samples.last.map({ $0.time < position.recordedAt }) ?? true {
+            samples.append(BatteryCalibration.Sample(time: position.recordedAt, volts: volts))
+        }
+        let smoothed = BatteryCalibration.smoothed(samples).last?.volts ?? volts
+        return BatteryReading(percent: batteryCurve.percent(forVoltage: smoothed), isEstimate: true)
     }
 
     /// Best-effort, this just gates UI affordances, not something worth
