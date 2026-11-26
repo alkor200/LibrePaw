@@ -30,10 +30,14 @@ public struct BatteryCurve: Sendable, Hashable, Codable {
     /// How many full discharges this curve was learned from, 0 for
     /// ``generic``.
     public let cycleCount: Int
+    /// How long a full charge lasted on average across those discharges,
+    /// `nil` for ``generic``.
+    public let averageRuntime: TimeInterval?
 
-    public init(points: [Point], cycleCount: Int) {
+    public init(points: [Point], cycleCount: Int, averageRuntime: TimeInterval? = nil) {
         self.points = points
         self.cycleCount = cycleCount
+        self.averageRuntime = averageRuntime
     }
 
     /// A typical single-cell Li-ion discharge, for a tracker without a full
@@ -113,6 +117,7 @@ public enum BatteryCalibration {
         var fractionsByGridIndex: [Int: [Double]] = [:]
         var fullVoltages: [Double] = []
         var emptyVoltages: [Double] = []
+        var runtimes: [TimeInterval] = []
         for discharge in discharges {
             guard let start = discharge.first, start.volts >= fullVoltage,
                   let end = discharge.min(by: { $0.volts < $1.volts }), end.volts <= emptyVoltage else { continue }
@@ -120,6 +125,7 @@ public enum BatteryCalibration {
             guard runtime >= minimumRuntime else { continue }
             fullVoltages.append(start.volts)
             emptyVoltages.append(end.volts)
+            runtimes.append(runtime)
 
             var runningMin = Double.infinity
             var firstTimeAtOrBelow: [Int: Date] = [:]
@@ -147,7 +153,11 @@ public enum BatteryCalibration {
             points.append(BatteryCurve.Point(volts: volts, percent: max(percent, points.last?.percent ?? 0)))
         }
         points.append(BatteryCurve.Point(volts: full, percent: 100))
-        return BatteryCurve(points: points, cycleCount: emptyVoltages.count)
+        return BatteryCurve(
+            points: points,
+            cycleCount: emptyVoltages.count,
+            averageRuntime: runtimes.reduce(0, +) / Double(runtimes.count)
+        )
     }
 
     /// Grid voltages (as multiples of `gridStep`) a running minimum of

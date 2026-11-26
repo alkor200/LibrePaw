@@ -10,11 +10,6 @@ final class PetDetailViewModel {
     /// name without waiting for the next `fetchPets()`/`livePetUpdates()`
     /// refresh elsewhere in the app.
     private(set) var pet: Pet
-    private(set) var trail: [PetPosition] = []
-    private(set) var isLoadingTrail = false
-    private(set) var trailErrorMessage: String?
-    private(set) var lifetimeStats: LifetimeStats?
-    private(set) var todaysExcursions: [Excursion] = []
     /// Gates the "Share `<Pet>`" action, the "Edit `<Pet>`" row (name and
     /// photo), and the Trail/Excursions rows, each straight off what
     /// Traccar's own permission flags allow the signed-in account to do (see
@@ -75,25 +70,19 @@ final class PetDetailViewModel {
         liveUpdatesTask = nil
     }
 
-    /// Loads today's position history so the detail map can draw a trail.
-    /// Everything this screen shows besides the live pet itself, loaded
-    /// side by side, but only when the last full load is older than
-    /// `maxAge`.
+    /// What this screen loads besides the live pet itself (permissions
+    /// and the battery curve, the statistics moved to `StatsView`), but
+    /// only when the last load is older than `maxAge`.
     ///
     /// The view calls this from `.task`, which runs again every time a
     /// pushed screen (Trail, Excursions, Homes, ...) pops back here.
-    /// Reloading unconditionally meant re-fetching today's trail, the
-    /// lifetime stats and today's excursion events on every single
-    /// return, even seconds after the last load. Permissions don't change
-    /// while signed in, so they're only ever loaded until they succeed.
+    /// Permissions don't change while signed in, so they're only ever
+    /// loaded until they succeed.
     func loadIfStale(maxAge: TimeInterval = 60) async {
         if let lastLoadedAt, Date.now.timeIntervalSince(lastLoadedAt) < maxAge { return }
-        async let trail: Void = loadTodaysTrail()
-        async let stats: Void = loadLifetimeStats()
-        async let excursions: Void = loadTodaysExcursions()
         async let permissions: Void = permissions == nil ? loadPermissions() : ()
         async let battery: Void = loadBatteryCurve()
-        _ = await (trail, stats, excursions, permissions, battery)
+        _ = await (permissions, battery)
         // A load cut short (e.g. tapping into a sub-screen right away)
         // doesn't count, the next appearance should try again.
         if !Task.isCancelled {
@@ -105,69 +94,8 @@ final class PetDetailViewModel {
         batteryCurve = await petRepository.batteryCurve(forPetID: pet.id)
     }
 
-    func loadTodaysTrail() async {
-        isLoadingTrail = true
-        trailErrorMessage = nil
-        defer { isLoadingTrail = false }
-
-        do {
-            let startOfDay = Calendar.current.startOfDay(for: .now)
-            trail = try await petRepository.fetchTrail(forPetID: pet.id, from: startOfDay, to: .now)
-        } catch {
-            trailErrorMessage = error.userFacingMessage
-        }
-    }
-
-    /// Lifetime distance/time-away totals. Best-effort: leaves the previous
-    /// value (or `nil`) in place on failure rather than surfacing an error,
-    /// since this is a secondary stat alongside today's trail.
-    func loadLifetimeStats() async {
-        lifetimeStats = try? await petRepository.lifetimeExcursionStats(forPetID: pet.id)
-    }
-
-    private(set) var isRecalculating = false
-    /// Why the last ``recalculate()`` failed, shown as an alert. Unlike the
-    /// ordinary best-effort loads, recalculating is something the user
-    /// explicitly asked for, so a failure needs to say so.
-    var recalculateErrorMessage: String?
-
-    /// Discards both the cached excursions and the cached lifetime totals
-    /// built from them, then recomputes everything from the pet's entire
-    /// excursion history (see
-    /// `PetRepository.resetExcursionsCache(forPetID:)`/
-    /// `resetLifetimeStats(forPetID:)`), for recovering from bad cached
-    /// data, e.g. an excursion a since-fixed bug had closed wrong. Not
-    /// something an ordinary user needs day to day, reached from a context
-    /// menu on the lifetime stat tiles rather than a prominent button.
-    ///
-    /// Clears the excursions cache before the lifetime stats one: the
-    /// latter is itself built from `fetchExcursions`, clearing it first
-    /// would just re-read the still-bad cached excursions right back in.
-    func recalculate() async {
-        isRecalculating = true
-        defer { isRecalculating = false }
-        do {
-            try await petRepository.resetExcursionsCache(forPetID: pet.id)
-            try await petRepository.resetLifetimeStats(forPetID: pet.id)
-            lifetimeStats = try await petRepository.lifetimeExcursionStats(forPetID: pet.id)
-        } catch {
-            recalculateErrorMessage = error.userFacingMessage
-        }
-        await loadTodaysExcursions()
-    }
-
-    /// Today's excursions, for ``totalTimeAwayTodaySeconds``. Best-effort,
-    /// same reasoning as ``loadLifetimeStats()``, and naturally empty (not
-    /// an error) when the account has reports disabled, same as everything
-    /// else built on ``PetRepository/fetchExcursions(forPetID:from:to:)``
-    /// (see ADR-0023).
-    func loadTodaysExcursions() async {
-        let startOfDay = Calendar.current.startOfDay(for: .now)
-        todaysExcursions = (try? await petRepository.fetchExcursions(forPetID: pet.id, from: startOfDay, to: .now)) ?? []
-    }
-
-    /// Best-effort, same reasoning as ``loadLifetimeStats()``: this just
-    /// gates UI affordances, not something worth surfacing an error for,
+    /// Best-effort, this just gates UI affordances, not something worth
+    /// surfacing an error for,
     /// but retried a few times (see `currentUserPermissionsRetrying`) so
     /// one dropped request doesn't hide them for good.
     func loadPermissions() async {
@@ -189,28 +117,5 @@ final class PetDetailViewModel {
             lastPosition: pet.lastPosition,
             photoURL: pet.photoURL
         )
-    }
-
-    /// Total distance covered along today's trail, summing consecutive fixes
-    /// with the same spherical-geometry math used by the Find Pet screen.
-    /// `nil` until there are at least two points to measure between.
-    var totalTrailDistanceMeters: Double? {
-        guard trail.count > 1 else { return nil }
-        return zip(trail, trail.dropFirst())
-            .reduce(0) { $0 + $1.0.coordinate.distanceMeters(to: $1.1.coordinate) }
-    }
-
-    /// Total time spent away from home today, summing every excursion that
-    /// started today (an ongoing one contributes its elapsed-so-far
-    /// duration, same convention as `mergeLifetimeStats`). Likely-vehicle
-    /// trips are excluded, same reasoning as the lifetime total: this is
-    /// meant to read as time out and about, not time spent being driven
-    /// somewhere. `nil` until there's at least one excursion to show.
-    var totalTimeAwayTodaySeconds: TimeInterval? {
-        let walked = todaysExcursions.filter { !$0.isLikelyVehicleTrip }
-        guard !walked.isEmpty else { return nil }
-        return walked.reduce(0) { total, excursion in
-            total + (excursion.duration ?? Date.now.timeIntervalSince(excursion.startTime))
-        }
     }
 }

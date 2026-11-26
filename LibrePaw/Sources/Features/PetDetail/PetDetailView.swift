@@ -14,6 +14,7 @@ private enum PetDetailRoute: Hashable {
     case findPet
     case trail
     case excursions
+    case statistics
     case homes
     case sharePet
 }
@@ -61,6 +62,8 @@ struct PetDetailView: View {
                 FindPetView(viewModel: FindPetViewModel(pet: viewModel.pet, petRepository: petRepository, locationService: locationService))
             case .trail:
                 TrailView(viewModel: TrailViewModel(pet: viewModel.pet, petRepository: petRepository), petRepository: petRepository)
+            case .statistics:
+                StatsView(viewModel: StatsViewModel(pet: viewModel.pet, petRepository: petRepository))
             case .excursions:
                 ExcursionsView(
                     viewModel: ExcursionsViewModel(pet: viewModel.pet, petRepository: petRepository),
@@ -84,17 +87,6 @@ struct PetDetailView: View {
         }
         .onDisappear {
             viewModel.stopLiveUpdates()
-        }
-        .alert(
-            "Couldn't Recalculate",
-            isPresented: Binding(
-                get: { viewModel.recalculateErrorMessage != nil },
-                set: { if !$0 { viewModel.recalculateErrorMessage = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(viewModel.recalculateErrorMessage ?? "")
         }
         .sheet(isPresented: $isShowingEditPet) {
             EditPetView(pet: viewModel.pet, petRepository: petRepository) { newName in
@@ -242,6 +234,12 @@ struct PetDetailView: View {
                 NavigationLink(value: PetDetailRoute.excursions) {
                     actionRow(systemImage: "pawprint.fill", title: "Excursions")
                 }
+
+                Divider().padding(.leading, 44).overlay(Color.appBorder)
+
+                NavigationLink(value: PetDetailRoute.statistics) {
+                    actionRow(systemImage: "chart.bar.xaxis", title: "Statistics")
+                }
             }
 
             Divider().padding(.leading, 44).overlay(Color.appBorder)
@@ -295,71 +293,11 @@ struct PetDetailView: View {
             if let position = viewModel.pet.lastPosition {
                 StatTile(systemImage: "gauge.with.dots.needle.67percent", title: "Speed", value: Formatting.speed(position.speedKilometersPerHour))
             }
-            // Grouped with Speed rather than at the end, so the two
-            // "right now" tiles share a row, then today's and lifetime's
-            // stats each get their own row as a pair.
+            // Only the tracker's live values here, every statistic lives
+            // in `StatsView`.
             if let lastSeenAt = viewModel.pet.lastSeenAt {
                 StatTile(systemImage: "clock", title: "Last Update", value: Formatting.relative(lastSeenAt))
             }
-            if let totalDistance = viewModel.totalTrailDistanceMeters {
-                StatTile(systemImage: "map.fill", title: "Distance Today", value: Formatting.distance(totalDistance))
-            }
-            if let timeAwayToday = viewModel.totalTimeAwayTodaySeconds {
-                StatTile(systemImage: "pawprint.fill", title: "Time Away Today", value: Formatting.duration(timeAwayToday))
-            }
-            if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDistanceMeters > 0 {
-                StatTile(systemImage: "map.fill", title: "Total Distance", value: Formatting.distance(lifetimeStats.totalDistanceMeters))
-                    .contextMenu { recalculateLifetimeStatsButton }
-            }
-            if let lifetimeStats = viewModel.lifetimeStats, lifetimeStats.totalDurationSeconds > 0 {
-                StatTile(systemImage: "pawprint.fill", title: "Total Time Away", value: Formatting.duration(lifetimeStats.totalDurationSeconds))
-                    .contextMenu { recalculateLifetimeStatsButton }
-            }
-            // Spread over every day since the first walk, see
-            // `LifetimeStats.dailyAverages`.
-            if let averages = viewModel.lifetimeStats?.dailyAverages(), averages.distanceMeters > 0 {
-                StatTile(systemImage: "chart.bar.fill", title: "Avg. Distance per Day", value: Formatting.distance(averages.distanceMeters))
-                    .contextMenu { recalculateLifetimeStatsButton }
-                StatTile(systemImage: "calendar", title: "Avg. Time Away per Day", value: Formatting.duration(averages.durationSeconds))
-                    .contextMenu { recalculateLifetimeStatsButton }
-            }
-        }
-    }
-
-    /// Discards and recomputes both the cached excursions and the lifetime
-    /// totals built from them, from scratch (see
-    /// `PetDetailViewModel.recalculate()`), tucked away behind a context
-    /// menu rather than a prominent button since this is a recovery action
-    /// for bad cached data, not something an ordinary user needs day to day.
-    private var recalculateLifetimeStatsButton: some View {
-        Button {
-            Task { await viewModel.recalculate() }
-        } label: {
-            Label("Recalculate Lifetime Stats", systemImage: "arrow.clockwise")
-        }
-        .disabled(viewModel.isRecalculating)
-    }
-
-    private struct StatTile: View {
-        let systemImage: String
-        let title: LocalizedStringKey
-        let value: String
-
-        var body: some View {
-            VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: systemImage)
-                    .foregroundStyle(.tint)
-                Text(value)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.appSecondaryText)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(.appSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 

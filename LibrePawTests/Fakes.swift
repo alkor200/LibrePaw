@@ -50,6 +50,12 @@ struct FakePetRepository: PetRepository {
     var isReadOnly = false
     /// Thrown from ``lifetimeExcursionStats(forPetID:)`` when set.
     var lifetimeStatsError: Error?
+    /// Returned from ``fetchExcursions(forPetID:from:to:)``.
+    var excursions: [Excursion] = []
+    /// Thrown from ``fetchExcursions(forPetID:from:to:)`` when set.
+    var excursionsError: Error?
+    /// Counts ``batteryCurve(forPetID:)`` calls.
+    let batteryCurveCalls = CallCounter()
     /// How many ``currentUserPermissions()`` calls fail before one succeeds.
     var permissionFailuresBeforeSuccess = 0
     private let permissionCalls = CallCounter()
@@ -78,7 +84,10 @@ struct FakePetRepository: PetRepository {
     func addHomeGeofence(forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {}
     func updateHomeGeofence(_ homeID: Int, forPetID petID: Int, name: String, center: Coordinate, radiusMeters: Double) async throws {}
     func deleteHomeGeofence(_ homeID: Int) async throws {}
-    func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] { [] }
+    func fetchExcursions(forPetID petID: Int, from: Date, to: Date) async throws -> [Excursion] {
+        if let excursionsError { throw excursionsError }
+        return excursions.filter { $0.startTime >= from && $0.startTime <= to }
+    }
     func resetExcursionsCache(forPetID petID: Int) async throws {}
     func lifetimeExcursionStats(forPetID petID: Int) async throws -> LifetimeStats {
         if let lifetimeStatsError { throw lifetimeStatsError }
@@ -92,7 +101,10 @@ struct FakePetRepository: PetRepository {
     func sharePet(forPetID petID: Int, withEmail email: String) async throws {
         if let sharePetError { throw sharePetError }
     }
-    func batteryCurve(forPetID petID: Int) async -> BatteryCurve { .generic }
+    func batteryCurve(forPetID petID: Int) async -> BatteryCurve {
+        _ = batteryCurveCalls.next()
+        return .generic
+    }
     func endSession() async {}
 }
 

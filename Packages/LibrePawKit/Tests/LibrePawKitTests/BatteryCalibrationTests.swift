@@ -23,6 +23,8 @@ struct BatteryCalibrationTests {
         let curve = try #require(BatteryCalibration.curve(from: linearDischarge()))
 
         #expect(curve.cycleCount == 1)
+        let runtime = curve.averageRuntime ?? -1
+        #expect(abs(runtime - 100 * 3_600) < 1, "got \(runtime / 3_600) h")
         #expect(curve.percent(forVoltage: 3.2) == 0)
         #expect(curve.percent(forVoltage: 4.1) == 100)
         // Half way in voltage is half way in runtime here.

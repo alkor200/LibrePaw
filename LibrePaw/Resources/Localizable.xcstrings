@@ -80,6 +80,17 @@
         }
       }
     },
+    "%lld days": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Tage"
+          }
+        }
+      }
+    },
     "%lld m radius": {
       "extractionState": "manual",
       "localizations": {
@@ -98,6 +109,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld Meter Radius"
+          }
+        }
+      }
+    },
+    "1 day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Tag"
           }
         }
       }
@@ -157,6 +179,28 @@
         }
       }
     },
+    "90 Days": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "90 Tage"
+          }
+        }
+      }
+    },
+    "A full charge lasts about %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine volle Ladung hält etwa %@."
+          }
+        }
+      }
+    },
     "Account": {
       "extractionState": "manual",
       "localizations": {
@@ -164,6 +208,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konto"
+          }
+        }
+      }
+    },
+    "Activity Calendar": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivitätskalender"
           }
         }
       }
@@ -278,6 +333,50 @@
         }
       }
     },
+    "Average": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durchschnitt"
+          }
+        }
+      }
+    },
+    "Average distance on each day of the week.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durchschnittliche Strecke an jedem Wochentag."
+          }
+        }
+      }
+    },
+    "Average distance per day, week by week.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durchschnittliche Strecke pro Tag, Woche für Woche."
+          }
+        }
+      }
+    },
+    "Avg. %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø %@"
+          }
+        }
+      }
+    },
     "Avg. Distance per Day": {
       "extractionState": "manual",
       "localizations": {
@@ -285,6 +384,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ø Strecke pro Tag"
+          }
+        }
+      }
+    },
+    "Avg. Distance per Walk": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø Strecke pro Spaziergang"
+          }
+        }
+      }
+    },
+    "Avg. Pace": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø Tempo"
           }
         }
       }
@@ -307,6 +428,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ø Unterwegs pro Tag"
+          }
+        }
+      }
+    },
+    "Avg. Walk Duration": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø Dauer pro Spaziergang"
           }
         }
       }
@@ -454,6 +586,17 @@
         }
       }
     },
+    "Couldn't Load Statistics": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statistik konnte nicht geladen werden"
+          }
+        }
+      }
+    },
     "Couldn't Load Trail": {
       "extractionState": "manual",
       "localizations": {
@@ -520,6 +663,17 @@
         }
       }
     },
+    "Current Streak": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktuelle Serie"
+          }
+        }
+      }
+    },
     "Custom Range": {
       "extractionState": "manual",
       "localizations": {
@@ -538,6 +692,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dunkel"
+          }
+        }
+      }
+    },
+    "Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tag"
           }
         }
       }
@@ -586,6 +751,17 @@
         }
       }
     },
+    "Distance per Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strecke pro Tag"
+          }
+        }
+      }
+    },
     "Drag the map to choose a location first.": {
       "extractionState": "manual",
       "localizations": {
@@ -615,6 +791,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dauer"
+          }
+        }
+      }
+    },
+    "Each dot is one walk: its duration and its distance.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeder Punkt ist ein Spaziergang: seine Dauer und seine Strecke."
+          }
+        }
+      }
+    },
+    "Earliest Start": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frühester Start"
           }
         }
       }
@@ -685,6 +883,39 @@
         }
       }
     },
+    "Estimated from the tracker's voltage with a typical battery curve, until it has run empty once.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geschätzt aus der Spannung des Trackers mit einer typischen Akkukurve, bis er einmal leer gelaufen ist."
+          }
+        }
+      }
+    },
+    "Estimated from the tracker's voltage, learned from its full discharges in the last 45 days (%lld).": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geschätzt aus der Spannung des Trackers, gelernt aus seinen vollständigen Entladungen der letzten 45 Tage (%lld)."
+          }
+        }
+      }
+    },
+    "Every Walk": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Spaziergänge"
+          }
+        }
+      }
+    },
     "Excursions": {
       "extractionState": "manual",
       "localizations": {
@@ -692,6 +923,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ausflüge"
+          }
+        }
+      }
+    },
+    "Farthest Walk": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weitester Spaziergang"
+          }
+        }
+      }
+    },
+    "Fastest Walk": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schnellster Spaziergang"
           }
         }
       }
@@ -762,6 +1015,28 @@
         }
       }
     },
+    "Hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stunde"
+          }
+        }
+      }
+    },
+    "How Long and How Far": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie lange und wie weit"
+          }
+        }
+      }
+    },
     "Language": {
       "extractionState": "manual",
       "localizations": {
@@ -791,6 +1066,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Letzte Position "
+          }
+        }
+      }
+    },
+    "Latest Start": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spätester Start"
+          }
+        }
+      }
+    },
+    "Less": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weniger"
           }
         }
       }
@@ -838,6 +1135,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hell"
+          }
+        }
+      }
+    },
+    "Likely car or train rides, not counted: %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vermutliche Auto- oder Zugfahrten, nicht mitgezählt: %lld"
           }
         }
       }
@@ -908,6 +1216,39 @@
         }
       }
     },
+    "Longest Streak": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Längste Serie"
+          }
+        }
+      }
+    },
+    "Longest Walk": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Längster Spaziergang"
+          }
+        }
+      }
+    },
+    "Low": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niedrig"
+          }
+        }
+      }
+    },
     "Map": {
       "extractionState": "manual",
       "localizations": {
@@ -915,6 +1256,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Karte"
+          }
+        }
+      }
+    },
+    "Minutes": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minuten"
+          }
+        }
+      }
+    },
+    "More": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mehr"
+          }
+        }
+      }
+    },
+    "Most Active Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivster Tag"
           }
         }
       }
@@ -1014,6 +1388,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Noch keine Spur"
+          }
+        }
+      }
+    },
+    "No Walks Yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Spaziergänge"
           }
         }
       }
@@ -1139,6 +1524,17 @@
         }
       }
     },
+    "Range": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitraum"
+          }
+        }
+      }
+    },
     "Recalculate Lifetime Stats": {
       "extractionState": "manual",
       "localizations": {
@@ -1146,6 +1542,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gesamtwerte neu berechnen"
+          }
+        }
+      }
+    },
+    "Records": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rekorde"
           }
         }
       }
@@ -1245,6 +1652,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gestartet"
+          }
+        }
+      }
+    },
+    "Statistics": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statistik"
+          }
+        }
+      }
+    },
+    "Statistics appear here once %@ has been on an excursion in this period.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sobald %@ in diesem Zeitraum auf einem Ausflug war, erscheinen hier Statistiken."
           }
         }
       }
@@ -1370,6 +1799,17 @@
         }
       }
     },
+    "Time": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeit"
+          }
+        }
+      }
+    },
     "Time Away Today": {
       "extractionState": "manual",
       "localizations": {
@@ -1377,6 +1817,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Heute unterwegs"
+          }
+        }
+      }
+    },
+    "Time Away per Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unterwegs pro Tag"
+          }
+        }
+      }
+    },
+    "Time of Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tageszeit"
           }
         }
       }
@@ -1447,6 +1909,17 @@
         }
       }
     },
+    "Value": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wert"
+          }
+        }
+      }
+    },
     "Version": {
       "extractionState": "manual",
       "localizations": {
@@ -1480,6 +1953,105 @@
         }
       }
     },
+    "Walks": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spaziergänge"
+          }
+        }
+      }
+    },
+    "Walks by distance": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spaziergänge nach Strecke"
+          }
+        }
+      }
+    },
+    "Walks by duration": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spaziergänge nach Dauer"
+          }
+        }
+      }
+    },
+    "Walks per Day": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spaziergänge pro Tag"
+          }
+        }
+      }
+    },
+    "Walks where the tracker lost its signal, counted as far as recorded: %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spaziergänge mit Signalverlust, gezählt soweit aufgezeichnet: %lld"
+          }
+        }
+      }
+    },
+    "Week": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Woche"
+          }
+        }
+      }
+    },
+    "Weekday": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wochentag"
+          }
+        }
+      }
+    },
+    "Weekdays": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wochentage"
+          }
+        }
+      }
+    },
+    "Weekly Trend": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wochenverlauf"
+          }
+        }
+      }
+    },
     "Welcome": {
       "extractionState": "manual",
       "localizations": {
@@ -1487,6 +2059,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Willkommen"
+          }
+        }
+      }
+    },
+    "When walks start, by hour of the day.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wann Spaziergänge beginnen, nach Uhrzeit."
           }
         }
       }

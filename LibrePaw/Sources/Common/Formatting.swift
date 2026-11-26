@@ -1,4 +1,5 @@
 import Foundation
+import LibrePawKit
 
 /// The one place distances, durations, speeds and times are turned into
 /// text, so every screen shows the same value the same way, in the
@@ -60,6 +61,35 @@ enum Formatting {
     /// "5 minutes ago", "yesterday", ...
     static func relative(_ date: Date) -> String {
         date.formatted(.relative(presentation: .named).locale(LocalizationBundle.currentLocale))
+    }
+
+    /// One decimal, e.g. "2,3" walks per day.
+    static func decimal(_ value: Double) -> String {
+        number(value, fractionDigits: 1)
+    }
+
+    /// "1 day", "5 days".
+    static func days(_ count: Int) -> String {
+        count == 1 ? localized("1 day") : localized("%lld days", count)
+    }
+
+    /// A duration bucket's label in minutes: "< 15 min", "15-30 min", "> 90 min".
+    static func durationBucket(_ bucket: ExcursionStatistics.Bucket) -> String {
+        let lower = Int(bucket.lowerBound / 60)
+        guard let upper = bucket.upperBound.map({ Int($0 / 60) }) else { return "> \(lower) min" }
+        return lower == 0 ? "< \(upper) min" : "\(lower)-\(upper) min"
+    }
+
+    /// A distance bucket's label in kilometers: "< 0,5 km", "1-2 km", "> 5 km".
+    static func distanceBucket(_ bucket: ExcursionStatistics.Bucket) -> String {
+        let lower = kilometers(bucket.lowerBound)
+        guard let upperBound = bucket.upperBound else { return "> \(lower) km" }
+        return bucket.lowerBound == 0 ? "< \(kilometers(upperBound)) km" : "\(lower)-\(kilometers(upperBound)) km"
+    }
+
+    private static func kilometers(_ meters: Double) -> String {
+        let km = meters / 1_000
+        return number(km, fractionDigits: km.rounded() == km ? 0 : 1)
     }
 
     private static func number(_ value: Double, fractionDigits: Int) -> String {

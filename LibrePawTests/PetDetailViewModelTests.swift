@@ -16,7 +16,7 @@ struct PetDetailViewModelTests {
         await viewModel.loadIfStale()
         await viewModel.loadIfStale()
 
-        #expect(repository.trailCalls.value == 1)
+        #expect(repository.batteryCurveCalls.value == 1)
         #expect(viewModel.permissions != nil)
     }
 
@@ -28,15 +28,6 @@ struct PetDetailViewModelTests {
         await viewModel.loadIfStale()
         await viewModel.loadIfStale(maxAge: 0)
 
-        #expect(repository.trailCalls.value == 2)
-    }
-
-    @Test("A failed recalculation is reported instead of swallowed")
-    func failedRecalculationIsReported() async {
-        let viewModel = PetDetailViewModel(pet: pet, petRepository: FakePetRepository(lifetimeStatsError: LibrePawError.network("offline")))
-
-        await viewModel.recalculate()
-
-        #expect(viewModel.recalculateErrorMessage != nil)
+        #expect(repository.batteryCurveCalls.value == 2)
     }
 }
