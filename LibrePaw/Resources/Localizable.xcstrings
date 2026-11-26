@@ -795,17 +795,6 @@
         }
       }
     },
-    "Each dot is one walk: its duration and its distance.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Jeder Punkt ist ein Spaziergang: seine Dauer und seine Strecke."
-          }
-        }
-      }
-    },
     "Earliest Start": {
       "extractionState": "manual",
       "localizations": {
@@ -894,24 +883,24 @@
         }
       }
     },
-    "Estimated from the tracker's voltage, learned from its full discharges in the last 45 days (%lld).": {
+    "Estimated from the tracker's voltage, learned from %lld full discharges in the last 45 days.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Geschätzt aus der Spannung des Trackers, gelernt aus seinen vollständigen Entladungen der letzten 45 Tage (%lld)."
+            "value": "Geschätzt aus der Spannung des Trackers, gelernt aus %lld vollständigen Entladungen der letzten 45 Tage."
           }
         }
       }
     },
-    "Every Walk": {
+    "Estimated from the tracker's voltage, learned from one full discharge in the last 45 days.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle Spaziergänge"
+            "value": "Geschätzt aus der Spannung des Trackers, gelernt aus einer vollständigen Entladung der letzten 45 Tage."
           }
         }
       }
@@ -1256,17 +1245,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Karte"
-          }
-        }
-      }
-    },
-    "Minutes": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Minuten"
           }
         }
       }

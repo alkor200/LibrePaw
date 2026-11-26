@@ -117,7 +117,6 @@ struct StatsView: View {
         StartHourSection(startHours: statistics.startHours)
         if statistics.walkCount > 0 {
             DistributionSection(statistics: statistics)
-            WalkScatterSection(walks: statistics.walks)
             RecordsSection(statistics: statistics)
         }
         if statistics.vehicleTripCount > 0 || statistics.lostSignalCount > 0 {

@@ -198,35 +198,6 @@ struct DistributionSection: View {
     }
 }
 
-// MARK: - Every walk
-
-/// Every walk as a dot, its duration against its distance, so long slow
-/// sniffing rounds and short brisk ones stand apart. Walks whose tracker
-/// lost its signal are drawn smaller and grey, their values are incomplete.
-struct WalkScatterSection: View {
-    let walks: [Excursion]
-
-    var body: some View {
-        StatsSection(title: "Every Walk", systemImage: "circle.grid.cross.fill") {
-            Chart(walks) { walk in
-                PointMark(
-                    x: .value("Minutes", (walk.duration ?? 0) / 60),
-                    y: .value("km", (walk.distanceMeters ?? 0) / 1_000)
-                )
-                .symbolSize(walk.endedWithLostSignal ? 40 : 60)
-                .foregroundStyle(walk.endedWithLostSignal ? Color.appSecondaryText : Color.appPrimaryDark)
-                .opacity(0.8)
-            }
-            .chartXAxisLabel("min")
-            .chartYAxisLabel("km")
-            .frame(height: 200)
-            Text("Each dot is one walk: its duration and its distance.")
-                .font(.caption)
-                .foregroundStyle(.appSecondaryText)
-        }
-    }
-}
-
 // MARK: - Battery
 
 struct BatterySection: View {
@@ -259,8 +230,10 @@ struct BatterySection: View {
                     Label("A full charge lasts about \(Formatting.duration(runtime)).", systemImage: "bolt.fill")
                 }
                 if isEstimated {
-                    if curve.cycleCount > 0 {
-                        Text("Estimated from the tracker's voltage, learned from its full discharges in the last 45 days (\(curve.cycleCount)).")
+                    if curve.cycleCount == 1 {
+                        Text("Estimated from the tracker's voltage, learned from one full discharge in the last 45 days.")
+                    } else if curve.cycleCount > 1 {
+                        Text("Estimated from the tracker's voltage, learned from \(curve.cycleCount) full discharges in the last 45 days.")
                     } else {
                         Text("Estimated from the tracker's voltage with a typical battery curve, until it has run empty once.")
                     }
